@@ -48,6 +48,14 @@ while (listener.IsListening)
 
     response.StatusCode = (int)HttpStatusCode.OK;
 
+    // A rehearsal (webhooks.test, sandbox) is signed like a live delivery, but no money moved: never
+    // let it reach the code that credits an order.
+    if (delivery.IsTest)
+    {
+        Console.WriteLine($"rehearsal delivery {delivery.EventType} — acknowledged, not applied");
+        continue;
+    }
+
     // A retry of a delivery already handled, or an event older than what we applied: acknowledge and drop.
     if (delivery.Id is { } id && !seenDeliveries.Add(id))
     {

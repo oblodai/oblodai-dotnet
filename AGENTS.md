@@ -67,8 +67,10 @@ Codes worth handling: `payout.insufficient_funds` (retryable), `payout.funds_mat
 var info = WebhookVerifier.VerifyDelivery(rawBody, headers, new WebhookVerifyOptions { Secret = secret });
 ```
 
-Verify over the **raw** bytes. Deduplicate on `info.Id` (`X-Webhook-Id`); drop out-of-order events with
-`WebhookVerifier.IsStale(info.Event, lastSequence)`. During a rotation pass `PreviousSecret` for ≥26 h.
+Verify over the **raw** bytes. `info.IsTest` is true for rehearsal deliveries (`test: true` in the signed
+body, `X-Webhook-Test: true`) — never treat them as money. Deduplicate on `info.Id` (`X-Webhook-Id`); drop
+out-of-order events with `WebhookVerifier.IsStale(info.Event, lastSequence)`. During a rotation pass
+`PreviousSecret` for ≥26 h.
 
 ## Machine-readable surface
 
