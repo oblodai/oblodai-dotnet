@@ -7,7 +7,8 @@ namespace Oblodai.Resources;
 /// <summary>
 /// Generated PDF/CSV documents. Every method returns the bytes (<see cref="FileResult"/>); large
 /// ranges go through asynchronous jobs (<see cref="CreateJobAsync"/> → <see cref="JobInfoAsync"/> →
-/// <see cref="JobFileAsync"/>). Payment key, except <see cref="DownloadAsync"/>, which needs none.
+/// <see cref="JobFileAsync"/>). <see cref="DownloadAsync"/> is the exception: it needs no credentials,
+/// because the <c>document_url</c> carries its own signature.
 /// </summary>
 public sealed class Documents : Resource
 {

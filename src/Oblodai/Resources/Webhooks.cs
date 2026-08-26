@@ -35,7 +35,7 @@ public sealed class Webhooks : Resource
 
     /// <summary>
     /// <c>POST /v1/webhooks/rotate-secret</c> — new secret; the old one keeps verifying until
-    /// <c>previous_secret_valid_until</c>. Payout key.
+    /// <c>previous_secret_valid_until</c>.
     /// </summary>
     /// <param name="options">Per-call options.</param>
     /// <param name="cancellationToken">Cancels the call.</param>

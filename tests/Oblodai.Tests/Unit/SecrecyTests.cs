@@ -18,14 +18,14 @@ public class SecrecyTests
 
     public static TheoryData<object> SecretBearers() =>
     [
-        new OblodaiOptions { PublicId = "pk", Secret = Secret, PayoutSecret = Secret, AdminToken = Secret },
+        new OblodaiOptions { PublicId = "pk", Secret = Secret, AdminToken = Secret },
         new OblodaiOptions { PublicId = "pk", Secret = Secret }.Resolve(_ => null),
         new Credentials("pk", Secret),
         new TransportOptions { BaseUrl = "https://api.test", UserAgent = "ua", AdminToken = Secret },
         new WebhookVerifyOptions { Secret = Secret, PreviousSecret = Secret },
         new WebhookEndpoint { EndpointId = "e", Url = "https://x.test", Secret = Secret },
         new WebhookSecretRotated { EndpointId = "e", Url = "https://x.test", Secret = Secret },
-        new ApiKeyPair { PublicId = "pk", Secret = Secret, Kind = "api" },
+        new ApiKeyPair { PublicId = "pk", Secret = Secret },
         new PayoutLink { LinkId = "l", ClaimToken = Secret, ClaimUrl = $"https://x.test/c/{Secret}", Passcode = Secret },
     ];
 
@@ -48,7 +48,7 @@ public class SecrecyTests
         Assert.Contains($"Secret = {Redaction.Placeholder}", text);
 
         // An absent secret prints as absent, so "[redacted]" never implies a value that is not there.
-        Assert.Contains("PayoutSecret = null", text);
+        Assert.Contains("AdminToken = null", text);
     }
 
     [Fact]

@@ -3,7 +3,7 @@ using Oblodai.Models;
 
 namespace Oblodai.Resources;
 
-/// <summary>Balances and account-level facts. Payment key.</summary>
+/// <summary>Balances and account-level facts.</summary>
 public sealed class Account : Resource
 {
     /// <summary>Bind the namespace to a transport.</summary>

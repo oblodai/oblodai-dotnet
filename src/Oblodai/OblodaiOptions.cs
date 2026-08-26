@@ -22,16 +22,6 @@ public sealed record OblodaiOptions
     [JsonIgnore]
     public string? Secret { get; init; }
 
-    /// <summary>
-    /// Optional dedicated payout key; the gateway issues payment and payout keys separately. Falls back
-    /// to <c>OBLODAI_PAYOUT_PUBLIC_ID</c>.
-    /// </summary>
-    public string? PayoutPublicId { get; init; }
-
-    /// <summary>Secret of the payout key. Falls back to <c>OBLODAI_PAYOUT_SECRET</c>. Redacted and never serialized.</summary>
-    [JsonIgnore]
-    public string? PayoutSecret { get; init; }
-
     /// <summary>API origin. Falls back to <c>OBLODAI_BASE_URL</c>, then <see cref="DefaultBaseUrl"/>.</summary>
     public string? BaseUrl { get; init; }
 
@@ -63,14 +53,12 @@ public sealed record OblodaiOptions
     /// <summary>Signing clock; injectable for tests.</summary>
     public SkewCorrectingClock? Clock { get; init; }
 
-    /// <summary>Prints every option, with the three secret-bearing ones replaced by a placeholder.</summary>
+    /// <summary>Prints every option, with the two secret-bearing ones replaced by a placeholder.</summary>
     /// <param name="builder">Buffer the record's <c>ToString()</c> writes into.</param>
     private bool PrintMembers(StringBuilder builder)
     {
         builder.Append("PublicId = ").Append(PublicId)
             .Append(", ").AppendRedacted(nameof(Secret), Secret is not null)
-            .Append(", PayoutPublicId = ").Append(PayoutPublicId)
-            .Append(", ").AppendRedacted(nameof(PayoutSecret), PayoutSecret is not null)
             .Append(", BaseUrl = ").Append(BaseUrl)
             .Append(", TimeoutMs = ").Append(TimeoutMs)
             .Append(", DeadlineMs = ").Append(DeadlineMs)
@@ -102,14 +90,6 @@ public sealed record OblodaiOptions
                 "PublicId and Secret must be provided together (or set both OBLODAI_PUBLIC_ID and OBLODAI_SECRET)");
         }
 
-        var payoutPublicId = Empty(PayoutPublicId ?? env("OBLODAI_PAYOUT_PUBLIC_ID"));
-        var payoutSecret = Empty(PayoutSecret ?? env("OBLODAI_PAYOUT_SECRET"));
-        if (payoutPublicId is null != payoutSecret is null)
-        {
-            throw new ConfigException(
-                SdkErrorCodes.BadConfig, "PayoutPublicId and PayoutSecret must be provided together");
-        }
-
         var logger = Logger;
         if (logger is null && env("OBLODAI_LOG") is { Length: > 0 } level)
         {
@@ -127,9 +107,6 @@ public sealed record OblodaiOptions
         {
             BaseUrl = baseUrl,
             Credentials = publicId is null || secret is null ? null : new Credentials(publicId, secret),
-            PayoutCredentials = payoutPublicId is null || payoutSecret is null
-                ? null
-                : new Credentials(payoutPublicId, payoutSecret),
             TimeoutMs = TimeoutMs,
             DeadlineMs = DeadlineMs,
             Retry = Retry,
@@ -173,11 +150,8 @@ public sealed record ResolvedOptions
     /// <summary>API origin without a trailing slash.</summary>
     public required string BaseUrl { get; init; }
 
-    /// <summary>Payment (or unified) key pair, when configured. Its secret is redacted and not serialized.</summary>
+    /// <summary>The merchant's API key pair, when configured. Its secret is redacted and not serialized.</summary>
     public Credentials? Credentials { get; init; }
-
-    /// <summary>Payout key pair, when configured. Its secret is redacted and not serialized.</summary>
-    public Credentials? PayoutCredentials { get; init; }
 
     /// <summary>Per-attempt timeout, ms.</summary>
     public int? TimeoutMs { get; init; }
@@ -207,7 +181,6 @@ public sealed record ResolvedOptions
     {
         builder.Append("BaseUrl = ").Append(BaseUrl)
             .Append(", Credentials = ").Append(Credentials)
-            .Append(", PayoutCredentials = ").Append(PayoutCredentials)
             .Append(", TimeoutMs = ").Append(TimeoutMs)
             .Append(", DeadlineMs = ").Append(DeadlineMs)
             .Append(", Retry = ").Append(Retry)
@@ -241,7 +214,4 @@ public sealed record RequestOptions
     /// with <c>sdk.bad_header</c> before anything is signed.
     /// </summary>
     public IReadOnlyDictionary<string, string>? Headers { get; init; }
-
-    /// <summary>Sign with the payout key on a route that accepts either key kind (e.g. batch lookups).</summary>
-    public bool PreferPayoutKey { get; init; }
 }

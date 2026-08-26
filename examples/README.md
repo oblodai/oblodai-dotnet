@@ -17,6 +17,6 @@ export OBLODAI_BASE_URL=http://127.0.0.1:8095
 | `dotnet run --project examples/WebhookReceiver`   | Verify deliveries over the raw bytes, deduplicate by id, drop out-of-order events  |
 | `dotnet run --project examples/Sandbox`           | Faucet → invoice → simulated deposit → paid, and the sandbox webhook log           |
 
-The payout example reads `OBLODAI_PAYOUT_PUBLIC_ID` / `OBLODAI_PAYOUT_SECRET` (a sandbox key works for
-both kinds); the receiver reads `OBLODAI_WEBHOOK_SECRET` (and `OBLODAI_WEBHOOK_PREVIOUS_SECRET` during
-a rotation) and listens on `http://127.0.0.1:8096/hook`.
+All four read the one key above — a merchant has a single API key, and it signs payouts as well as
+payments. The receiver additionally reads `OBLODAI_WEBHOOK_SECRET` (and
+`OBLODAI_WEBHOOK_PREVIOUS_SECRET` during a rotation) and listens on `http://127.0.0.1:8096/hook`.

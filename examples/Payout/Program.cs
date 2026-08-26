@@ -1,13 +1,10 @@
 // Validate first (free, no side effects), then create with your own idempotency key.
-// Run with: OBLODAI_PAYOUT_PUBLIC_ID=… OBLODAI_PAYOUT_SECRET=… dotnet run --project examples/Payout
+// Run with: OBLODAI_PUBLIC_ID=… OBLODAI_SECRET=… dotnet run --project examples/Payout
 using Oblodai;
 using Oblodai.Contract;
 
-using var oblodai = new OblodaiClient(new OblodaiOptions
-{
-    PublicId = Environment.GetEnvironmentVariable("OBLODAI_PAYOUT_PUBLIC_ID"),
-    Secret = Environment.GetEnvironmentVariable("OBLODAI_PAYOUT_SECRET"),
-});
+// The same API key that takes payments sends them out again; the client reads it from the environment.
+using var oblodai = new OblodaiClient();
 
 const string orderId = "payout-42";
 const string address = "TQrY8bkbpXKPt2LZbU8jqfnpFbUSF15sbx";

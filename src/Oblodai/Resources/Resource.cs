@@ -188,7 +188,6 @@ public abstract class Resource
             PathParams = pathParams,
             Query = query,
             IdempotencyKey = options?.IdempotencyKey,
-            PreferPayoutKey = options?.PreferPayoutKey ?? false,
             TimeoutMs = options?.TimeoutMs,
             DeadlineMs = options?.DeadlineMs,
             Headers = options?.Headers,

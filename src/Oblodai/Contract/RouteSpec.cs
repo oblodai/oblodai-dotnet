@@ -6,14 +6,8 @@ public enum RouteAuth
     /// <summary>No credentials: payer-facing and catalogue routes.</summary>
     Public,
 
-    /// <summary>The payment key pair.</summary>
-    Payment,
-
-    /// <summary>The payout key pair (money-out routes).</summary>
-    Payout,
-
-    /// <summary>Either key kind is accepted.</summary>
-    Any,
+    /// <summary>Signed with the merchant's API key — the one pair, on every merchant-facing route.</summary>
+    Key,
 
     /// <summary>Merchant provisioning: unsigned, gated by <c>X-Admin-Token</c> on a self-hosted gateway.</summary>
     Onboard,

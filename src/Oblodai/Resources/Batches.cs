@@ -14,34 +14,20 @@ public sealed class Batches : Resource
     }
 
     /// <summary>
-    /// <c>POST /v1/batch/info</c> — status, counters and per-row outcomes. Accepts either key kind; the
-    /// gateway requires the kind that created the batch, so a payout batch is retried with the payout
-    /// key when one is configured.
+    /// <c>POST /v1/batch/info</c> — status, counters and per-row outcomes of any batch you submitted,
+    /// whatever kind it is: one API key signs them all.
     /// </summary>
     /// <param name="request">Batch id and window over its rows.</param>
     /// <param name="options">Per-call options.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
-    public async Task<BatchInfo> InfoAsync(
+    public Task<BatchInfo> InfoAsync(
         BatchInfoRequest request,
         RequestOptions? options = null,
         CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            return await CallAsync<BatchInfo>(Routes.PostV1BatchInfo, request, options, cancellationToken)
-                .ConfigureAwait(false);
-        }
-        catch (PermissionException error)
-            when (error.Code == ErrorCodes.MerchantWrongKeyKind && options?.PreferPayoutKey != true)
-        {
-            var retry = (options ?? new RequestOptions()) with { PreferPayoutKey = true };
-            return await CallAsync<BatchInfo>(Routes.PostV1BatchInfo, request, retry, cancellationToken)
-                .ConfigureAwait(false);
-        }
-    }
+        => CallAsync<BatchInfo>(Routes.PostV1BatchInfo, request, options, cancellationToken);
 }
 
-/// <summary>Internal, instant, fee-free moves between platform balances. Payout key.</summary>
+/// <summary>Internal, instant, fee-free moves between platform balances.</summary>
 public sealed class Transfers : Resource
 {
     /// <summary>Bind the namespace to a transport.</summary>
@@ -57,7 +43,7 @@ public sealed class Transfers : Resource
     /// <para>
     /// Codes worth branching on: <c>transfer.bad_amount</c>, <c>merchant.no_owner</c>,
     /// <c>merchant.no_personal_wallet</c>, <c>payout.insufficient_funds</c> (retryable),
-    /// <c>payout.funds_maturing</c> (retryable), <c>merchant.wrong_key_kind</c>.
+    /// <c>payout.funds_maturing</c> (retryable).
     /// </para>
     /// </summary>
     /// <param name="request">Amount, asset and idempotent <c>order_id</c>.</param>
@@ -75,7 +61,7 @@ public sealed class Transfers : Resource
     /// <para>
     /// Codes worth branching on: <c>transfer.bad_amount</c>, <c>transfer.no_recipient</c>,
     /// <c>transfer.recipient_not_found</c>, <c>transfer.bad_recipient</c> (the recipient is yourself),
-    /// <c>payout.insufficient_funds</c> (retryable), <c>merchant.wrong_key_kind</c>.
+    /// <c>payout.insufficient_funds</c> (retryable).
     /// </para>
     /// </summary>
     /// <param name="request">Recipient user id, amount and asset.</param>
@@ -93,7 +79,7 @@ public sealed class Transfers : Resource
     /// <para>
     /// Codes worth branching on: <c>payout.batch_too_large</c>, <c>payout.empty_batch</c>,
     /// <c>request.missing_field</c> (an item without <c>order_id</c>/<c>amount</c>/<c>currency</c>),
-    /// <c>transfer.recipient_not_found</c>, <c>merchant.wrong_key_kind</c>, <c>idempotency.key_reused</c>.
+    /// <c>transfer.recipient_not_found</c>, <c>idempotency.key_reused</c>.
     /// </para>
     /// </summary>
     /// <param name="request">The transfers to submit.</param>

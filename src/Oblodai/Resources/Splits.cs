@@ -3,7 +3,7 @@ using Oblodai.Models;
 
 namespace Oblodai.Resources;
 
-/// <summary>Revenue splits: a percentage of every payment forwarded to a partner. Payout key.</summary>
+/// <summary>Revenue splits: a percentage of every payment forwarded to a partner.</summary>
 public sealed class Splits : Resource
 {
     /// <summary>Bind the namespace to a transport.</summary>

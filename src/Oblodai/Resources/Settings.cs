@@ -3,10 +3,7 @@ using Oblodai.Models;
 
 namespace Oblodai.Resources;
 
-/// <summary>
-/// Merchant-level configuration exposed over the API. Payment key, except the auto-withdrawal and
-/// API-allowlist methods, which need the payout key.
-/// </summary>
+/// <summary>Merchant-level configuration exposed over the API.</summary>
 public sealed class Settings : Resource
 {
     /// <summary>Bind the namespace to a transport.</summary>
@@ -112,7 +109,7 @@ public sealed class Settings : Resource
         CancellationToken cancellationToken = default)
         => CallAsync<PaymentFeeConfig>(Routes.PostV1PaymentFeeConfigSet, request, options, cancellationToken);
 
-    /// <summary><c>POST /v1/auto-withdraw/list</c>. Payout key.</summary>
+    /// <summary><c>POST /v1/auto-withdraw/list</c>.</summary>
     /// <param name="options">Per-call options.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<IReadOnlyList<AutoWithdrawRule>> ListAutoWithdrawAsync(
@@ -122,7 +119,7 @@ public sealed class Settings : Resource
 
     /// <summary>
     /// <c>POST /v1/auto-withdraw/set</c> — sweep a currency to an address once the balance passes
-    /// <c>min_amount</c>. Payout key.
+    /// <c>min_amount</c>.
     /// </summary>
     /// <param name="request">Asset, network, destination address and threshold.</param>
     /// <param name="options">Per-call options.</param>
@@ -133,7 +130,7 @@ public sealed class Settings : Resource
         CancellationToken cancellationToken = default)
         => PlainListAsync<AutoWithdrawRule>(Routes.PostV1AutoWithdrawSet, request, options, cancellationToken);
 
-    /// <summary><c>POST /v1/auto-withdraw/delete</c>. Payout key.</summary>
+    /// <summary><c>POST /v1/auto-withdraw/delete</c>.</summary>
     /// <param name="currency">Asset whose auto-withdrawal to switch off.</param>
     /// <param name="options">Per-call options.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -147,7 +144,7 @@ public sealed class Settings : Resource
             options,
             cancellationToken);
 
-    /// <summary><c>POST /v1/api-allowlist/list</c> — source IPs allowed to use the API keys. Payout key.</summary>
+    /// <summary><c>POST /v1/api-allowlist/list</c> — source IPs allowed to use the API key.</summary>
     /// <param name="options">Per-call options.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<ApiAllowlist> ListApiAllowlistAsync(
@@ -155,7 +152,7 @@ public sealed class Settings : Resource
         CancellationToken cancellationToken = default)
         => CallAsync<ApiAllowlist>(Routes.PostV1ApiAllowlistList, null, options, cancellationToken);
 
-    /// <summary><c>POST /v1/api-allowlist/add</c>. Payout key.</summary>
+    /// <summary><c>POST /v1/api-allowlist/add</c>.</summary>
     /// <param name="cidr">IP or subnet in CIDR notation.</param>
     /// <param name="options">Per-call options.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -169,7 +166,7 @@ public sealed class Settings : Resource
             options,
             cancellationToken);
 
-    /// <summary><c>POST /v1/api-allowlist/remove</c>. Payout key.</summary>
+    /// <summary><c>POST /v1/api-allowlist/remove</c>.</summary>
     /// <param name="cidr">IP or subnet in CIDR notation.</param>
     /// <param name="options">Per-call options.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -183,9 +180,7 @@ public sealed class Settings : Resource
             options,
             cancellationToken);
 
-    /// <summary>
-    /// <c>POST /v1/api-allowlist/enable</c> — switch enforcement on or off (the list is kept). Payout key.
-    /// </summary>
+    /// <summary><c>POST /v1/api-allowlist/enable</c> — switch enforcement on or off (the list is kept).</summary>
     /// <param name="enabled">True accepts API calls only from listed addresses.</param>
     /// <param name="options">Per-call options.</param>
     /// <param name="cancellationToken">Cancels the call.</param>

@@ -15,7 +15,7 @@ public sealed class Sandbox : Resource
     {
     }
 
-    /// <summary><c>POST /v1/sandbox/faucet</c> — credit test funds. Payout key.</summary>
+    /// <summary><c>POST /v1/sandbox/faucet</c> — credit test funds.</summary>
     /// <param name="request">Asset and amount to credit.</param>
     /// <param name="options">Per-call options.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -62,7 +62,7 @@ public sealed class Sandbox : Resource
             options,
             cancellationToken);
 
-    /// <summary><c>POST /v1/sandbox/reset</c> — cancel open invoices and zero balances. Payout key.</summary>
+    /// <summary><c>POST /v1/sandbox/reset</c> — cancel open invoices and zero balances.</summary>
     /// <param name="options">Per-call options.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<SandboxReset> ResetAsync(

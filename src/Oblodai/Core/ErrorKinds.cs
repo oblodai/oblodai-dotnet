@@ -34,7 +34,7 @@ public sealed class AuthenticationException : ApiException
     }
 }
 
-/// <summary>403 — the key is valid but not allowed to do this (wrong key kind, feature disabled).</summary>
+/// <summary>403 — the key is valid but not allowed to do this (a feature that is off for you).</summary>
 public sealed class PermissionException : ApiException
 {
     /// <summary>Build the error from an envelope.</summary>

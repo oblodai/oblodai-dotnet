@@ -24,8 +24,10 @@ against it. It matches the 1.3 line of the other Oblodai SDKs.
   refusal (`sdk.idempotency_unsupported`) when a key is passed to a route the gateway ignores it on.
 - Clock-skew correction: on a 401 signature failure the SDK re-signs once with the server's `Date` and
   keeps the offset only if that attempt got past authentication.
-- Two key pairs: the payment key and an optional payout key, picked per route; `Batches.InfoAsync`
-  retries once with the payout key on `merchant.wrong_key_kind`.
+- One API key: `PublicId` + `Secret` sign every signed route, money-in and money-out alike. The payout
+  credential pair and the payout-key option are gone — there is nothing to choose per call. Route auth
+  is `public`, `key` or `onboard`; `merchant.wrong_key_kind` left the gateway's catalogue and survives
+  only as a legacy string for merchants still on an old `oblodai_pk_`/`oblodai_wk_` pair.
 - `PagePromise<T>`: `await` gives one page, `await foreach` walks them all lazily, `AllAsync(max)`
   collects. Nothing is requested until it is consumed.
 - Secrets never print: `OblodaiOptions`, `ResolvedOptions`, `TransportOptions`, `WebhookVerifyOptions`,
@@ -64,16 +66,16 @@ against it. It matches the 1.3 line of the other Oblodai SDKs.
   `ConfigException`, `ContractException`, `SignatureException`). The raw body is never serialized.
 - Generated contract surface: `Routes`, request records, the open vocabularies (`PaymentStatus`,
   `PayoutStatus`, `Network`, …) as string-backed wrappers that carry unknown values through, and all
-  471 `ErrorCodes`. The `string` → vocabulary conversion is `explicit`, so a typo cannot compile as a
+  469 `ErrorCodes`. The `string` → vocabulary conversion is `explicit`, so a typo cannot compile as a
   status.
 - Money helpers (`Money.Add`, `Subtract`, `Compare`, `AreEqual`, `IsZero`) that work on the decimal
   strings the API uses, and status helpers (`Statuses.IsPaymentPaid`, …). A malformed amount is
   `ConfigException` / `sdk.bad_amount`, never a `FormatException`.
 - Lookups and ids take either form: a bare id, a lookup record, or the object you already hold
   (`Payouts.CancelAsync(payout)`, `PayoutLinks.CancelAsync(link)`, `PaymentLinks.ToggleAsync(link, …)`).
-- `OBLODAI_PUBLIC_ID` / `OBLODAI_SECRET` / `OBLODAI_PAYOUT_*` / `OBLODAI_BASE_URL` /
-  `OBLODAI_ADMIN_TOKEN` / `OBLODAI_ALLOW_INSECURE` / `OBLODAI_LOG` environment fallbacks, and an
-  `IHttpClientFactory`-friendly constructor.
+- Six environment fallbacks — `OBLODAI_PUBLIC_ID`, `OBLODAI_SECRET`, `OBLODAI_ADMIN_TOKEN`,
+  `OBLODAI_BASE_URL`, `OBLODAI_LOG`, `OBLODAI_ALLOW_INSECURE` — and an `IHttpClientFactory`-friendly
+  constructor.
 - Tests in three tiers: unit (signing and webhook vectors, retry, idempotency, skew, URL and header
   rules against a fake `HttpMessageHandler`), contract (every route hits the right method, path, auth
   and idempotency header; every golden body decodes into its model with the same key set) and live
