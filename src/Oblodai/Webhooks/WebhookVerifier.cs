@@ -30,12 +30,17 @@ public sealed record WebhookVerifyOptions
 /// <param name="EventType"><c>X-Webhook-Event</c> — <c>invoice.&lt;status&gt;</c>, <c>payout.&lt;status&gt;</c>, <c>wallet.paid</c>.</param>
 /// <param name="EventTime"><c>X-Webhook-Event-Time</c> — unix seconds when the state change committed.</param>
 /// <param name="SentAt"><c>X-Webhook-Timestamp</c> — unix seconds when this attempt was sent.</param>
+/// <param name="IsTest">
+/// A rehearsal delivery (<c>X-Webhook-Test: true</c> / body <c>test: true</c>): signed like a live one,
+/// but no money moved — never act on it as if it did.
+/// </param>
 public sealed record WebhookDeliveryInfo(
     WebhookEvent Event,
     string? Id,
     string? EventType,
     long? EventTime,
-    long SentAt);
+    long SentAt,
+    bool IsTest);
 
 /// <summary>
 /// Webhook verification — usable on its own, with no client and no API key. Deliveries are signed as:
@@ -46,6 +51,7 @@ public sealed record WebhookDeliveryInfo(
 /// X-Webhook-Event: invoice.&lt;status&gt; | payout.&lt;status&gt; | wallet.paid
 /// X-Webhook-Id: stable per delivery (identical across retries) — use it as your idempotency key
 /// X-Webhook-Event-Time: unix seconds when the state change committed (order events by it)
+/// X-Webhook-Test: true — a rehearsal delivery, mirrored by "test": true in the signed body
 /// </code>
 /// Always verify over the raw request bytes; a re-serialized parse will not match.
 /// </summary>
@@ -68,6 +74,9 @@ public static class WebhookVerifier
 
     /// <summary><c>X-Webhook-Event-Time</c>.</summary>
     public const string HeaderEventTime = "X-Webhook-Event-Time";
+
+    /// <summary><c>X-Webhook-Test</c>, sent as <c>true</c> on rehearsal deliveries.</summary>
+    public const string HeaderTest = "X-Webhook-Test";
 
     /// <summary>Verify the signature and freshness, then parse. Never returns an unverified body.</summary>
     /// <param name="rawBody">The raw request bytes, exactly as received.</param>
@@ -165,8 +174,18 @@ public static class WebhookVerifier
         var eventTimeHeader = header(HeaderEventTime);
         long? eventTime = long.TryParse(eventTimeHeader, out var parsedEventTime) ? parsedEventTime : null;
 
-        return new WebhookDeliveryInfo(Parse(rawBody), header(HeaderId), header(HeaderEvent), eventTime, ts);
+        var parsed = Parse(rawBody);
+        var isTest = string.Equals(header(HeaderTest), "true", StringComparison.Ordinal) || IsTestEvent(parsed);
+
+        return new WebhookDeliveryInfo(parsed, header(HeaderId), header(HeaderEvent), eventTime, ts, isTest);
     }
+
+    /// <summary>
+    /// True for rehearsal deliveries (<c>Webhooks.TestAsync</c>, sandbox) — never act on them as if
+    /// money moved.
+    /// </summary>
+    /// <param name="webhookEvent">The parsed event.</param>
+    public static bool IsTestEvent(WebhookEvent webhookEvent) => webhookEvent.Test == true;
 
     /// <summary>Parse a (previously verified) delivery body into a typed event, discriminated by <c>type</c>.</summary>
     /// <param name="rawBody">The delivery body.</param>

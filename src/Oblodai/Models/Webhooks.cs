@@ -168,6 +168,14 @@ public abstract record WebhookEvent
     /// <summary>On-chain transaction hash, when there is one.</summary>
     [JsonPropertyName("txid")]
     public string Txid { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Present and true ONLY on rehearsal deliveries (<c>Webhooks.TestAsync</c>, sandbox). The body is
+    /// signed like a live one, so a handler must check this flag (or <c>X-Webhook-Test</c>) and never
+    /// act on a test event as if money moved.
+    /// </summary>
+    [JsonPropertyName("test")]
+    public bool? Test { get; init; }
 }
 
 /// <summary><c>invoice.&lt;status&gt;</c> — an invoice changed state.</summary>

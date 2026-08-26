@@ -121,6 +121,13 @@ public sealed record Wallet
     public string DocumentUrl { get; init; } = string.Empty;
 
     /// <summary>
+    /// True once <c>Wallets.BlockAsync</c> was called: new deposits are quarantined instead of
+    /// credited.
+    /// </summary>
+    [JsonPropertyName("blocked")]
+    public bool Blocked { get; init; }
+
+    /// <summary>
     /// XRP only: numeric destination tag of this wallet — the customer must include it in every
     /// transfer.
     /// </summary>

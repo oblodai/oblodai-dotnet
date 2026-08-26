@@ -34,6 +34,37 @@ public class WebhookTests
     {
         Assert.True(Samples.Length >= 40, $"expected the recorded deliveries, got {Samples.Length}");
         Assert.NotEmpty(Secret);
+
+        // The snapshot must keep both kinds around, or the rehearsal flag would go untested.
+        var rehearsals = Samples.Count(s => s.GetProperty("body").TryGetProperty("test", out var t) && t.GetBoolean());
+        Assert.InRange(rehearsals, 1, Samples.Length - 1);
+    }
+
+    /// <summary>
+    /// The header alone marks a rehearsal too: a receiver behind a proxy that strips the body flag still
+    /// sees <c>IsTest</c>, and a live delivery is never mistaken for one.
+    /// </summary>
+    [Fact]
+    public void MarksARehearsalFromTheHeaderAsWellAsTheBody()
+    {
+        const long ts = 1_755_600_000;
+        var body = Body();
+        var headers = SignedHeaders("whsec", ts, body);
+        var options = new WebhookVerifyOptions { Secret = "whsec", Now = () => ts };
+
+        Assert.False(WebhookVerifier.VerifyDelivery(body, headers, options).IsTest);
+        Assert.False(WebhookVerifier.IsTestEvent(WebhookVerifier.Parse(body)));
+
+        headers[WebhookVerifier.HeaderTest] = "true";
+        Assert.True(WebhookVerifier.VerifyDelivery(body, headers, options).IsTest);
+
+        // And from the signed body, with no header at all.
+        var testBody = Encoding.UTF8.GetBytes(
+            Encoding.UTF8.GetString(Body()).Replace("\"sequence\":7", "\"sequence\":7,\"test\":true"));
+        var testHeaders = SignedHeaders("whsec", ts, testBody);
+        var delivery = WebhookVerifier.VerifyDelivery(testBody, testHeaders, options);
+        Assert.True(delivery.IsTest);
+        Assert.True(WebhookVerifier.IsTestEvent(delivery.Event));
     }
 
     [Theory]
@@ -57,8 +88,17 @@ public class WebhookTests
         Assert.Equal(headers[WebhookVerifier.HeaderId], delivery.Id);
         Assert.Equal(headers[WebhookVerifier.HeaderEvent], delivery.EventType);
         Assert.Equal(ts, delivery.SentAt);
-        Assert.True(delivery.Event.Sequence > 0);
         Assert.Matches("^(invoice|payout|wallet)\\.", delivery.EventType!);
+
+        // A rehearsal delivery is signed like a live one; only the flag tells them apart. It also sits
+        // outside the event stream, so it carries sequence 0 where a live delivery carries a real one.
+        var isRehearsal = body.TryGetProperty("test", out var test) && test.GetBoolean();
+        Assert.True(
+            isRehearsal ? delivery.Event.Sequence == 0 : delivery.Event.Sequence > 0,
+            $"sample {index}: sequence {delivery.Event.Sequence} does not match test={isRehearsal}");
+        Assert.Equal(isRehearsal, delivery.IsTest);
+        Assert.Equal(isRehearsal, WebhookVerifier.IsTestEvent(delivery.Event));
+        Assert.Equal(isRehearsal, headers.ContainsKey(WebhookVerifier.HeaderTest));
 
         // The union decodes into the record that matches the discriminator.
         switch (body.GetProperty("type").GetString())
@@ -89,7 +129,11 @@ public class WebhookTests
         var sample = Samples[0];
         var headers = Headers(sample);
         var ts = long.Parse(headers[WebhookVerifier.HeaderTimestamp]);
-        var tampered = Encoding.UTF8.GetBytes(sample.GetProperty("raw").GetString()!.Replace("\"sequence\": 1", "\"sequence\": 2"));
+        var raw = sample.GetProperty("raw").GetString()!;
+        var sequence = sample.GetProperty("body").GetProperty("sequence").GetInt64();
+        var tampered = Encoding.UTF8.GetBytes(
+            raw.Replace($"\"sequence\": {sequence}", $"\"sequence\": {sequence + 1}", StringComparison.Ordinal));
+        Assert.NotEqual(raw, Encoding.UTF8.GetString(tampered));
 
         var error = Assert.Throws<SignatureException>(() => WebhookVerifier.Verify(
             tampered, headers, new WebhookVerifyOptions { Secret = Secret, Now = () => ts }));

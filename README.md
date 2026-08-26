@@ -187,9 +187,12 @@ switch (info.Event)
 }
 ```
 
-Verify over the **raw** bytes — a re-serialized parse will not match. `info.Id` (`X-Webhook-Id`) is
-stable across retries, so use it to deduplicate; `WebhookVerifier.IsStale(event, lastSequence)` drops
-out-of-order deliveries. After `Webhooks.RotateSecretAsync` pass `PreviousSecret` for at least 26 hours.
+Verify over the **raw** bytes — a re-serialized parse will not match. Rehearsal deliveries
+(`Webhooks.TestAsync`, sandbox) are signed like live ones and carry `test: true` in the body (and
+`X-Webhook-Test: true`) — check `info.IsTest` (or `WebhookVerifier.IsTestEvent(info.Event)`) and never
+act on one as if money moved. `info.Id` (`X-Webhook-Id`) is stable across retries, so use it to
+deduplicate; `WebhookVerifier.IsStale(event, lastSequence)` drops out-of-order deliveries. After
+`Webhooks.RotateSecretAsync` pass `PreviousSecret` for at least 26 hours.
 
 ### Money helpers
 

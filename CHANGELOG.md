@@ -27,8 +27,9 @@ against it. It matches the 1.3 line of the other Oblodai SDKs.
 - `PagePromise<T>`: `await` gives one page, `await foreach` walks them all lazily, `AllAsync(max)`
   collects. Nothing is requested until it is consumed.
 - `WebhookVerifier`: rotation-aware signature verification over the raw bytes, freshness window,
-  `Parse` into the discriminated `WebhookEvent` union and `IsStale` for out-of-order deliveries. Needs
-  no client and no API key.
+  `Parse` into the discriminated `WebhookEvent` union, `IsStale` for out-of-order deliveries and
+  `IsTest` / `IsTestEvent` for rehearsal deliveries (`webhooks.test`, sandbox), which are signed like
+  live ones but must never be acted on as if money moved. Needs no client and no API key.
 - `OblodaiException` family: `Code`, `HttpStatus`, `Retryable`, `RetryAfter`, `RequestId`, `Field`,
   `Synthetic`, with a subclass per status (`ValidationException`, `AuthenticationException`,
   `PermissionException`, `NotFoundException`, `ConflictException`, `IdempotencyConflictException`,
@@ -36,7 +37,7 @@ against it. It matches the 1.3 line of the other Oblodai SDKs.
   `ConfigException`, `ContractException`, `SignatureException`). The raw body is never serialized.
 - Generated contract surface: `Routes`, request records, the open vocabularies (`PaymentStatus`,
   `PayoutStatus`, `Network`, …) as string-backed wrappers that carry unknown values through, and all
-  468 `ErrorCodes`.
+  469 `ErrorCodes`.
 - Money helpers (`Money.Add`, `Subtract`, `Compare`, `IsZero`) that work on the decimal strings the API
   uses, and status helpers (`Statuses.IsPaymentPaid`, …).
 - `OBLODAI_PUBLIC_ID` / `OBLODAI_SECRET` / `OBLODAI_PAYOUT_*` / `OBLODAI_BASE_URL` /

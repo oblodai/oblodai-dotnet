@@ -192,6 +192,38 @@ public class ModelTests
             $"{row.Route}: re-serializing produced keys the wire never had: {string.Join(", ", written.Except(wire))}");
     }
 
+    /// <summary>
+    /// The event records versus the bodies the dispatcher actually signed. <c>test</c> rides only on
+    /// rehearsal deliveries, so it is optional here — every other key must line up exactly.
+    /// </summary>
+    [Fact]
+    public void EventModelKeysEqualTheSignedWebhookBodies()
+    {
+        var optional = new HashSet<string>(StringComparer.Ordinal) { "test" };
+        foreach (var sample in Fixtures.WebhookSamples.EnumerateArray())
+        {
+            var body = sample.GetProperty("body");
+            var type = body.GetProperty("type").GetString();
+            var model = type switch
+            {
+                "payment" => typeof(PaymentEvent),
+                "payout" => typeof(PayoutEvent),
+                _ => typeof(WalletEvent),
+            };
+
+            var wire = body.EnumerateObject().Select(p => p.Name).ToHashSet(StringComparer.Ordinal);
+            var declared = WireKeys(model);
+
+            var missingOnWire = declared.Where(k => !wire.Contains(k) && !optional.Contains(k)).OrderBy(k => k).ToList();
+            var unknownOnWire = wire.Where(k => !declared.Contains(k)).OrderBy(k => k).ToList();
+
+            Assert.True(
+                missingOnWire.Count == 0 && unknownOnWire.Count == 0,
+                $"{type} event ({model.Name}): model declares but the wire never sent "
+                + $"[{string.Join(", ", missingOnWire)}]; wire sent but the model lacks [{string.Join(", ", unknownOnWire)}]");
+        }
+    }
+
     [Fact]
     public void EveryRecordedSuccessBodyIsCoveredByARow()
     {
