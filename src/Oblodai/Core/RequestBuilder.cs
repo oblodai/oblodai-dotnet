@@ -153,15 +153,14 @@ public static class RequestBuilder
             headers[RequestSigner.HeaderIdempotencyKey] = input.IdempotencyKey!;
         }
 
-        if (route.Auth is not (RouteAuth.Public or RouteAuth.Onboard))
+        if (route.Auth == RouteAuth.Key)
         {
             if (input.Credentials is null)
             {
-                var kind = route.Auth == RouteAuth.Any ? "merchant" : route.Auth.ToString().ToLowerInvariant();
                 throw new ConfigException(
                     SdkErrorCodes.MissingCredentials,
-                    $"{route.Method} {route.Path} needs a {kind} API key: set PublicId/Secret on OblodaiOptions "
-                    + "or the OBLODAI_PUBLIC_ID / OBLODAI_SECRET environment variables");
+                    $"{route.Method} {route.Path} needs the merchant's API key: set PublicId/Secret on "
+                    + "OblodaiOptions or the OBLODAI_PUBLIC_ID / OBLODAI_SECRET environment variables");
             }
 
             headers[RequestSigner.HeaderPublicId] = input.Credentials.PublicId;

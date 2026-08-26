@@ -4,8 +4,8 @@ using Oblodai.Models;
 namespace Oblodai.Resources;
 
 /// <summary>
-/// Invoices: create, look up, cancel, list, and the payer-facing checkout endpoints. Payment key
-/// (the payer-facing methods need no credentials at all).
+/// Invoices: create, look up, cancel, list, and the payer-facing checkout endpoints (which need no
+/// credentials at all).
 /// </summary>
 public sealed class Payments : Resource
 {

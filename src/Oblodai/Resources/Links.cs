@@ -4,8 +4,8 @@ using Oblodai.Models;
 namespace Oblodai.Resources;
 
 /// <summary>
-/// Payout links (cheques): funds reserved now, claimed later by whoever holds the token. Payout key
-/// (the recipient-facing methods need no credentials).
+/// Payout links (cheques): funds reserved now, claimed later by whoever holds the token (the
+/// recipient-facing methods need no credentials).
 /// </summary>
 public sealed class PayoutLinks : Resource
 {
@@ -23,7 +23,7 @@ public sealed class PayoutLinks : Resource
     /// Codes worth branching on: <c>payout_link.disabled</c>, <c>payout.insufficient_funds</c>
     /// (retryable), <c>payout.funds_maturing</c> (retryable), <c>payout.bad_amount</c>,
     /// <c>payout.bad_address</c>, <c>payout.reference_collision</c> (that <c>reference</c> already
-    /// minted a different link), <c>merchant.wrong_key_kind</c>.
+    /// minted a different link).
     /// </para>
     /// </summary>
     /// <param name="request">Amount, asset and network of the link.</param>
@@ -90,7 +90,7 @@ public sealed class PayoutLinks : Resource
     /// <para>
     /// Call-level codes worth branching on: <c>payoutlink.batch_too_large</c> (&gt;500),
     /// <c>payoutlink.empty_batch</c>, <c>payout_link.disabled</c>, <c>payout.insufficient_funds</c>
-    /// (retryable), <c>merchant.wrong_key_kind</c>.
+    /// (retryable).
     /// </para>
     /// </summary>
     /// <param name="request">The links to mint.</param>
@@ -161,8 +161,8 @@ public sealed class PayoutLinks : Resource
 }
 
 /// <summary>
-/// Reusable payment links (tip jars, price tags): each checkout spawns an invoice. Payment key (the
-/// payer-facing methods need no credentials).
+/// Reusable payment links (tip jars, price tags): each checkout spawns an invoice (the payer-facing
+/// methods need no credentials).
 /// </summary>
 public sealed class PaymentLinks : Resource
 {

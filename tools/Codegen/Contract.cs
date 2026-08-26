@@ -22,6 +22,14 @@ internal sealed class Contract
 {
     private static readonly Regex NonMerchant = new(@"^/(healthz|readyz|docs|openapi\.json|internal)", RegexOptions.Compiled);
 
+    /// <summary>
+    /// The whole auth vocabulary: <c>public</c> is unsigned, <c>key</c> is signed with the merchant's
+    /// one API key, <c>onboard</c> is gated by <c>X-Admin-Token</c>. A merchant has a single key, so a
+    /// snapshot that still distinguishes payment from payout keys is a stale export and is refused
+    /// rather than mapped onto a kind the SDK no longer has.
+    /// </summary>
+    private static readonly HashSet<string> AuthValues = new(StringComparer.Ordinal) { "public", "key", "onboard" };
+
     private Contract(JsonDocument document, JsonDocument descriptions, byte[] rawBytes)
     {
         Document = document;
@@ -32,7 +40,7 @@ internal sealed class Contract
             .Select(r => new Route(
                 r.GetProperty("method").GetString()!,
                 r.GetProperty("path").GetString()!,
-                r.GetProperty("auth").GetString()!,
+                ReadAuth(r),
                 r.GetProperty("idempotent").GetBoolean(),
                 ReadSafe(r),
                 r.GetProperty("bare").GetBoolean(),
@@ -73,6 +81,29 @@ internal sealed class Contract
         }
 
         return text.GetString();
+    }
+
+    /// <summary>
+    /// The route's auth gate, checked against the whole vocabulary the SDK knows. Anything else — the
+    /// <c>payment</c>/<c>payout</c>/<c>any</c> kinds of the split-key era included — fails codegen: the
+    /// client holds one key pair, so silently treating an unknown gate as "signed" would send the only
+    /// credential it has at a route the gateway gates differently.
+    /// </summary>
+    /// <param name="route">One entry of the contract's <c>routes</c> array.</param>
+    /// <exception cref="InvalidOperationException">The route declares an auth value outside the vocabulary.</exception>
+    private static string ReadAuth(JsonElement route)
+    {
+        var key = $"{route.GetProperty("method").GetString()} {route.GetProperty("path").GetString()}";
+        var auth = route.TryGetProperty("auth", out var value) ? value.GetString() : null;
+        if (auth is null || !AuthValues.Contains(auth))
+        {
+            throw new InvalidOperationException(
+                $"contract/contract.json: route \"{key}\" declares auth \"{auth}\", which is not one of "
+                + $"{string.Join(", ", AuthValues.Order(StringComparer.Ordinal))} — re-export the contract from a "
+                + "core that has one API key per merchant");
+        }
+
+        return auth;
     }
 
     /// <summary>

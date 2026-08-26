@@ -17,7 +17,7 @@ public sealed class Merchants : Resource
     }
 
     /// <summary>
-    /// <c>POST /v1/merchants</c> — create a merchant and mint its payment and payout keys (shown once).
+    /// <c>POST /v1/merchants</c> — create a merchant and mint its API key (the secret is shown once).
     /// </summary>
     /// <param name="request">Owner email and display name.</param>
     /// <param name="options">Per-call options.</param>

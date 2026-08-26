@@ -6,6 +6,30 @@ and teams porting an integration from one of the other Oblodai SDKs, where the s
 
 ## What changed and what you have to do
 
+### One API key, not two
+
+A merchant has **one** API key — public id `oblodai_<hex>`, secret `oblodai_live_<hex>` — and it signs
+every route that needs a signature. The payment/payout split the pre-release drops modelled is gone:
+
+| Gone                                                     | Use instead                                            |
+| --------------------------------------------------------- | ------------------------------------------------------ |
+| `OblodaiOptions.PayoutPublicId` / `PayoutSecret`          | `PublicId` / `Secret` — the one pair                   |
+| `ResolvedOptions.PayoutCredentials`, `TransportOptions.PayoutCredentials` | `Credentials`                  |
+| `RequestOptions.PreferPayoutKey`, `CallOptions.PreferPayoutKey`           | nothing: there is no key to prefer |
+| `OBLODAI_PAYOUT_PUBLIC_ID` / `OBLODAI_PAYOUT_SECRET`      | `OBLODAI_PUBLIC_ID` / `OBLODAI_SECRET`                 |
+| `RouteAuth.Payment`, `RouteAuth.Payout`, `RouteAuth.Any`  | `RouteAuth.Key`                                        |
+| `MerchantOnboarded`/`SandboxStore` `PaymentKey`, `PayoutKey` | `ApiKey`                                            |
+| `ApiKeyPair.Kind`                                         | nothing: there is one kind                             |
+| `ErrorCodes.MerchantWrongKeyKind`                         | nothing: dropped from the gateway's catalogue          |
+
+`Batches.InfoAsync` no longer retries a refused lookup under a second credential — one signed call is
+the whole story. `merchant.wrong_key_kind` survives only as a legacy string: a merchant still holding an
+old `oblodai_pk_<hex>` / `oblodai_wk_<hex>` pair can still be answered with it, and the fix is to issue a
+current API key in the dashboard.
+
+**What you have to do.** Drop the second pair from your configuration and from the environment; if your
+code passed `PreferPayoutKey`, delete the argument. Nothing else about a call changes.
+
 ### The `safe` flag comes from the gateway
 
 Whether a route may be re-sent after a transport failure — without an idempotency key — is now the
@@ -22,7 +46,7 @@ is now stated by the gateway instead of inferred here.
 
 | Type                                                          | Redacted member                     |
 | ------------------------------------------------------------- | ------------------------------------ |
-| `OblodaiOptions`, `ResolvedOptions`, `TransportOptions`        | `Secret`, `PayoutSecret`, `AdminToken` |
+| `OblodaiOptions`, `ResolvedOptions`, `TransportOptions`        | `Secret`, `AdminToken`               |
 | `Credentials`                                                  | `Secret`                             |
 | `WebhookVerifyOptions`                                         | `Secret`, `PreviousSecret`           |
 | `WebhookEndpoint`, `WebhookSecretRotated`                      | `Secret`                             |
@@ -133,7 +157,7 @@ you already hold: `Payouts.CancelAsync(payout)`, `Payouts.ApproveAsync(payout)`,
 The wallet model's `blocked` **field** is real; there is no `wallet.blocked` error code in the
 gateway's catalogue, and the SDK's documentation no longer names one. `Wallets.RefundBlockedDepositAsync`
 answers `wallet.bad_uuid`, `refund.no_address`, `refund.nothing_to_refund`, `refund.dust`,
-`refund.destination_internal` and `merchant.wrong_key_kind`.
+`refund.destination_internal`.
 
 ### `Merchants` and the admin token
 
@@ -154,9 +178,9 @@ signed route.
 
 ## Per-call options
 
-`RequestOptions` is `{ IdempotencyKey, TimeoutMs, DeadlineMs, Headers, PreferPayoutKey }`. `Headers` is
-new: extra headers merged over the client's, for one call only, refused with `sdk.bad_header` if they
-could not be sent verbatim.
+`RequestOptions` is `{ IdempotencyKey, TimeoutMs, DeadlineMs, Headers }`. `Headers` is new: extra
+headers merged over the client's, for one call only, refused with `sdk.bad_header` if they could not be
+sent verbatim.
 
 ## Limits worth knowing
 

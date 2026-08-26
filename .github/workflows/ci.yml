@@ -1,12 +1,11 @@
-name: ci
-
 # Every gate the repository can fail, in the order a maintainer would run them locally:
 # the generated code matches the contract, the code builds with warnings as errors, the suite passes,
 # and the package that would be published actually builds. Live tests need a running gateway and are
 # not part of this workflow.
+name: CI
 on:
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 

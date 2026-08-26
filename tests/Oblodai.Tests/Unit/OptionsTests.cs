@@ -56,21 +56,47 @@ public class OptionsTests
     public void RefusesHalfAKeyPair()
     {
         Assert.Throws<ConfigException>(() => new OblodaiOptions { PublicId = "pk" }.Resolve(Env()));
-        Assert.Throws<ConfigException>(() => new OblodaiOptions { PayoutSecret = "s" }.Resolve(Env()));
+        Assert.Throws<ConfigException>(() => new OblodaiOptions { Secret = "s" }.Resolve(Env()));
+        Assert.Throws<ConfigException>(() => new OblodaiOptions().Resolve(Env(("OBLODAI_SECRET", "s"))));
     }
 
     [Fact]
-    public void PicksUpThePayoutPairAndTheAdminToken()
+    public void PicksUpTheAdminToken()
     {
         var resolved = new OblodaiOptions().Resolve(Env(
             ("OBLODAI_PUBLIC_ID", "pk"),
             ("OBLODAI_SECRET", "s"),
-            ("OBLODAI_PAYOUT_PUBLIC_ID", "wk"),
-            ("OBLODAI_PAYOUT_SECRET", "s2"),
             ("OBLODAI_ADMIN_TOKEN", "adm")));
 
-        Assert.Equal(new Credentials("wk", "s2"), resolved.PayoutCredentials);
+        Assert.Equal(new Credentials("pk", "s"), resolved.Credentials);
         Assert.Equal("adm", resolved.AdminToken);
+    }
+
+    /// <summary>
+    /// The whole environment vocabulary, so a variable cannot be added (or a removed one revived) without
+    /// this list saying so. A merchant has ONE API key; there is no second pair to configure.
+    /// </summary>
+    [Fact]
+    public void TheEnvironmentVocabularyIsExactlyTheSixDocumentedNames()
+    {
+        var seen = new List<string>();
+        new OblodaiOptions().Resolve(name =>
+        {
+            seen.Add(name);
+            return null;
+        });
+
+        Assert.Equal(
+            new[]
+            {
+                "OBLODAI_ADMIN_TOKEN",
+                "OBLODAI_ALLOW_INSECURE",
+                "OBLODAI_BASE_URL",
+                "OBLODAI_LOG",
+                "OBLODAI_PUBLIC_ID",
+                "OBLODAI_SECRET",
+            },
+            seen.Distinct(StringComparer.Ordinal).OrderBy(n => n, StringComparer.Ordinal).ToArray());
     }
 
     [Fact]

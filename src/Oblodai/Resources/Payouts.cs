@@ -3,7 +3,7 @@ using Oblodai.Models;
 
 namespace Oblodai.Resources;
 
-/// <summary>Outgoing transfers to external addresses. Every route here needs the payout key.</summary>
+/// <summary>Outgoing transfers to external addresses.</summary>
 public sealed class Payouts : Resource
 {
     /// <summary>Bind the namespace to a transport.</summary>
@@ -21,7 +21,7 @@ public sealed class Payouts : Resource
     /// SAME key), <c>payout.funds_maturing</c> (retryable — deposits not yet mature),
     /// <c>payout.bad_address</c>, <c>payout.address_network_mismatch</c>, <c>payout.memo_required</c>,
     /// <c>payout.amount_below_fee</c>, <c>payout.frozen</c>, <c>payout.order_id_required</c>,
-    /// <c>idempotency.key_reused</c>, <c>merchant.wrong_key_kind</c> (payment key on a payout route).
+    /// <c>idempotency.key_reused</c>.
     /// </para>
     /// </summary>
     /// <param name="request">The payout to create.</param>
@@ -136,9 +136,9 @@ public sealed class Payouts : Resource
     /// the response.
     /// <para>
     /// Call-level codes worth branching on: <c>payout.batch_too_large</c> (&gt;100),
-    /// <c>payout.empty_batch</c>, <c>payout.insufficient_funds</c> (retryable), <c>payout.frozen</c>,
-    /// <c>merchant.wrong_key_kind</c>. Per-element failures arrive as <c>Items[].Message</c> with the
-    /// same vocabulary — a 200 can still contain failures, so check every <c>Items[].Ok</c>.
+    /// <c>payout.empty_batch</c>, <c>payout.insufficient_funds</c> (retryable), <c>payout.frozen</c>.
+    /// Per-element failures arrive as <c>Items[].Message</c> with the same vocabulary — a 200 can still
+    /// contain failures, so check every <c>Items[].Ok</c>.
     /// </para>
     /// </summary>
     /// <param name="request">The payouts to send.</param>
@@ -156,8 +156,8 @@ public sealed class Payouts : Resource
     /// <para>
     /// Codes worth branching on: <c>payout.batch_too_large</c>, <c>payout.empty_batch</c>,
     /// <c>payout.order_id_required</c>, <c>payout.reference_collision</c>, <c>payout.frozen</c>,
-    /// <c>merchant.wrong_key_kind</c>, <c>idempotency.key_reused</c>. Insufficient funds surface per
-    /// element in the batch result, not on this call.
+    /// <c>idempotency.key_reused</c>. Insufficient funds surface per element in the batch result, not on
+    /// this call.
     /// </para>
     /// </summary>
     /// <param name="request">The payouts to submit.</param>

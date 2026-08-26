@@ -222,9 +222,7 @@ internal static class Emitters
     private static string AuthNote(string auth) => auth switch
     {
         "public" => "no credentials",
-        "payment" => "payment key",
-        "payout" => "payout key",
-        "any" => "either key kind",
+        "key" => "signed with the API key",
         "onboard" => "unsigned provisioning route",
         _ => auth,
     };

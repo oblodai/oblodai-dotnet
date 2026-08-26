@@ -5,7 +5,6 @@ namespace Oblodai.Resources;
 
 /// <summary>
 /// Static deposit wallets: one permanent address per customer, deposits reported as <c>wallet.paid</c>.
-/// Payment key, except the blocked-deposit refund, which needs the payout key.
 /// </summary>
 public sealed class Wallets : Resource
 {
@@ -63,11 +62,9 @@ public sealed class Wallets : Resource
 
     /// <summary>
     /// <c>POST /v1/wallet/blocked-address-refund</c> — send funds that landed on a blocked address back.
-    /// Payout key.
     /// <para>
     /// Codes worth branching on: <c>wallet.bad_uuid</c>, <c>refund.no_address</c>,
-    /// <c>refund.nothing_to_refund</c>, <c>refund.dust</c>, <c>refund.destination_internal</c>,
-    /// <c>merchant.wrong_key_kind</c>.
+    /// <c>refund.nothing_to_refund</c>, <c>refund.dust</c>, <c>refund.destination_internal</c>.
     /// </para>
     /// </summary>
     /// <param name="request">Which deposit to return, and where.</param>

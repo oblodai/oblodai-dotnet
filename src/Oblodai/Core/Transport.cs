@@ -165,12 +165,6 @@ public sealed partial class OblodaiTransport : IDisposable
         return merged;
     }
 
-    /// <summary>Which key pair signs a route. <c>any</c> routes take the payment key unless told otherwise.</summary>
-    private Credentials? CredentialsFor(RouteSpec route, bool preferPayout)
-        => route.Auth == RouteAuth.Payout || (route.Auth == RouteAuth.Any && preferPayout)
-            ? _options.PayoutCredentials ?? _options.Credentials
-            : _options.Credentials;
-
     private async Task<RawResponse> ExecuteAsync(RouteSpec route, CallOptions options, CancellationToken cancellationToken)
     {
         var body = OblodaiJson.SerializeBody(options.Body, route.Method);
@@ -215,7 +209,7 @@ public sealed partial class OblodaiTransport : IDisposable
                 PathParams = options.PathParams,
                 Query = options.Query,
                 Body = body,
-                Credentials = CredentialsFor(route, options.PreferPayoutKey),
+                Credentials = _options.Credentials,
                 IdempotencyKey = idempotencyKey,
                 Ts = _clock.BaseNowUnixSeconds() + signedWithOffset,
                 UserAgent = _options.UserAgent,

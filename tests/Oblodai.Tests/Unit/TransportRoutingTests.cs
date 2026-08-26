@@ -5,8 +5,8 @@ using Xunit;
 namespace Oblodai.Tests.Unit;
 
 /// <summary>
-/// The rest of the transport lifecycle: which key pair signs a route, what rides on which route, and
-/// what the SDK refuses to send at all. Same fixtures as <see cref="TransportTests"/>.
+/// The rest of the transport lifecycle: what is signed, what rides on which route, and what the SDK
+/// refuses to send at all. Same fixtures as <see cref="TransportTests"/>.
 /// </summary>
 public class TransportRoutingTests
 {
@@ -23,11 +23,15 @@ public class TransportRoutingTests
             },
             handler.Client());
 
+    /// <summary>
+    /// Money-in and money-out are signed with the SAME key: a merchant has one. The pair the client was
+    /// given is the pair on the wire for both, and nothing about the route changes which one is used.
+    /// </summary>
     [Fact]
-    public async Task UsesThePayoutCredentialsForPayoutRoutes()
+    public async Task SignsMoneyInAndMoneyOutWithTheOneApiKey()
     {
         var handler = new FakeHttpHandler(ScriptedResponse.Ok("""{"uuid":"p"}"""), ScriptedResponse.Ok("""{"uuid":"i"}"""));
-        using var client = Client(handler, new OblodaiOptions { PayoutPublicId = "wk_test_1", PayoutSecret = "s2" });
+        using var client = Client(handler);
 
         await client.Payouts.CreateAsync(new PayoutRequest
         {
@@ -38,7 +42,7 @@ public class TransportRoutingTests
         });
         await client.Payments.CreateAsync(new PaymentRequest { Amount = "1", Currency = "USDT" });
 
-        Assert.Equal("wk_test_1", handler.Calls[0].Header(RequestSigner.HeaderPublicId));
+        Assert.Equal("pk_test_1", handler.Calls[0].Header(RequestSigner.HeaderPublicId));
         Assert.Equal("pk_test_1", handler.Calls[1].Header(RequestSigner.HeaderPublicId));
     }
 

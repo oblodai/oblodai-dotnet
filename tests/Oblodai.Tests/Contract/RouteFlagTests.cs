@@ -7,9 +7,9 @@ namespace Oblodai.Tests.Contract;
 
 /// <summary>
 /// The generated route registry against the contract that produced it, flag by flag. Whether a route
-/// is signed with the payout key, whether the gateway deduplicates it and whether a lost response may
-/// be re-sent are the three facts that decide if a failed call can double a payout, so they are
-/// compared with the source rather than with the last codegen run.
+/// is signed at all, whether the gateway deduplicates it and whether a lost response may be re-sent
+/// are the three facts that decide if a failed call can double a payout, so they are compared with
+/// the source rather than with the last codegen run.
 /// </summary>
 public class RouteFlagTests
 {
@@ -26,10 +26,10 @@ public class RouteFlagTests
 
     /// <summary>
     /// Every FLAG of every route, not just the key set. The key set matching proves the registry knows
-    /// the same routes; it says nothing about whether a route is signed with the payout key, whether the
-    /// gateway deduplicates it, or whether a lost response may be re-sent — and those three decide
-    /// whether a failed call can double a payout. <c>safe</c> comes from the core's own hand
-    /// classification in <c>contract.json</c>; nothing here derives it from the path.
+    /// the same routes; it says nothing about which gate a route sits behind, whether the gateway
+    /// deduplicates it, or whether a lost response may be re-sent — and those three decide whether a
+    /// failed call can double a payout. <c>safe</c> comes from the core's own hand classification in
+    /// <c>contract.json</c>; nothing here derives it from the path.
     /// </summary>
     /// <param name="key">Route key.</param>
     [Theory]
@@ -61,7 +61,7 @@ public class RouteFlagTests
         var real = Routes.All["POST /v1/payout"];
         var mutants = new[]
         {
-            real with { Auth = RouteAuth.Payment },
+            real with { Auth = RouteAuth.Public },
             real with { Idempotent = !real.Idempotent },
             real with { Safe = !real.Safe },
             real with { Bare = !real.Bare },
@@ -78,6 +78,27 @@ public class RouteFlagTests
         {
             Assert.False(Matches(declared, mutant), $"a flipped flag went unnoticed: {mutant}");
         }
+    }
+
+    /// <summary>
+    /// The auth vocabulary is closed: <c>public</c>, <c>key</c>, <c>onboard</c> and nothing else. A
+    /// merchant holds ONE API key, so a snapshot that still splits payment from payout credentials
+    /// would leave the SDK signing with the only pair it has at a gate that wants another — this fails
+    /// on the export rather than at runtime.
+    /// </summary>
+    [Fact]
+    public void TheContractDeclaresNoAuthGateBeyondPublicKeyAndOnboard()
+    {
+        var declared = Fixtures.Contract.GetProperty("routes").EnumerateArray()
+            .Select(r => r.GetProperty("auth").GetString()!)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(a => a, StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(new[] { "key", "onboard", "public" }, declared);
+        Assert.Equal(
+            new[] { RouteAuth.Key, RouteAuth.Onboard, RouteAuth.Public },
+            Enum.GetValues<RouteAuth>().OrderBy(a => a.ToString(), StringComparer.Ordinal).ToArray());
     }
 
     /// <summary>The comparison <see cref="EveryRouteFlagEqualsTheContract"/> makes, as a predicate.</summary>

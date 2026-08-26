@@ -8,8 +8,8 @@ using Xunit;
 namespace Oblodai.Tests.Contract;
 
 /// <summary>
-/// Every route the gateway declares has exactly one SDK method, wired to the right method, path, key
-/// kind and idempotency wrapper. The table below is the SDK's coverage ledger: a route the gateway adds
+/// Every route the gateway declares has exactly one SDK method, wired to the right method, path, auth
+/// gate and idempotency wrapper. The table below is the SDK's coverage ledger: a route the gateway adds
 /// shows up in <see cref="Routes.All"/> after codegen and fails this test until a method is wired to it.
 /// </summary>
 public class RouteCoverageTests
@@ -198,7 +198,7 @@ public class RouteCoverageTests
             Fixtures.DeclaredRoutes().OrderBy(r => r, StringComparer.Ordinal).ToList(),
             Routes.All.Keys.OrderBy(r => r, StringComparer.Ordinal).ToList());
         Assert.Equal(107, Routes.All.Count);
-        Assert.Equal(471, ErrorCodes.All.Count);
+        Assert.Equal(469, ErrorCodes.All.Count);
     }
 
     [Fact]
@@ -227,8 +227,6 @@ public class RouteCoverageTests
             {
                 PublicId = "pk",
                 Secret = "s",
-                PayoutPublicId = "wk",
-                PayoutSecret = "s2",
                 AdminToken = "adm",
                 BaseUrl = "https://api.test",
             },
@@ -242,22 +240,23 @@ public class RouteCoverageTests
             new Regex("^" + Regex.Replace(route.Path, "\\{[a-z]+\\}", "[^/]+") + "$"),
             call.Uri.AbsolutePath);
 
+        // One API key signs every signed route; the admin token rides on the onboarding routes only,
+        // and a public route carries no signature at all.
         switch (route.Auth)
         {
             case RouteAuth.Public:
                 Assert.False(call.HasHeader(RequestSigner.HeaderSignature));
+                Assert.False(call.HasHeader(RequestSigner.HeaderAdminToken));
                 break;
             case RouteAuth.Onboard:
                 Assert.False(call.HasHeader(RequestSigner.HeaderSignature));
                 Assert.Equal("adm", call.Header(RequestSigner.HeaderAdminToken));
                 break;
-            case RouteAuth.Payout:
-                Assert.Equal("wk", call.Header(RequestSigner.HeaderPublicId));
-                Assert.Matches("^[0-9a-f]{64}$", call.Header(RequestSigner.HeaderSignature));
-                break;
             default:
+                Assert.Equal(RouteAuth.Key, route.Auth);
                 Assert.Equal("pk", call.Header(RequestSigner.HeaderPublicId));
                 Assert.Matches("^[0-9a-f]{64}$", call.Header(RequestSigner.HeaderSignature));
+                Assert.False(call.HasHeader(RequestSigner.HeaderAdminToken));
                 break;
         }
 
@@ -265,48 +264,24 @@ public class RouteCoverageTests
         Assert.Equal(route.Method != "GET", call.Body is not null);
     }
 
+    /// <summary>
+    /// A batch lookup is one call with the one key — no second attempt under another credential. The
+    /// old two-key SDK retried the lookup under the payout credential after a wrong-key-kind refusal;
+    /// that fallback is gone, and a single response must be the whole story.
+    /// </summary>
     [Fact]
-    public async Task ThePayoutPairFallsBackToThePaymentPairWhenItIsNotConfigured()
+    public async Task BatchInfoIsOneSignedCallWithNoSecondAttempt()
     {
-        var handler = new FakeHttpHandler(ScriptedResponse.Ok(Fixtures.ResultJson("POST /v1/payout")));
+        var handler = new FakeHttpHandler(ScriptedResponse.Ok(Fixtures.ResultJson("POST /v1/batch/info")));
+
         using var client = new OblodaiClient(
             new OblodaiOptions { PublicId = "pk", Secret = "s", BaseUrl = "https://api.test" },
             handler.Client());
 
-        await client.Payouts.CreateAsync(new PayoutRequest
-        {
-            Amount = "1",
-            Currency = "USDT",
-            Address = Address,
-            OrderId = "o",
-        });
-
-        Assert.Equal("pk", handler.Calls[0].Header(RequestSigner.HeaderPublicId));
-    }
-
-    [Fact]
-    public async Task BatchInfoRetriesWithThePayoutKeyOnTheWrongKeyKind()
-    {
-        var handler = new FakeHttpHandler(
-            ScriptedResponse.Error(403, """{"code":"merchant.wrong_key_kind","message":"payout key required","retryable":false}"""),
-            ScriptedResponse.Ok(Fixtures.ResultJson("POST /v1/batch/info")));
-
-        using var client = new OblodaiClient(
-            new OblodaiOptions
-            {
-                PublicId = "pk",
-                Secret = "s",
-                PayoutPublicId = "wk",
-                PayoutSecret = "s2",
-                BaseUrl = "https://api.test",
-            },
-            handler.Client());
-
         var info = await client.Batches.InfoAsync(new BatchInfoRequest { BatchId = "b1" });
 
-        Assert.Equal(2, handler.Calls.Count);
-        Assert.Equal("pk", handler.Calls[0].Header(RequestSigner.HeaderPublicId));
-        Assert.Equal("wk", handler.Calls[1].Header(RequestSigner.HeaderPublicId));
+        var call = Assert.Single(handler.Calls);
+        Assert.Equal("pk", call.Header(RequestSigner.HeaderPublicId));
         Assert.NotEmpty(info.BatchId);
     }
 

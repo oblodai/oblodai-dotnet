@@ -34,7 +34,6 @@ public sealed class OblodaiClient : IDisposable
             {
                 BaseUrl = resolved.BaseUrl,
                 Credentials = resolved.Credentials,
-                PayoutCredentials = resolved.PayoutCredentials,
                 TimeoutMs = resolved.TimeoutMs ?? 30_000,
                 DeadlineMs = resolved.DeadlineMs ?? 90_000,
                 Retry = resolved.Retry ?? RetryOptions.Default,

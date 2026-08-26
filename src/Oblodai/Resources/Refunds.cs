@@ -5,7 +5,6 @@ namespace Oblodai.Resources;
 
 /// <summary>
 /// Refunds are payouts in the invoice's own asset; underpayments are resolved (accept or refund).
-/// Requires the payout key.
 /// </summary>
 public sealed class Refunds : Resource
 {
@@ -17,12 +16,12 @@ public sealed class Refunds : Resource
     }
 
     /// <summary>
-    /// <c>POST /v1/payment/refund</c> — refund a paid invoice, fully or partially. Requires the payout key.
+    /// <c>POST /v1/payment/refund</c> — refund a paid invoice, fully or partially.
     /// <para>
     /// Codes worth branching on: <c>refund.nothing_to_refund</c>, <c>refund.exceeds_refundable</c>,
     /// <c>refund.no_address</c> (the payer address is not refundable — ask for one),
     /// <c>refund.dust</c> (below the network's minimum), <c>refund.reference_collision</c>,
-    /// <c>payout.insufficient_funds</c> (retryable), <c>merchant.wrong_key_kind</c>.
+    /// <c>payout.insufficient_funds</c> (retryable).
     /// </para>
     /// </summary>
     /// <param name="request">Which invoice to refund, and how much.</param>
@@ -56,7 +55,7 @@ public sealed class Refunds : Resource
     /// <para>
     /// Codes worth branching on: <c>payout.batch_too_large</c>, <c>payout.empty_batch</c>,
     /// <c>refund.reference_collision</c>, <c>request.missing_field</c> (an item without
-    /// <c>reference</c>), <c>merchant.wrong_key_kind</c>, <c>idempotency.key_reused</c>.
+    /// <c>reference</c>), <c>idempotency.key_reused</c>.
     /// </para>
     /// </summary>
     /// <param name="request">The refunds to submit.</param>

@@ -1,0 +1,69 @@
+# NuGet publishes by tag: pushing vX.Y.Z re-runs every gate CI runs, checks that the tag and the
+# version in Oblodai.csproj agree, and only then pushes the package (and its symbols) to nuget.org.
+# A missing NUGET_API_KEY fails the job loudly rather than uploading nothing and reporting success.
+name: Release
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  CI: "true"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Version matches the tag
+        run: |
+          declared="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' src/Oblodai/Oblodai.csproj | head -n 1)"
+          if [ "v${declared}" != "${GITHUB_REF_NAME}" ]; then
+            echo "Oblodai.csproj declares Version ${declared}, but the tag is ${GITHUB_REF_NAME}" >&2
+            exit 1
+          fi
+
+      - name: Restore
+        run: dotnet restore Oblodai.sln
+
+      - name: Contract drift
+        run: dotnet run --project tools/Codegen --no-launch-profile -- check
+
+      - name: Build (warnings are errors)
+        run: dotnet build Oblodai.sln --no-restore -c Release -warnaserror
+
+      - name: Test
+        run: dotnet test Oblodai.sln --no-build -c Release --logger "console;verbosity=normal"
+
+      - name: Pack
+        run: dotnet pack src/Oblodai/Oblodai.csproj --no-build -c Release -o artifacts
+
+      - name: Publish to NuGet
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          if [ -z "${NUGET_API_KEY}" ]; then
+            echo 'NUGET_API_KEY is not set: the package was built but cannot be published' >&2
+            exit 1
+          fi
+          dotnet nuget push "artifacts/*.nupkg" \
+            --source https://api.nuget.org/v3/index.json \
+            --api-key "${NUGET_API_KEY}" \
+            --skip-duplicate
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nupkg
+          path: artifacts/*.*nupkg
+          if-no-files-found: error

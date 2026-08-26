@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace Oblodai.Models;
 
-/// <summary>An API key pair as minted by onboarding. The secret is shown once — store it at once.</summary>
+/// <summary>The API key pair as minted by onboarding. The secret is shown once — store it at once.</summary>
 public sealed record ApiKeyPair
 {
     /// <summary>Public key id — the <c>public_id</c> half of the signature.</summary>
@@ -19,22 +19,17 @@ public sealed record ApiKeyPair
     [JsonConverter(typeof(RedactedStringJsonConverter))]
     public string Secret { get; init; } = string.Empty;
 
-    /// <summary><c>api</c> — the unified key kind current merchants receive.</summary>
-    [JsonPropertyName("kind")]
-    public string Kind { get; init; } = string.Empty;
-
     /// <summary>Prints the pair without its secret.</summary>
     /// <param name="builder">Buffer the record's <c>ToString()</c> writes into.</param>
     private bool PrintMembers(StringBuilder builder)
     {
         builder.Append("PublicId = ").Append(PublicId)
-            .Append(", ").AppendRedacted(nameof(Secret))
-            .Append(", Kind = ").Append(Kind);
+            .Append(", ").AppendRedacted(nameof(Secret));
         return true;
     }
 }
 
-/// <summary><c>POST /v1/merchants</c> — a freshly provisioned merchant and its keys.</summary>
+/// <summary><c>POST /v1/merchants</c> — a freshly provisioned merchant and its API key.</summary>
 public sealed record MerchantOnboarded
 {
     /// <summary>The new merchant.</summary>
@@ -45,20 +40,9 @@ public sealed record MerchantOnboarded
     [JsonPropertyName("project_id")]
     public string ProjectId { get; init; } = string.Empty;
 
-    /// <summary>
-    /// The unified key — the same pair as <see cref="PaymentKey"/> and <see cref="PayoutKey"/> for
-    /// merchants created now.
-    /// </summary>
+    /// <summary>The merchant's API key: the one pair that signs every route.</summary>
     [JsonPropertyName("api_key")]
     public ApiKeyPair ApiKey { get; init; } = new();
-
-    /// <summary>Key scoped to payment routes (historically separate).</summary>
-    [JsonPropertyName("payment_key")]
-    public ApiKeyPair PaymentKey { get; init; } = new();
-
-    /// <summary>Key scoped to payout routes (historically separate).</summary>
-    [JsonPropertyName("payout_key")]
-    public ApiKeyPair PayoutKey { get; init; } = new();
 }
 
 /// <summary>
@@ -75,17 +59,9 @@ public sealed record SandboxStore
     [JsonPropertyName("project_id")]
     public string ProjectId { get; init; } = string.Empty;
 
-    /// <summary>The unified <c>test_</c> key.</summary>
+    /// <summary>The dev store's <c>test_</c> API key.</summary>
     [JsonPropertyName("api_key")]
     public ApiKeyPair ApiKey { get; init; } = new();
-
-    /// <summary>Key scoped to payment routes.</summary>
-    [JsonPropertyName("payment_key")]
-    public ApiKeyPair PaymentKey { get; init; } = new();
-
-    /// <summary>Key scoped to payout routes.</summary>
-    [JsonPropertyName("payout_key")]
-    public ApiKeyPair PayoutKey { get; init; } = new();
 
     /// <summary>False when the dev store already existed — the call is idempotent.</summary>
     [JsonPropertyName("created")]

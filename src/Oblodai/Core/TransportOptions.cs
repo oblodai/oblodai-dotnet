@@ -21,9 +21,6 @@ public sealed record CallOptions
     /// <summary>Your own idempotency key; generated automatically on create routes when omitted.</summary>
     public string? IdempotencyKey { get; init; }
 
-    /// <summary>Prefer the payout key pair on a route that accepts either kind.</summary>
-    public bool PreferPayoutKey { get; init; }
-
     /// <summary>Per-attempt timeout, milliseconds.</summary>
     public int? TimeoutMs { get; init; }
 
@@ -47,11 +44,8 @@ public sealed record TransportOptions
     /// <summary>Gateway origin, optionally with a path prefix.</summary>
     public required string BaseUrl { get; init; }
 
-    /// <summary>Used for payment and <c>any</c> routes, and for payout routes when no payout pair exists.</summary>
+    /// <summary>The merchant's API key pair; it signs every signed route.</summary>
     public Credentials? Credentials { get; init; }
-
-    /// <summary>Optional second key pair for payout routes.</summary>
-    public Credentials? PayoutCredentials { get; init; }
 
     /// <summary>Per-attempt timeout, ms. Default 30000.</summary>
     public int TimeoutMs { get; init; } = 30_000;
@@ -84,7 +78,6 @@ public sealed record TransportOptions
     {
         builder.Append("BaseUrl = ").Append(BaseUrl)
             .Append(", Credentials = ").Append(Credentials)
-            .Append(", PayoutCredentials = ").Append(PayoutCredentials)
             .Append(", TimeoutMs = ").Append(TimeoutMs)
             .Append(", DeadlineMs = ").Append(DeadlineMs)
             .Append(", Retry = ").Append(Retry)

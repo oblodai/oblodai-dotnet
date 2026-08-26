@@ -9,13 +9,13 @@ Package `Oblodai` (1.3). Everything below is verified against the gateway's cont
   `Money.Add` / `Money.Compare` from the package.
 - Every method is `…Async` and its last two parameters are
   `RequestOptions? options = null, CancellationToken cancellationToken = default`.
-  `RequestOptions` = `{ IdempotencyKey, TimeoutMs, DeadlineMs, Headers, PreferPayoutKey }`. Cancelling
+  `RequestOptions` = `{ IdempotencyKey, TimeoutMs, DeadlineMs, Headers }`. Cancelling
   the token throws `OperationCanceledException`, not an SDK error.
-- Two key kinds. The **payout key** is required for: `Payouts.*`, `Refunds.*`, `PayoutLinks.*`,
-  `Transfers.*`, `Splits.*`, `Wallets.RefundBlockedDepositAsync`, `Settings.*AutoWithdraw*`,
-  `Settings.*ApiAllowlist*`, `Webhooks.RotateSecretAsync`, `Webhooks.TestAsync(WebhookKind.Payout, …)`,
-  `Sandbox.FaucetAsync`, `Sandbox.ResetAsync`. Configure it with `PayoutPublicId`/`PayoutSecret` (or
-  `OBLODAI_PAYOUT_*`); a wrong kind is a 403 `merchant.wrong_key_kind`.
+- **One API key.** `PublicId` + `Secret` (or `OBLODAI_PUBLIC_ID` / `OBLODAI_SECRET`) sign every signed
+  route — money-in and money-out alike. There is no payout pair and no per-call key choice. The route
+  table's `auth` is `public` (unsigned), `key` (signed) or `onboard` (`AdminToken` → `X-Admin-Token`,
+  merchant provisioning only). `merchant.wrong_key_kind` is a legacy code: it can only reach a merchant
+  still holding an old `oblodai_pk_`/`oblodai_wk_` pair, and it is no longer in the catalogue.
 - List methods return `PagePromise<T>`: `await` = one page (`Page<T>` with `Items` and `Paginate`),
   `await foreach` = every item, `AllAsync(max)` = a list. Nothing is requested until it is consumed.
 - Idempotency keys are generated automatically on create routes and reused across retries. Passing
@@ -50,7 +50,7 @@ the compiler tells you what the gateway insists on.
 
 ## Errors
 
-`catch (OblodaiException error)` → `Code` (`family.reason`, constants in `ErrorCodes`, 471 of them), `HttpStatus`,
+`catch (OblodaiException error)` → `Code` (`family.reason`, constants in `ErrorCodes`, 469 of them), `HttpStatus`,
 `Retryable` (authoritative — the SDK already retried what it should), `RetryAfter`, `RequestId` (quote it
 to support), `Field` (400s), `Synthetic` (the answer came from a proxy, not the API). Subclasses per
 status; `TransportException` when no response arrived; `ConfigException` before sending;
@@ -59,8 +59,8 @@ status; `TransportException` when no response arrived; `ConfigException` before 
 message and drops the raw body; `ToString()` keeps the stack trace and inner exception.
 
 Codes worth handling: `payout.insufficient_funds` (retryable), `payout.funds_maturing` (retryable),
-`idempotency.key_reused`, `invoice.not_payable`, `payment.not_found`, `merchant.wrong_key_kind`,
-`merchant.bad_signature`, `request.rate_limited`.
+`idempotency.key_reused`, `invoice.not_payable`, `payment.not_found`, `merchant.bad_signature`,
+`request.rate_limited`.
 
 ## Statuses
 
@@ -86,6 +86,6 @@ out-of-order events with `WebhookVerifier.IsStale(info.Event, lastSequence)`. Du
 ## Machine-readable surface
 
 `Routes.All` (107 routes: method, path, auth, idempotent, safe, bare, list), the generated request
-records, `ErrorCodes.All` (471), `Network.Known`, `PaymentStatus.Known`, `PayoutStatus.Known`,
+records, `ErrorCodes.All` (469), `Network.Known`, `PaymentStatus.Known`, `PayoutStatus.Known`,
 `EventType.Known`, and `contract/` itself (schemas, golden response bodies per route, error samples,
 signed webhook samples). `ContractVersion` stamps which gateway commit the surface was generated from.
