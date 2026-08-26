@@ -63,10 +63,10 @@ public class LiveSandboxTests : IClassFixture<LiveEnvironment>
         var orderId = $"{key}-o";
 
         var first = await _live.Merchant.Payments.CreateAsync(
-            new PaymentRequest { Amount = "1", Currency = "USDT", Network = Network.Tron, OrderId = orderId },
+            new PaymentRequest { Amount = "5", Currency = "USDT", Network = Network.Tron, OrderId = orderId },
             new RequestOptions { IdempotencyKey = key });
         var replay = await _live.Merchant.Payments.CreateAsync(
-            new PaymentRequest { Amount = "1", Currency = "USDT", Network = Network.Tron, OrderId = orderId },
+            new PaymentRequest { Amount = "5", Currency = "USDT", Network = Network.Tron, OrderId = orderId },
             new RequestOptions { IdempotencyKey = key });
 
         Assert.Equal(first.Uuid, replay.Uuid);

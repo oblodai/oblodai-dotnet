@@ -105,7 +105,7 @@ public class LiveSweepTests : IClassFixture<LiveEnvironment>
             [
                 new PaymentBatchPaymentsItem
                 {
-                    Amount = "3",
+                    Amount = "5",
                     Currency = "USDT",
                     Network = Network.Tron,
                     OrderId = LiveEnvironment.Unique("sw-b"),
@@ -117,7 +117,7 @@ public class LiveSweepTests : IClassFixture<LiveEnvironment>
 
         var toCancel = await Ob.Payments.CreateAsync(new PaymentRequest
         {
-            Amount = "1",
+            Amount = "5",
             Currency = "USDT",
             Network = Network.Tron,
             OrderId = LiveEnvironment.Unique("sw-c"),
@@ -164,7 +164,7 @@ public class LiveSweepTests : IClassFixture<LiveEnvironment>
                 {
                     Uuid = _invoice.Uuid,
                     Address = LiveEnvironment.Address,
-                    Amount = "1",
+                    Amount = "5",
                     Reference = LiveEnvironment.Unique("sw-rb"),
                 },
             ],
@@ -209,7 +209,7 @@ public class LiveSweepTests : IClassFixture<LiveEnvironment>
             [
                 new PayoutMassPayoutsItem
                 {
-                    Amount = "1",
+                    Amount = "5",
                     Currency = "USDT",
                     Network = Network.Tron,
                     Address = LiveEnvironment.Address,
@@ -225,7 +225,7 @@ public class LiveSweepTests : IClassFixture<LiveEnvironment>
             [
                 new PayoutBatchPayoutsItem
                 {
-                    Amount = "1",
+                    Amount = "5",
                     Currency = "USDT",
                     Network = Network.Tron,
                     Address = LiveEnvironment.Address,
@@ -268,7 +268,7 @@ public class LiveSweepTests : IClassFixture<LiveEnvironment>
 
         var second = await Ob.PayoutLinks.CreateAsync(new PayoutLinkRequest
         {
-            Amount = "1",
+            Amount = "5",
             Currency = "USDT",
             Network = Network.Tron,
             Reference = LiveEnvironment.Unique("sw-pl2"),
@@ -281,7 +281,7 @@ public class LiveSweepTests : IClassFixture<LiveEnvironment>
             [
                 new PayoutLinkBatchItemsItem
                 {
-                    Amount = "1",
+                    Amount = "5",
                     Currency = "USDT",
                     Network = Network.Tron,
                     Reference = LiveEnvironment.Unique("sw-plb"),
@@ -432,7 +432,7 @@ public class LiveSweepTests : IClassFixture<LiveEnvironment>
         await LiveEnvironment.AcceptRefusalAsync(Ob.Wallets.BlockAsync(new WalletBlockRequest { Address = LiveEnvironment.Address }));
         await LiveEnvironment.AcceptRefusalAsync(Ob.Transfers.ToPersonalAsync(new TransferToPersonalRequest
         {
-            Amount = "1",
+            Amount = "5",
             Currency = "USDT",
         }));
     }
