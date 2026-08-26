@@ -54,6 +54,11 @@ public sealed class Transfers : Resource
     /// <summary>
     /// <c>POST /v1/transfer/to-personal</c> — business balance → the owner's personal wallet (needs an
     /// owner link).
+    /// <para>
+    /// Codes worth branching on: <c>transfer.bad_amount</c>, <c>merchant.no_owner</c>,
+    /// <c>merchant.no_personal_wallet</c>, <c>payout.insufficient_funds</c> (retryable),
+    /// <c>payout.funds_maturing</c> (retryable), <c>merchant.wrong_key_kind</c>.
+    /// </para>
     /// </summary>
     /// <param name="request">Amount, asset and idempotent <c>order_id</c>.</param>
     /// <param name="options">Per-call options.</param>
@@ -67,6 +72,11 @@ public sealed class Transfers : Resource
     /// <summary>
     /// <c>POST /v1/transfer/to-user</c> — business balance → another platform user's personal wallet.
     /// <c>amount</c> and <c>currency</c> are required.
+    /// <para>
+    /// Codes worth branching on: <c>transfer.bad_amount</c>, <c>transfer.no_recipient</c>,
+    /// <c>transfer.recipient_not_found</c>, <c>transfer.bad_recipient</c> (the recipient is yourself),
+    /// <c>payout.insufficient_funds</c> (retryable), <c>merchant.wrong_key_kind</c>.
+    /// </para>
     /// </summary>
     /// <param name="request">Recipient user id, amount and asset.</param>
     /// <param name="options">Per-call options.</param>
@@ -80,6 +90,11 @@ public sealed class Transfers : Resource
     /// <summary>
     /// <c>POST /v1/transfer/batch</c> — ASYNCHRONOUS batch of <see cref="ToUserAsync"/> transfers; poll
     /// <c>Batches.InfoAsync</c>. <c>order_id</c> is required on every item.
+    /// <para>
+    /// Codes worth branching on: <c>payout.batch_too_large</c>, <c>payout.empty_batch</c>,
+    /// <c>request.missing_field</c> (an item without <c>order_id</c>/<c>amount</c>/<c>currency</c>),
+    /// <c>transfer.recipient_not_found</c>, <c>merchant.wrong_key_kind</c>, <c>idempotency.key_reused</c>.
+    /// </para>
     /// </summary>
     /// <param name="request">The transfers to submit.</param>
     /// <param name="options">Per-call options.</param>

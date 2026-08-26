@@ -32,7 +32,7 @@ public sealed record PaymentTx
 
 /// <summary>
 /// A refund issued against an invoice — a payout in disguise; the full detail is on
-/// <c>payouts.info</c> by <see cref="Uuid"/>.
+/// <c>Payouts.InfoAsync</c> by <see cref="Uuid"/>.
 /// </summary>
 public sealed record PaymentRefund
 {

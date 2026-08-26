@@ -68,7 +68,7 @@ public class SigningTests
     [Fact]
     public void SignsTheBodyBytesSoTextAndBytesAgree()
     {
-        const string body = """{"additional_data":"тест"}""";
+        const string body = """{"additional_data":"café 日本語 🚀"}""";
         Assert.Equal(
             RequestSigner.Sign("s", 5, "POST", "/v1/payment", null, body),
             RequestSigner.Sign("s", 5, "POST", "/v1/payment", null, Encoding.UTF8.GetBytes(body)));

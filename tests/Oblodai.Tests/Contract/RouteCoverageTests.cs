@@ -198,6 +198,7 @@ public class RouteCoverageTests
             Fixtures.DeclaredRoutes().OrderBy(r => r, StringComparer.Ordinal).ToList(),
             Routes.All.Keys.OrderBy(r => r, StringComparer.Ordinal).ToList());
         Assert.Equal(107, Routes.All.Count);
+        Assert.Equal(471, ErrorCodes.All.Count);
     }
 
     [Fact]

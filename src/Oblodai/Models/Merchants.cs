@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json.Serialization;
 
 namespace Oblodai.Models;
@@ -9,13 +10,28 @@ public sealed record ApiKeyPair
     [JsonPropertyName("public_id")]
     public string PublicId { get; init; } = string.Empty;
 
-    /// <summary>The signing secret. Shown ONCE and never again.</summary>
+    /// <summary>
+    /// The signing secret. Shown ONCE and never again. Printing or serializing this record writes
+    /// <c>[redacted]</c>; read the property, or use <see cref="OblodaiJson.SerializeWithSecrets"/> to
+    /// hand it to your key store.
+    /// </summary>
     [JsonPropertyName("secret")]
+    [JsonConverter(typeof(RedactedStringJsonConverter))]
     public string Secret { get; init; } = string.Empty;
 
     /// <summary><c>api</c> — the unified key kind current merchants receive.</summary>
     [JsonPropertyName("kind")]
     public string Kind { get; init; } = string.Empty;
+
+    /// <summary>Prints the pair without its secret.</summary>
+    /// <param name="builder">Buffer the record's <c>ToString()</c> writes into.</param>
+    private bool PrintMembers(StringBuilder builder)
+    {
+        builder.Append("PublicId = ").Append(PublicId)
+            .Append(", ").AppendRedacted(nameof(Secret))
+            .Append(", Kind = ").Append(Kind);
+        return true;
+    }
 }
 
 /// <summary><c>POST /v1/merchants</c> — a freshly provisioned merchant and its keys.</summary>

@@ -30,6 +30,15 @@ public sealed record ScriptedResponse
     /// <summary>Wait this long before answering (drives the timeout path).</summary>
     public int DelayMs { get; init; }
 
+    /// <summary>
+    /// Answer as if the client had followed a redirect to this URL: the response reports a different
+    /// final URI than the one that was sent, which is the only trace a followed redirect leaves.
+    /// </summary>
+    public string? LandedOn { get; init; }
+
+    /// <summary>Response headers that belong on the message rather than the content (Date, Retry-After).</summary>
+    public DateTimeOffset? Date { get; init; }
+
     /// <summary>A success envelope wrapping <paramref name="resultJson"/>.</summary>
     public static ScriptedResponse Ok(string resultJson) => new() { Body = "{\"state\":0,\"result\":" + resultJson + "}" };
 
@@ -65,13 +74,27 @@ public sealed record ScriptedResponse
 public sealed class FakeHttpHandler : HttpMessageHandler
 {
     private readonly Queue<ScriptedResponse> _script;
+    private readonly Func<RecordedRequest, ScriptedResponse>? _answer;
+    private readonly object _gate = new();
 
     public FakeHttpHandler(params ScriptedResponse[] script) => _script = new Queue<ScriptedResponse>(script);
+
+    /// <summary>Answer every request from a function — for concurrency, where a fixed script cannot order.</summary>
+    /// <param name="answer">Produces the answer for one request.</param>
+    public FakeHttpHandler(Func<RecordedRequest, ScriptedResponse> answer)
+    {
+        _script = new Queue<ScriptedResponse>();
+        _answer = answer;
+    }
 
     public List<RecordedRequest> Calls { get; } = [];
 
     /// <summary>A client wired to this handler.</summary>
     public HttpClient Client() => new(this) { Timeout = Timeout.InfiniteTimeSpan };
+
+    /// <summary>A client wired to this handler with a finite timeout, as a careless caller would build it.</summary>
+    /// <param name="timeout">The timeout to set.</param>
+    public HttpClient Client(TimeSpan timeout) => new(this) { Timeout = timeout };
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
@@ -92,11 +115,20 @@ public sealed class FakeHttpHandler : HttpMessageHandler
             body = await request.Content.ReadAsStringAsync(cancellationToken);
         }
 
-        Calls.Add(new RecordedRequest(request.RequestUri!.ToString(), request.Method.Method, headers, body));
-
-        if (!_script.TryDequeue(out var next))
+        var recorded = new RecordedRequest(request.RequestUri!.ToString(), request.Method.Method, headers, body);
+        ScriptedResponse? next;
+        lock (_gate)
         {
-            throw new InvalidOperationException($"FakeHttpHandler: no scripted response for {request.Method} {request.RequestUri}");
+            Calls.Add(recorded);
+            if (_answer is not null)
+            {
+                next = _answer(recorded);
+            }
+            else if (!_script.TryDequeue(out next))
+            {
+                throw new InvalidOperationException(
+                    $"FakeHttpHandler: no scripted response for {request.Method} {request.RequestUri}");
+            }
         }
 
         if (next.DelayMs > 0)
@@ -112,7 +144,18 @@ public sealed class FakeHttpHandler : HttpMessageHandler
         var response = new HttpResponseMessage((HttpStatusCode)next.Status)
         {
             Content = new StringContent(next.Body, Encoding.UTF8, next.ContentType),
+
+            // What a real HttpClient reports: the request as it finally went out. A client that followed
+            // a redirect leaves a different URI here, which is what the SDK checks for.
+            RequestMessage = next.LandedOn is null
+                ? request
+                : new HttpRequestMessage(request.Method, next.LandedOn),
         };
+
+        if (next.Date is { } date)
+        {
+            response.Headers.Date = date;
+        }
 
         foreach (var (key, value) in next.Headers)
         {

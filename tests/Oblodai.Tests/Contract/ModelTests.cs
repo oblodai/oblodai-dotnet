@@ -1,6 +1,4 @@
-using System.Reflection;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Oblodai.Contract;
 using Oblodai.Models;
 using Oblodai.Tests.Support;
@@ -29,6 +27,7 @@ public class ModelTests
     private static readonly string[] PaymentLinkOptional = ["payments", "min_amount", "max_amount", "pinned_currency"];
     private static readonly string[] DocumentJobOptional = ["ready_within", "file", "error"];
     private static readonly string[] WebhookTestOptional = ["error", "url", "duration_ms"];
+    private static readonly string[] BatchItemOptional = ["ok", "order_id", "result", "message", "error_code", "http_status"];
     private static readonly string[] None = [];
 
     private static readonly Row[] Rows =
@@ -129,15 +128,49 @@ public class ModelTests
         new("POST /v1/merchants", "", typeof(MerchantOnboarded), None),
         new("POST /v1/merchants", "api_key", typeof(ApiKeyPair), None),
         new("POST /v1/merchants/{id}/sandbox", "", typeof(SandboxStore), None),
+
+        // Nested shapes. A model reached only through another model is exactly where a wire change hides:
+        // the outer key set still matches while the object inside it has quietly gained or lost a field.
+        new("POST /v1/balance", "balance", typeof(BalanceGroup), None),
+        new("POST /v1/balance", "balance.merchant[0]", typeof(BalanceEntry), None),
+        new("POST /v1/batch/info", "items[0]", typeof(BatchInfoItem), BatchItemOptional),
+        new("GET /v1/currencies", "currencies[0]", typeof(CurrencyInfo), None),
+        new("GET /v1/currencies", "pricing_currencies[0]", typeof(PricingCurrency), None),
+        new("POST /v1/documents/jobs/info", "period", typeof(DocumentJobPeriod), None),
+        new("POST /v1/referral/info", "week", typeof(ReferralWeek), None),
+        new("POST /v1/payment/services", "items[0].limit", typeof(ServiceMethodLimit), None),
+        new("POST /v1/payment/services", "items[0].commission", typeof(ServiceMethodCommission), None),
+        new("POST /v1/payout/services", "items[0].limit", typeof(ServiceMethodLimit), ["currency"]),
+        new("POST /v1/payout/services", "items[0].commission", typeof(ServiceMethodCommission), None),
+        new("POST /v1/payment/info", "refunds[0]", typeof(PaymentRefund), None),
     ];
 
-    /// <summary>Routes the API guarantees to refuse for API keys, so no success body exists to model.</summary>
+    /// <summary>
+    /// Nested models the recorded journey never filled: the gateway sent the container empty, so there
+    /// is no body to check them against. Each one names the fixture and the path that must STAY empty —
+    /// the moment a re-export records data there, <see cref="EveryEmptyContainerIsStillEmpty"/> fails and
+    /// the model gets a real row above. That is the difference between a gap and a hidden waiver.
+    /// </summary>
+    private static readonly (string Route, string Path, Type Model)[] NeverRecorded =
+    [
+        ("POST /v1/payment", "tx_list", typeof(PaymentTx)),
+        ("POST /v1/payment/link/info", "payments", typeof(PaymentLinkPayment)),
+        ("POST /v1/auto-withdraw/delete", "items", typeof(AutoWithdrawRule)),
+    ];
+
+    /// <summary>
+    /// Routes with no success body to model. Not a waiver on trust: <see cref="EveryWaivedRouteEarnsIt"/>
+    /// proves each one either has no recorded success at all, or answers with a container this suite
+    /// checks elsewhere.
+    /// </summary>
     private static readonly HashSet<string> NotModelled = new(StringComparer.Ordinal)
     {
-        // API-key payouts auto-approve; approve serves the cabinet's maker-checker flow.
+        // API-key payouts auto-approve; approve serves the cabinet's maker-checker flow, so the recorded
+        // journey only ever got a refusal here.
         "POST /v1/payout/approve",
 
-        // The result is a bare {items} list of AutoWithdrawRule, already covered by the /set and /list rows.
+        // The result is a bare {items} list of AutoWithdrawRule, already covered by the /set and /list
+        // rows; the recording caught it empty (see NeverRecorded).
         "POST /v1/auto-withdraw/delete",
     };
 
@@ -162,7 +195,7 @@ public class ModelTests
 
         var element = Navigate(fixture.Result, row.Path, row.Route);
         var wire = element.EnumerateObject().Select(p => p.Name).ToHashSet(StringComparer.Ordinal);
-        var declared = WireKeys(row.Model);
+        var declared = ModelReflection.WireKeys(row.Model);
         var optional = row.Optional.ToHashSet(StringComparer.Ordinal);
 
         var missingOnWire = declared.Where(k => !wire.Contains(k) && !optional.Contains(k)).OrderBy(k => k).ToList();
@@ -212,7 +245,7 @@ public class ModelTests
             };
 
             var wire = body.EnumerateObject().Select(p => p.Name).ToHashSet(StringComparer.Ordinal);
-            var declared = WireKeys(model);
+            var declared = ModelReflection.WireKeys(model);
 
             var missingOnWire = declared.Where(k => !wire.Contains(k) && !optional.Contains(k)).OrderBy(k => k).ToList();
             var unknownOnWire = wire.Where(k => !declared.Contains(k)).OrderBy(k => k).ToList();
@@ -238,91 +271,37 @@ public class ModelTests
     }
 
     [Fact]
-    public void EveryRecordedFixtureBelongsToAKnownRoute()
+    public void EveryEmptyContainerIsStillEmpty()
     {
-        foreach (var route in Fixtures.All.Keys)
+        foreach (var (route, path, model) in NeverRecorded)
         {
-            Assert.True(Routes.All.ContainsKey(route), $"{route}: fixture for a route the registry does not declare");
+            var container = Fixtures.For(route).Result.GetProperty(path);
+            Assert.Equal(JsonValueKind.Array, container.ValueKind);
+            Assert.True(
+                container.GetArrayLength() == 0,
+                $"{route}: {path} now carries data — add a model row for {model.Name} and drop it from NeverRecorded");
         }
     }
 
     [Fact]
-    public void StatusesInTheGoldenBodiesAreInTheVocabulary()
+    public void EveryWaivedRouteEarnsIt()
     {
-        foreach (var payment in Fixtures.For("POST /v1/payment/history").Result.GetProperty("items").EnumerateArray())
+        foreach (var route in NotModelled)
         {
-            Assert.True(PaymentStatus.FromValue(payment.GetProperty("status").GetString()!).IsKnown);
-        }
+            Assert.True(Routes.All.ContainsKey(route), $"{route}: waived but not a route");
+            if (!Fixtures.All.TryGetValue(route, out var fixture) || !fixture.IsSuccess)
+            {
+                continue; // no recorded success body at all — nothing could be modelled
+            }
 
-        foreach (var payout in Fixtures.For("POST /v1/payout/history").Result.GetProperty("items").EnumerateArray())
-        {
-            Assert.True(PayoutStatus.FromValue(payout.GetProperty("status").GetString()!).IsKnown);
-        }
-
-        foreach (var link in Fixtures.For("POST /v1/payout/link/list").Result.GetProperty("items").EnumerateArray())
-        {
-            Assert.True(PayoutLinkStatus.FromValue(link.GetProperty("status").GetString()!).IsKnown);
-        }
-
-        foreach (var delivery in Fixtures.For("POST /v1/webhooks/deliveries").Result.GetProperty("items").EnumerateArray())
-        {
-            Assert.True(DeliveryStatus.FromValue(delivery.GetProperty("status").GetString()!).IsKnown);
+            Assert.True(
+                NeverRecorded.Any(n => n.Route == route),
+                $"{route}: has a recorded success body and no model row — waiving it hides a real gap");
         }
     }
 
-    [Fact]
-    public void EveryRecordedErrorCodeIsKnownAndCarriesTheDocumentedEnvelope()
-    {
-        Assert.NotEmpty(Fixtures.Errors);
-        foreach (var (code, fixture) in Fixtures.Errors)
-        {
-            Assert.Contains(code, ErrorCodes.All);
-            var error = fixture.Error;
-            Assert.Equal(code, error.GetProperty("code").GetString());
-            Assert.True(error.GetProperty("retryable").ValueKind is JsonValueKind.True or JsonValueKind.False);
-            Assert.Equal(JsonValueKind.String, error.GetProperty("request_id").ValueKind);
-            if (fixture.Status == 429)
-            {
-                Assert.True(error.GetProperty("retry_after").GetInt32() > 0);
-            }
-        }
-    }
 
-    [Fact]
-    public void RecordedRequestBodiesOnlyUseDocumentedFields()
-    {
-        var schemas = Fixtures.Contract.GetProperty("routes").EnumerateArray()
-            .Where(r => r.TryGetProperty("request_schema", out _))
-            .ToDictionary(
-                r => $"{r.GetProperty("method").GetString()} {r.GetProperty("path").GetString()}",
-                r => r.GetProperty("request_schema"),
-                StringComparer.Ordinal);
 
-        foreach (var fixture in Fixtures.All.Values)
-        {
-            if (fixture.Request is not { ValueKind: JsonValueKind.Object } request
-                || !schemas.TryGetValue(fixture.Route, out var schema)
-                || !schema.TryGetProperty("properties", out var properties))
-            {
-                continue;
-            }
-
-            foreach (var field in request.EnumerateObject())
-            {
-                Assert.True(
-                    properties.TryGetProperty(field.Name, out _),
-                    $"{fixture.Route}: the recorded journey sent an undocumented field \"{field.Name}\"");
-            }
-        }
-    }
-
-    /// <summary>The wire names a model declares, including the ones it inherits.</summary>
-    private static HashSet<string> WireKeys(Type model)
-        => model
-            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.GetCustomAttribute<JsonIgnoreAttribute>() is null)
-            .Select(p => p.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name ?? p.Name)
-            .ToHashSet(StringComparer.Ordinal);
 
     private static JsonElement Navigate(JsonElement element, string path, string route)
     {

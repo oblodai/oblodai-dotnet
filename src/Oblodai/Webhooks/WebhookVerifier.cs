@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Oblodai.Models;
 
 namespace Oblodai;
@@ -8,13 +9,21 @@ namespace Oblodai;
 /// <summary>How to verify a delivery: the secret, the rotation overlap and the freshness window.</summary>
 public sealed record WebhookVerifyOptions
 {
-    /// <summary>The endpoint secret from <c>Webhooks.RegisterAsync</c> / <c>RotateSecretAsync</c>.</summary>
-    public required string Secret { get; init; }
+    /// <summary>
+    /// The endpoint secret from <c>Webhooks.RegisterAsync</c> / <c>RotateSecretAsync</c>. Redacted by
+    /// <c>ToString()</c> and never serialized — which is also why it cannot be <c>required</c>: a member
+    /// the serializer is told to skip cannot also be one it is told to demand. An empty or missing
+    /// secret is refused by <see cref="WebhookVerifier.AssertUsableOptions"/> before any crypto runs.
+    /// </summary>
+    [JsonIgnore]
+    public string Secret { get; init; } = string.Empty;
 
     /// <summary>
     /// During a rotation keep the outgoing secret here. Deliveries queued before the rotation stay signed
     /// with it for their whole retry life (~26 h), so keep it at least that long after rotating.
+    /// Redacted and never serialized.
     /// </summary>
+    [JsonIgnore]
     public string? PreviousSecret { get; init; }
 
     /// <summary>Reject deliveries whose timestamp is further away than this, seconds. Default 300; 0 disables.</summary>
@@ -22,6 +31,17 @@ public sealed record WebhookVerifyOptions
 
     /// <summary>Injectable clock (unix seconds) for tests.</summary>
     public Func<long>? Now { get; init; }
+
+    /// <summary>Prints the tolerance and whether each secret is set — never the secrets themselves.</summary>
+    /// <param name="builder">Buffer the record's <c>ToString()</c> writes into.</param>
+    private bool PrintMembers(StringBuilder builder)
+    {
+        builder.AppendRedacted(nameof(Secret), !string.IsNullOrEmpty(Secret))
+            .Append(", ").AppendRedacted(nameof(PreviousSecret), !string.IsNullOrEmpty(PreviousSecret))
+            .Append(", ToleranceSeconds = ").Append(ToleranceSeconds)
+            .Append(", Now = ").Append(Now);
+        return true;
+    }
 }
 
 /// <summary>A verified delivery: the event plus the advisory headers worth keeping.</summary>
@@ -116,31 +136,24 @@ public static class WebhookVerifier
         Func<string, string?> header,
         WebhookVerifyOptions options)
     {
+        AssertUsableOptions(options);
+
         var timestampHeader = header(HeaderTimestamp);
-        var signature = header(HeaderSignature);
+        var signature = NormalizeSignature(header(HeaderSignature));
         if (string.IsNullOrEmpty(timestampHeader) || string.IsNullOrEmpty(signature))
         {
             throw new SignatureException(
                 SdkErrorCodes.WebhookMissingHeader, $"missing {HeaderTimestamp} or {HeaderSignature}");
         }
 
-        if (!long.TryParse(timestampHeader, out var ts))
+        if (!long.TryParse(timestampHeader.Trim(), out var ts))
         {
             throw new SignatureException(SdkErrorCodes.WebhookBadSignature, "timestamp header is not an integer");
         }
 
-        if (options.ToleranceSeconds > 0)
-        {
-            var now = (options.Now ?? (() => DateTimeOffset.UtcNow.ToUnixTimeSeconds()))();
-            if (Math.Abs(now - ts) > options.ToleranceSeconds)
-            {
-                throw new SignatureException(
-                    SdkErrorCodes.WebhookStaleTimestamp,
-                    $"delivery timestamp {ts} is outside the ±{options.ToleranceSeconds}s window");
-            }
-        }
-
-        var previousSignature = header(HeaderSignaturePrev);
+        // The MAC is checked BEFORE the freshness window. The other order makes the tolerance a pre-auth
+        // oracle: anyone could learn the receiver's clock offset by probing timestamps without a signature.
+        var previousSignature = NormalizeSignature(header(HeaderSignaturePrev));
         var candidates = new List<(string Provided, string Secret)> { (signature!, options.Secret) };
 
         // A merchant who has not swapped the stored secret yet verifies the Prev header with it; one who
@@ -163,7 +176,7 @@ public static class WebhookVerifier
         foreach (var (provided, secret) in candidates)
         {
             var expected = RequestSigner.SignWebhook(secret, ts, rawBody);
-            matched |= FixedTimeEquals(provided.ToLowerInvariant(), expected);
+            matched |= FixedTimeEquals(provided, expected);
         }
 
         if (!matched)
@@ -171,13 +184,77 @@ public static class WebhookVerifier
             throw new SignatureException(SdkErrorCodes.WebhookBadSignature, "signature does not match the body");
         }
 
+        if (options.ToleranceSeconds > 0)
+        {
+            var now = (options.Now ?? (() => DateTimeOffset.UtcNow.ToUnixTimeSeconds()))();
+            if (Math.Abs(now - ts) > options.ToleranceSeconds)
+            {
+                throw new SignatureException(
+                    SdkErrorCodes.WebhookStaleTimestamp,
+                    $"delivery timestamp {ts} is outside the \u00b1{options.ToleranceSeconds}s window");
+            }
+        }
+
         var eventTimeHeader = header(HeaderEventTime);
         long? eventTime = long.TryParse(eventTimeHeader, out var parsedEventTime) ? parsedEventTime : null;
 
         var parsed = Parse(rawBody);
-        var isTest = string.Equals(header(HeaderTest), "true", StringComparison.Ordinal) || IsTestEvent(parsed);
+        var isTest = string.Equals(header(HeaderTest)?.Trim(), "true", StringComparison.OrdinalIgnoreCase)
+                     || IsTestEvent(parsed);
 
         return new WebhookDeliveryInfo(parsed, header(HeaderId), header(HeaderEvent), eventTime, ts, isTest);
+    }
+
+    /// <summary>
+    /// Verification cannot start without a real secret: an empty one would make the HMAC a function of
+    /// the body alone, so any sender could produce a matching signature. A negative tolerance would read
+    /// as "everything is stale" — both are configuration mistakes, raised before any crypto runs.
+    /// </summary>
+    /// <param name="options">Verification options.</param>
+    /// <exception cref="ConfigException">The secret is empty or the tolerance is negative.</exception>
+    public static void AssertUsableOptions(WebhookVerifyOptions options)
+    {
+        if (string.IsNullOrEmpty(options.Secret))
+        {
+            throw new ConfigException(
+                SdkErrorCodes.BadConfig,
+                "WebhookVerifyOptions.Secret is empty; verification with an empty key would accept any sender",
+                nameof(WebhookVerifyOptions.Secret));
+        }
+
+        if (options.PreviousSecret is { Length: 0 })
+        {
+            throw new ConfigException(
+                SdkErrorCodes.BadConfig,
+                "WebhookVerifyOptions.PreviousSecret is an empty string; leave it null when no rotation is in flight",
+                nameof(WebhookVerifyOptions.PreviousSecret));
+        }
+
+        if (options.ToleranceSeconds < 0)
+        {
+            throw new ConfigException(
+                SdkErrorCodes.BadConfig,
+                $"WebhookVerifyOptions.ToleranceSeconds is negative ({options.ToleranceSeconds}); "
+                + "use 0 to disable the freshness check",
+                nameof(WebhookVerifyOptions.ToleranceSeconds));
+        }
+    }
+
+    /// <summary>
+    /// A signature header as it may realistically arrive: with surrounding whitespace from a proxy, in
+    /// upper case, or (wrongly) with an <c>0x</c> prefix. The first two are accepted, the third is not —
+    /// it is not the encoding the gateway sends, and silently stripping it would hide a real mismatch.
+    /// </summary>
+    /// <param name="value">Raw header value.</param>
+    private static string? NormalizeSignature(string? value)
+    {
+        var trimmed = value?.Trim();
+        if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return trimmed.ToLowerInvariant();
     }
 
     /// <summary>
@@ -187,9 +264,17 @@ public static class WebhookVerifier
     /// <param name="webhookEvent">The parsed event.</param>
     public static bool IsTestEvent(WebhookEvent webhookEvent) => webhookEvent.Test == true;
 
-    /// <summary>Parse a (previously verified) delivery body into a typed event, discriminated by <c>type</c>.</summary>
+    /// <summary>
+    /// Parse a (previously verified) delivery body into a typed event, discriminated by <c>type</c>.
+    /// A body the SDK cannot read raises <see cref="ContractException"/> with
+    /// <see cref="SdkErrorCodes.WebhookBadPayload"/> — NOT a signature failure. The signature already
+    /// proved the delivery is authentic, and a receiver that answers 401 to signature failures must not
+    /// answer 401 here: the gateway would retire the endpoint over a bug in the receiver's own decoding.
+    /// A <c>type</c> this snapshot does not know is not an error at all — it comes back as
+    /// <see cref="UnknownWebhookEvent"/> carrying the raw type string.
+    /// </summary>
     /// <param name="rawBody">The delivery body.</param>
-    /// <exception cref="SignatureException">The body is not a delivery this SDK understands.</exception>
+    /// <exception cref="ContractException">The body is not JSON, or lacks the fields every event carries.</exception>
     public static WebhookEvent Parse(ReadOnlySpan<byte> rawBody)
     {
         JsonElement body;
@@ -200,26 +285,40 @@ public static class WebhookVerifier
         }
         catch (JsonException)
         {
-            throw new SignatureException(SdkErrorCodes.WebhookBadSignature, "body is not JSON");
+            throw new WebhookPayloadException("delivery body is not JSON");
         }
 
         if (body.ValueKind != JsonValueKind.Object
             || !body.TryGetProperty("type", out var type) || type.ValueKind != JsonValueKind.String
             || !body.TryGetProperty("uuid", out var uuid) || uuid.ValueKind != JsonValueKind.String)
         {
-            throw new SignatureException(
-                SdkErrorCodes.WebhookBadSignature, "body lacks the type/uuid fields every event carries");
+            throw new WebhookPayloadException("delivery body lacks the string type/uuid fields every event carries");
         }
 
-        return type.GetString() switch
+        try
         {
-            "payment" => OblodaiJson.Deserialize<PaymentEvent>(body),
-            "payout" => OblodaiJson.Deserialize<PayoutEvent>(body),
-            "wallet" => OblodaiJson.Deserialize<WalletEvent>(body),
-            var other => throw new SignatureException(
-                SdkErrorCodes.WebhookBadSignature, $"unknown event type \"{other}\""),
-        };
+            return type.GetString() switch
+            {
+                "payment" => OblodaiJson.Deserialize<PaymentEvent>(body),
+                "payout" => OblodaiJson.Deserialize<PayoutEvent>(body),
+                "wallet" => OblodaiJson.Deserialize<WalletEvent>(body),
+                _ => OblodaiJson.Deserialize<UnknownWebhookEvent>(body),
+            };
+        }
+        catch (ContractException error)
+        {
+            throw new WebhookPayloadException(error.Message);
+        }
     }
+
+    /// <summary>
+    /// True when the event is one of the families this snapshot models
+    /// (<see cref="PaymentEvent"/>, <see cref="PayoutEvent"/>, <see cref="WalletEvent"/>) rather than an
+    /// <see cref="UnknownWebhookEvent"/> the gateway added later. Guard a <c>switch</c> with it before
+    /// treating an event as money.
+    /// </summary>
+    /// <param name="webhookEvent">The parsed event.</param>
+    public static bool IsKnownEvent(WebhookEvent webhookEvent) => webhookEvent is not UnknownWebhookEvent;
 
     /// <summary>Parse a (previously verified) delivery body given as text.</summary>
     /// <param name="rawBody">The delivery body.</param>
@@ -232,7 +331,7 @@ public static class WebhookVerifier
     /// <param name="webhookEvent">The event just received.</param>
     /// <param name="lastProcessedSequence">The highest sequence already applied, if any.</param>
     public static bool IsStale(WebhookEvent webhookEvent, long? lastProcessedSequence)
-        => lastProcessedSequence is { } last && webhookEvent.Sequence <= last;
+        => lastProcessedSequence is { } last && webhookEvent.Sequence is { } sequence && sequence <= last;
 
     private static Func<string, string?> Lookup(IReadOnlyDictionary<string, string> headers)
         => name =>

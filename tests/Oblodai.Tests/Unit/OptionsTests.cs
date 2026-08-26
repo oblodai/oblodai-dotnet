@@ -92,7 +92,16 @@ public class OptionsTests
         Assert.Equal(-1, Money.Compare("-1", "0"));
         Assert.True(Money.IsZero("0.000000"));
         Assert.True(Money.AreEqual("25", "25.00"));
-        Assert.Throws<FormatException>(() => Money.Add("25,5", "1"));
+        // Every rejection is the SDK's own error, so `catch (OblodaiException)` around SDK calls holds.
+        foreach (var bad in new[] { "25,5", string.Empty, ".", "1.", "-", "1e6", " 1", "1 ", "٣", "0x10", "1.2.3" })
+        {
+            var error = Assert.Throws<ConfigException>(() => Money.Add(bad, "1"));
+            Assert.Equal(SdkErrorCodes.BadAmount, error.Code);
+        }
+
+        var tooLong = Assert.Throws<ConfigException>(() => Money.Compare(new string('9', 65), "1"));
+        Assert.Equal(SdkErrorCodes.BadAmount, tooLong.Code);
+        Assert.Equal(1, Money.Compare(new string('9', 64), "1"));
     }
 
     [Fact]
@@ -110,7 +119,7 @@ public class OptionsTests
     [Fact]
     public void OpenVocabulariesCarryUnknownValuesThrough()
     {
-        PaymentStatus future = "quantum_settled";
+        var future = (PaymentStatus)"quantum_settled";
         Assert.False(future.IsKnown);
         Assert.Equal("quantum_settled", future.Value);
         Assert.True(PaymentStatus.Paid.IsKnown);
@@ -121,10 +130,10 @@ public class OptionsTests
     public void IdempotencyKeysAreValidatedBeforeTheyAreSigned()
     {
         Idempotency.AssertValid("order-1");
-        Assert.Throws<ValidationException>(() => Idempotency.AssertValid(string.Empty));
-        Assert.Throws<ValidationException>(() => Idempotency.AssertValid(new string('k', 256)));
-        Assert.Throws<ValidationException>(() => Idempotency.AssertValid("has space"));
-        Assert.Throws<ValidationException>(() => Idempotency.AssertValid("tab\there"));
+        Assert.Throws<ConfigException>(() => Idempotency.AssertValid(string.Empty));
+        Assert.Throws<ConfigException>(() => Idempotency.AssertValid(new string('k', 256)));
+        Assert.Throws<ConfigException>(() => Idempotency.AssertValid("has space"));
+        Assert.Throws<ConfigException>(() => Idempotency.AssertValid("tab\there"));
         Assert.Matches("^[0-9a-f-]{36}$", Idempotency.NewKey());
     }
 }

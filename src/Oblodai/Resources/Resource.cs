@@ -4,22 +4,6 @@ using Oblodai.Contract;
 
 namespace Oblodai.Resources;
 
-/// <summary>A binary response (PDF/CSV documents).</summary>
-/// <param name="Bytes">The document.</param>
-/// <param name="ContentType">MIME type the gateway sent.</param>
-/// <param name="Filename">Name from <c>Content-Disposition</c>, when the gateway supplied one.</param>
-public sealed record FileResult(byte[] Bytes, string ContentType, string? Filename);
-
-/// <summary>Page window for list routes whose filter carries no <c>limit</c>/<c>offset</c> of its own.</summary>
-public sealed record PageParams
-{
-    /// <summary>Rows per page.</summary>
-    public int? Limit { get; init; }
-
-    /// <summary>Row offset to start at.</summary>
-    public int? Offset { get; init; }
-}
-
 /// <summary>
 /// Shared plumbing for the resource namespaces: it turns a route plus a body into a transport call,
 /// and a list route into a lazy <see cref="PagePromise{T}"/>.
@@ -62,12 +46,11 @@ public abstract class Resource
         RequestOptions? options,
         CancellationToken cancellationToken)
     {
+        AssertNoIdempotencyKey(route, options);
         var body = ToJsonObject(filter);
         var limit = TakeInt(body, "limit");
         var offset = TakeInt(body, "offset");
-
-        // One idempotency key per page would be wrong on both sides: the gateway would replay page 1 forever.
-        var pageOptions = options is null ? null : options with { IdempotencyKey = null };
+        var pageOptions = options;
 
         return new PagePromise<T>(
             async (pageLimit, pageOffset, token) =>
@@ -99,7 +82,8 @@ public abstract class Resource
         CancellationToken cancellationToken,
         IReadOnlyList<KeyValuePair<string, string?>>? extraQuery = null)
     {
-        var pageOptions = options is null ? null : options with { IdempotencyKey = null };
+        AssertNoIdempotencyKey(route, options);
+        var pageOptions = options;
         return new PagePromise<T>(
             async (pageLimit, pageOffset, token) =>
             {
@@ -171,6 +155,28 @@ public abstract class Resource
     protected static List<KeyValuePair<string, string?>> Query(params (string Name, string? Value)[] pairs)
         => pairs.Where(p => p.Value is not null).Select(p => new KeyValuePair<string, string?>(p.Name, p.Value)).ToList();
 
+    /// <summary>
+    /// A list route is read-only, so the gateway never deduplicates it by <c>Idempotency-Key</c>. Dropping
+    /// the caller's key quietly would leave them believing a lost page request is safe to repeat under
+    /// the same key; the same refusal the transport raises on any other non-deduplicated route is raised
+    /// here instead, at the call site rather than on the first page fetch.
+    /// </summary>
+    /// <param name="route">The list route.</param>
+    /// <param name="options">Per-call options.</param>
+    /// <exception cref="ConfigException">The caller supplied an idempotency key.</exception>
+    private static void AssertNoIdempotencyKey(RouteSpec route, RequestOptions? options)
+    {
+        if (options?.IdempotencyKey is null || route.Idempotent)
+        {
+            return;
+        }
+
+        throw new ConfigException(
+            SdkErrorCodes.IdempotencyUnsupported,
+            $"{route.Method} {route.Path} does not deduplicate by Idempotency-Key; drop IdempotencyKey from this call",
+            "IdempotencyKey");
+    }
+
     private static CallOptions CallOptionsFrom(
         RequestOptions? options,
         object? body,
@@ -185,6 +191,7 @@ public abstract class Resource
             PreferPayoutKey = options?.PreferPayoutKey ?? false,
             TimeoutMs = options?.TimeoutMs,
             DeadlineMs = options?.DeadlineMs,
+            Headers = options?.Headers,
         };
 
     private static Page<T> AsPage<T>(JsonElement element)

@@ -4,10 +4,19 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+
+    <!--
+      The library ships with InvariantGlobalization, which would also hide a culture-sensitive parse from
+      the suite. The tests opt back in so CultureTests can run under a comma-decimal culture and prove
+      the amount and timestamp paths are invariant on a machine that is not.
+    -->
+    <InvariantGlobalization>false</InvariantGlobalization>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Only so the README's IHttpClientFactory snippet is compiled by this suite like every other one. -->
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />

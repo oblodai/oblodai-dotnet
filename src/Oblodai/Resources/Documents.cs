@@ -4,40 +4,6 @@ using Oblodai.Models;
 
 namespace Oblodai.Resources;
 
-/// <summary>Language of a generated document: a 2-letter code, one of the 41 supported (<c>en</c> by default).</summary>
-public record DocumentQuery
-{
-    /// <summary>Document language, e.g. <c>"ru"</c>; the full list is in the <c>document.unknown_lang</c> error.</summary>
-    public string? Lang { get; init; }
-}
-
-/// <summary>Adds the file format, where the document offers CSV as well as PDF.</summary>
-public record FormatQuery : DocumentQuery
-{
-    /// <summary><c>"pdf"</c> (default) or <c>"csv"</c>.</summary>
-    public string? Format { get; init; }
-}
-
-/// <summary>Adds the reporting period.</summary>
-public record PeriodQuery : FormatQuery
-{
-    /// <summary>Start of the period, <c>YYYY-MM-DD</c>.</summary>
-    public string? From { get; init; }
-
-    /// <summary>End of the period, inclusive, <c>YYYY-MM-DD</c>.</summary>
-    public string? To { get; init; }
-}
-
-/// <summary>The signature carried by a <c>document_url</c>: it authorises one public download.</summary>
-public sealed record SignedDocumentQuery : DocumentQuery
-{
-    /// <summary>Expiry stamp from the <c>document_url</c>.</summary>
-    public required long Exp { get; init; }
-
-    /// <summary>Signature from the <c>document_url</c>.</summary>
-    public required string Sig { get; init; }
-}
-
 /// <summary>
 /// Generated PDF/CSV documents. Every method returns the bytes (<see cref="FileResult"/>); large
 /// ranges go through asynchronous jobs (<see cref="CreateJobAsync"/> → <see cref="JobInfoAsync"/> →

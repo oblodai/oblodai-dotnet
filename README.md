@@ -5,8 +5,8 @@ payouts, refunds, payout links, static wallets, webhooks, documents — the whol
 to end and verified against the gateway's own contract snapshot.
 
 - .NET 8+, zero third-party dependencies (`HttpClient` + `System.Text.Json`).
-- Every route the gateway exposes has a method here; request records, vocabularies and error codes are
-  generated from the gateway.
+- Every route the gateway exposes has a method here (107 of them); request records, vocabularies and
+  all 471 error codes are generated from the gateway's own contract snapshot.
 - Retries driven by the API's own `retryable` flag, automatic idempotency keys, clock-skew correction.
 - `WebhookVerifier`: signature verification that needs no client and no API key.
 
@@ -79,8 +79,11 @@ services.AddSingleton(sp => new OblodaiClient(
     sp.GetRequiredService<IHttpClientFactory>().CreateClient("oblodai")));
 ```
 
-The SDK applies its own per-attempt timeout and per-call deadline, so leave `HttpClient.Timeout`
-generous (or `Timeout.InfiniteTimeSpan`).
+The SDK applies its own per-attempt timeout and per-call deadline, so set `HttpClient.Timeout` to
+`Timeout.InfiniteTimeSpan`. A finite one silently overrides both, and the SDK logs a warning quoting
+your value and its own when it sees one. The SDK never follows a redirect; if the client you inject
+does, the SDK notices (the response came back from a URL it did not send to) and fails the call rather
+than let your signature and body reach another host.
 
 ## Resources
 
@@ -102,8 +105,14 @@ generous (or `Timeout.InfiniteTimeSpan`).
 | `Merchants`               | Create · CreateSandbox (provisioning; `AdminToken` on a self-hosted gateway)                                                                                                                           |
 
 Every method is `…Async` and ends with `RequestOptions? options = null, CancellationToken cancellationToken = default`.
-`RequestOptions` carries `IdempotencyKey`, `TimeoutMs`, `DeadlineMs` and `PreferPayoutKey`. Lookups take
-a bare id or an object: `Payments.InfoAsync("uuid")`, `Payments.InfoAsync(new PaymentLookup { OrderId = "order-1001" })`.
+`RequestOptions` carries `IdempotencyKey`, `TimeoutMs`, `DeadlineMs`, `Headers` (merged over the
+client's, for this call only) and `PreferPayoutKey`. Lookups take a bare id, a lookup object, or the
+object you already hold: `Payments.InfoAsync("uuid")`,
+`Payments.InfoAsync(new PaymentLookup { OrderId = "order-1001" })`, `Payouts.CancelAsync(payout)`,
+`PayoutLinks.CancelAsync(link)`.
+
+Cancellation is yours: cancelling the `CancellationToken` throws `OperationCanceledException`, not an
+SDK error, so an ASP.NET request abort behaves the way the rest of your code expects.
 
 ### Lists
 
@@ -142,8 +151,20 @@ Every failure is an `OblodaiException` carrying the API's error envelope: `Code`
 (401), `PermissionException` (403), `NotFoundException` (404), `ConflictException` /
 `IdempotencyConflictException` (409), `RateLimitException` (429), `UnavailableException` (503),
 `InternalException` (other 5xx), `TransportException` (no response), `ConfigException` (rejected before
-sending), `SignatureException` (webhooks). Quote `RequestId` to support; the raw body is kept out of
-`ToString()` and `ToJson()`.
+sending: `sdk.bad_config`, `sdk.bad_header`, `sdk.bad_amount`, `sdk.bad_idempotency_key`,
+`sdk.idempotency_unsupported`, `sdk.missing_credentials`, `sdk.bad_path_param`), `ContractException`
+(the answer is not the documented envelope, `sdk.bad_envelope` / `sdk.response_too_large`),
+`SignatureException` (a webhook signature or timestamp), `WebhookPayloadException` (a webhook whose
+signature matched but whose body could not be read — a CONTRACT failure, so a receiver that answers 401
+to signature failures does not answer 401 to an authentic event).
+
+Quote `RequestId` to support. The raw body is never part of the message, `ToString()` or `ToJson()` —
+only its shape and size — and `ToString()` keeps the stack trace and inner exception.
+
+An error envelope is read field by field: a `retryable` that is not a boolean falls back to the status,
+a `retry_after` that is a float, a numeric string or an absurd number is clamped into `[0, 86400]`
+seconds, and a body with no usable `code` becomes a synthetic error carrying the HTTP status. A
+malformed envelope never turns a retryable 503 into a parse crash.
 
 ```csharp
 try
@@ -166,8 +187,14 @@ catch (OblodaiException error) when (error.Code is ErrorCodes.PayoutInsufficient
   gateway does not deduplicate the SDK refuses a key (`sdk.idempotency_unsupported`).
 - An error is retried only when the API says `retryable: true`. Answers without an API envelope (a proxy
   502/503) and transport failures are retried only on read routes or keyed writes. `Retry-After` is honoured.
+- Whether a route is safe to re-send is the gateway's own statement, read from the `safe` flag in
+  `contract/contract.json`. Nothing is guessed from the path.
 - `OblodaiOptions.Retry` sets `MaxRetries`, `BaseDelayMs`, `MaxDelayMs`, `MaxRetryAfterMs`; `TimeoutMs`
-  is per attempt and `DeadlineMs` is the budget for the whole call including retries.
+  is per attempt and `DeadlineMs` is the budget for the whole call including retries. A `Retry-After`
+  the gateway reports is kept up to a day, but the pause the SDK actually takes never exceeds
+  `MaxRetryAfterMs` (30 s by default).
+- Response bodies are read with a cap — 8 MiB on JSON routes, 64 MiB on document routes — and the
+  deadline covers the whole read, not just the first byte.
 
 ### Webhooks
 
@@ -187,6 +214,15 @@ switch (info.Event)
 }
 ```
 
+`WebhookVerifyOptions` refuses an empty `Secret`, an empty `PreviousSecret` and a negative
+`ToleranceSeconds` with `ConfigException` before any crypto runs; `ToleranceSeconds = 0` disables the
+freshness check. The MAC is checked **before** the timestamp, so the tolerance window cannot be probed
+by an unauthenticated sender. The signature header is accepted trimmed and in either case; a `0x`
+prefix is not the encoding the gateway sends and is refused.
+
+An event family this snapshot does not know arrives as `UnknownWebhookEvent` with the raw `type` — it
+is never an exception, and `IsTest`, `IsStale` and `IsKnownEvent` all work on it.
+
 Verify over the **raw** bytes — a re-serialized parse will not match. Rehearsal deliveries
 (`Webhooks.TestAsync`, sandbox) are signed like live ones and carry `test: true` in the body (and
 `X-Webhook-Test: true`) — check `info.IsTest` (or `WebhookVerifier.IsTestEvent(info.Event)`) and never
@@ -198,7 +234,17 @@ deduplicate; `WebhookVerifier.IsStale(event, lastSequence)` drops out-of-order d
 
 `Money.Add`, `Money.Subtract`, `Money.Compare`, `Money.AreEqual`, `Money.IsZero` — exact decimal
 arithmetic on the string amounts the API uses (USDT has 6 decimals, BTC 8, ETH 18). Never parse a wire
-amount into a `double`.
+amount into a `double`, and never compare two amounts as strings (`"9" > "10"` lexicographically).
+Anything that is not `[-]digits[.digits]` of at most 64 characters is a `ConfigException` with code
+`sdk.bad_amount` — the SDK's own error, never a `FormatException`.
+
+### Secrets
+
+An API key secret, a webhook secret, a cheque passcode and a claim token or URL never print. Both
+default paths are overridden: `ToString()` writes `[redacted]`, and so does serializing the object with
+`System.Text.Json`. Reading the property still gives you the value, and
+`OblodaiJson.SerializeWithSecrets(model)` is the one explicit way to serialize the real thing — for the
+code that stores a secret or mails a claim URL, never for a log.
 
 ### Self-hosted or local gateway
 
@@ -209,9 +255,11 @@ amount into a `double`.
 
 ## The contract snapshot
 
-`contract/` is exported by the gateway's own test suite: the route registry, request DTO schemas with
-English field docs, enums, every error code, signing vectors, golden response bodies recorded from a
-live gateway and real signed webhook deliveries. `src/Oblodai/Contract/*.g.cs` is generated from it.
+`contract/` is exported by the gateway's own test suite: the route registry (107 merchant routes, each
+with its auth kind, idempotency wrapper and `safe` flag), request DTO schemas with English field docs,
+enums, all 471 error codes, signing vectors, golden response bodies recorded from a live gateway and
+real signed webhook deliveries. `src/Oblodai/Contract/*.g.cs` is generated from it, and codegen fails
+rather than guess if a route ever arrives without its `safe` flag.
 
 ```bash
 dotnet run --project tools/Codegen -- generate   # regenerate after refreshing contract/
@@ -221,6 +269,7 @@ dotnet run --project tools/Codegen -- check      # CI gate: fail when the commit
 ## Development
 
 ```bash
+dotnet run --project tools/Codegen -- check       # the committed *.g.cs still match contract/
 dotnet build  -warnaserror                       # library, tests, tools and examples
 dotnet test                                      # unit + contract tiers
 OBLODAI_LIVE_URL=http://127.0.0.1:8095 dotnet test   # adds the live tier against a running gateway

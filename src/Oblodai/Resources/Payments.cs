@@ -4,28 +4,6 @@ using Oblodai.Models;
 namespace Oblodai.Resources;
 
 /// <summary>
-/// Identify an invoice by its <c>uuid</c> or by your <c>order_id</c> (one of them is required; the
-/// <c>uuid</c> wins when both are set). A bare string converts to a lookup by <c>uuid</c>, so
-/// <c>InfoAsync("9f4c…")</c> and <c>InfoAsync(new PaymentLookup { OrderId = "order-1" })</c> both work.
-/// </summary>
-public sealed record PaymentLookup
-{
-    /// <summary>Invoice id in Oblodai.</summary>
-    public string? Uuid { get; init; }
-
-    /// <summary>Your own order reference.</summary>
-    public string? OrderId { get; init; }
-
-    /// <summary>A bare string is taken as the <c>uuid</c>.</summary>
-    /// <param name="uuid">Invoice id in Oblodai.</param>
-    public static implicit operator PaymentLookup(string uuid) => new() { Uuid = uuid };
-
-    /// <summary>Named form of the string conversion.</summary>
-    /// <param name="uuid">Invoice id in Oblodai.</param>
-    public static PaymentLookup FromUuid(string uuid) => new() { Uuid = uuid };
-}
-
-/// <summary>
 /// Invoices: create, look up, cancel, list, and the payer-facing checkout endpoints. Payment key
 /// (the payer-facing methods need no credentials at all).
 /// </summary>
@@ -38,7 +16,15 @@ public sealed class Payments : Resource
     {
     }
 
-    /// <summary><c>POST /v1/payment</c> — create an invoice. Idempotent by <c>order_id</c> and by Idempotency-Key.</summary>
+    /// <summary>
+    /// <c>POST /v1/payment</c> — create an invoice. Idempotent by <c>order_id</c> and by Idempotency-Key.
+    /// <para>
+    /// Codes worth branching on: <c>payment.bad_amount</c>, <c>payment.below_minimum</c>,
+    /// <c>payment.minimum_unavailable</c> (rate feed down — retryable), <c>payment.unsupported_network</c>,
+    /// <c>payment.network_required</c> (multi-network asset, no <c>network</c> given),
+    /// <c>request.unknown_currency</c>, <c>idempotency.key_reused</c> (same key, different body).
+    /// </para>
+    /// </summary>
     /// <param name="request">Invoice to create.</param>
     /// <param name="options">Per-call options.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -115,6 +101,11 @@ public sealed class Payments : Resource
     /// <summary>
     /// <c>POST /v1/payment/batch</c> — create up to 5000 invoices asynchronously; track with
     /// <c>Batches.InfoAsync</c>.
+    /// <para>
+    /// Codes worth branching on: <c>payment.bad_amount</c>, <c>payment.below_minimum</c>,
+    /// <c>request.unknown_currency</c>, <c>request.missing_field</c> (an item without <c>order_id</c>),
+    /// <c>payout.batch_too_large</c>, <c>idempotency.key_reused</c>.
+    /// </para>
     /// </summary>
     /// <param name="request">The invoices to create.</param>
     /// <param name="options">Per-call options.</param>

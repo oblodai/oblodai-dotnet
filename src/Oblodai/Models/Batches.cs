@@ -61,8 +61,9 @@ public sealed record BatchInfoItem
     public string? Message { get; init; }
 
     /// <summary>
-    /// Machine-readable error code — the one a single call would return; <c>batch.stopped</c> /
-    /// <c>batch.key_revoked</c> mean the item was not executed.
+    /// Machine-readable error code — the same one a single call would have returned, from the
+    /// <c>ErrorCodes</c> catalogue. An item the batch never got to reports the reason the batch itself
+    /// stopped.
     /// </summary>
     [JsonPropertyName("error_code")]
     public string? ErrorCode { get; init; }

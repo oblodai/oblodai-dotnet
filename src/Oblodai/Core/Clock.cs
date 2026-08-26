@@ -72,9 +72,23 @@ public sealed class SkewCorrectingClock : IClock
         return Math.Abs(offset) > MaxPlausibleOffsetSeconds ? null : offset;
     }
 
+    /// <summary>The underlying clock, without the correction — what an attempt's timestamp is built from.</summary>
+    public long BaseNowUnixSeconds() => _base.NowUnixSeconds();
+
     /// <summary>Apply an offset (or revert to a previous one).</summary>
     /// <param name="offsetSeconds">Server-minus-local offset in seconds.</param>
     public void Correct(long offsetSeconds) => Interlocked.Exchange(ref _offsetSeconds, offsetSeconds);
+
+    /// <summary>
+    /// Revert to <paramref name="offsetSeconds"/> only while the shared offset is still
+    /// <paramref name="expected"/>. One client is shared by every request in a process, so a call
+    /// undoing its own failed correction must not undo a correction another call has since installed.
+    /// </summary>
+    /// <param name="expected">The offset this caller installed.</param>
+    /// <param name="offsetSeconds">What to put back.</param>
+    /// <returns>True when the swap happened.</returns>
+    public bool CorrectIfUnchanged(long expected, long offsetSeconds)
+        => Interlocked.CompareExchange(ref _offsetSeconds, offsetSeconds, expected) == expected;
 
     /// <summary>Drop any correction.</summary>
     public void Reset() => Correct(0);

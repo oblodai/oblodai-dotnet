@@ -9,20 +9,12 @@ internal sealed record Route(
     string Path,
     string Auth,
     bool Idempotent,
+    bool Safe,
     bool Bare,
     string? List,
     JsonElement? RequestSchema)
 {
     public string Key => $"{Method} {Path}";
-
-    /// <summary>Read-only: a transport failure may be retried without risking a duplicate side effect.</summary>
-    public bool Safe => !NotSafe.Contains(Key) && (Method == "GET" || SafeSuffix.IsMatch(Path));
-
-    private static readonly Regex SafeSuffix =
-        new(@"/(info|history|list|calculate|validate|services|get|balance|qr|deliveries)$", RegexOptions.Compiled);
-
-    /// <summary>Paths that look read-only but whose body can mutate state.</summary>
-    private static readonly HashSet<string> NotSafe = ["POST /v1/vrcs"];
 }
 
 /// <summary>The contract snapshot: routes, vocabularies, error codes and the English field docs.</summary>
@@ -42,6 +34,7 @@ internal sealed class Contract
                 r.GetProperty("path").GetString()!,
                 r.GetProperty("auth").GetString()!,
                 r.GetProperty("idempotent").GetBoolean(),
+                ReadSafe(r),
                 r.GetProperty("bare").GetBoolean(),
                 r.TryGetProperty("list", out var list) ? list.GetString() : null,
                 r.TryGetProperty("request_schema", out var schema) ? schema : null))
@@ -80,6 +73,26 @@ internal sealed class Contract
         }
 
         return text.GetString();
+    }
+
+    /// <summary>
+    /// The core's own hand-classified <c>safe</c> flag: the route is read-only and may be re-sent after
+    /// a transport failure without an idempotency key. Never guessed from the path — a route that omits
+    /// the flag fails codegen rather than being assumed unsafe (or, worse, safe).
+    /// </summary>
+    /// <param name="route">One entry of the contract's <c>routes</c> array.</param>
+    /// <exception cref="InvalidOperationException">The route has no boolean <c>safe</c> field.</exception>
+    private static bool ReadSafe(JsonElement route)
+    {
+        var key = $"{route.GetProperty("method").GetString()} {route.GetProperty("path").GetString()}";
+        if (!route.TryGetProperty("safe", out var safe) || safe.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+        {
+            throw new InvalidOperationException(
+                $"contract/contract.json: route \"{key}\" has no boolean \"safe\" field — re-export the contract "
+                + "from a core that classifies retry safety (the SDK never guesses it from the path)");
+        }
+
+        return safe.GetBoolean();
     }
 
     public static Contract Load(string repoRoot)

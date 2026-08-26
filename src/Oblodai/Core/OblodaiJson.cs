@@ -1,6 +1,8 @@
+using System.Reflection;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 
 namespace Oblodai;
 
@@ -20,7 +22,56 @@ public static class OblodaiJson
         NumberHandling = JsonNumberHandling.AllowReadingFromString,
         ReadCommentHandling = JsonCommentHandling.Skip,
         PropertyNameCaseInsensitive = false,
+        TypeInfoResolver = new DefaultJsonTypeInfoResolver
+        {
+            Modifiers = { NonNullableStringsNeverDecodeToNull },
+        },
     };
+
+    /// <summary>
+    /// A model property declared <c>string</c> (not <c>string?</c>) must never hold null. The serializer
+    /// happily writes a wire <c>null</c> into one, and the null then surfaces far away — as a
+    /// <c>NullReferenceException</c> in the caller's code, or as an amount helper complaining about an
+    /// empty string it was never given. A gateway that sends null for a field it documents as always
+    /// present is reporting "no value", which for these fields is the empty string.
+    /// <para>
+    /// Properties declared nullable keep their null: there the distinction is the point. Properties with
+    /// their own converter (the redacted secrets) are left alone.
+    /// </para>
+    /// </summary>
+    /// <param name="typeInfo">Contract being built for one model type.</param>
+    private static void NonNullableStringsNeverDecodeToNull(JsonTypeInfo typeInfo)
+    {
+        if (typeInfo.Kind != JsonTypeInfoKind.Object)
+        {
+            return;
+        }
+
+        var nullability = new NullabilityInfoContext();
+        foreach (var property in typeInfo.Properties)
+        {
+            if (property.PropertyType != typeof(string)
+                || property.CustomConverter is not null
+                || property.AttributeProvider is not PropertyInfo member
+                || nullability.Create(member).ReadState == NullabilityState.Nullable)
+            {
+                continue;
+            }
+
+            property.CustomConverter = NonNullStringJsonConverter.Instance;
+        }
+    }
+
+    /// <summary>
+    /// Serialize a model with its secret-bearing properties written out in full. The default path
+    /// (<see cref="JsonSerializer"/> with <see cref="Options"/>, or any structured logger) writes
+    /// <c>[redacted]</c> for a webhook secret, an API key secret, a cheque passcode and a claim token or
+    /// URL — this is the one, explicit way to get the real values, for the code that stores or mails
+    /// them. Do not send its output to a log.
+    /// </summary>
+    /// <param name="value">The model.</param>
+    public static string SerializeWithSecrets(object value)
+        => Redaction.Reveal(() => JsonSerializer.Serialize(value, value.GetType(), Options));
 
     /// <summary>Serialize a request body exactly once, so the signed bytes and the sent bytes agree.</summary>
     /// <param name="body">Body object, or null.</param>
