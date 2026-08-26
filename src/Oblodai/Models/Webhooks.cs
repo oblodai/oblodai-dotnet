@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Oblodai.Contract;
@@ -18,9 +19,24 @@ public sealed record WebhookEndpoint
     /// <summary>
     /// The signing secret — shown ONCE, at first registration and at rotation; save it so you can
     /// verify delivery signatures. Absent when only the URL was changed.
+    /// <para>
+    /// Read the property to use it. Printing or serializing this record writes <c>[redacted]</c>
+    /// instead; <see cref="OblodaiJson.SerializeWithSecrets"/> is the explicit way to persist it.
+    /// </para>
     /// </summary>
     [JsonPropertyName("secret")]
+    [JsonConverter(typeof(RedactedStringJsonConverter))]
     public string? Secret { get; init; }
+
+    /// <summary>Prints the endpoint without its secret.</summary>
+    /// <param name="builder">Buffer the record's <c>ToString()</c> writes into.</param>
+    private bool PrintMembers(StringBuilder builder)
+    {
+        builder.Append("EndpointId = ").Append(EndpointId)
+            .Append(", Url = ").Append(Url)
+            .Append(", ").AppendRedacted(nameof(Secret), Secret is not null);
+        return true;
+    }
 }
 
 /// <summary><c>POST /v1/webhooks/rotate-secret</c> — the new secret and the overlap window.</summary>
@@ -34,8 +50,12 @@ public sealed record WebhookSecretRotated
     [JsonPropertyName("url")]
     public string Url { get; init; } = string.Empty;
 
-    /// <summary>New signing secret — shown only here.</summary>
+    /// <summary>
+    /// New signing secret — shown only here. Printing or serializing this record writes
+    /// <c>[redacted]</c>; read the property, or use <see cref="OblodaiJson.SerializeWithSecrets"/>.
+    /// </summary>
     [JsonPropertyName("secret")]
+    [JsonConverter(typeof(RedactedStringJsonConverter))]
     public string Secret { get; init; } = string.Empty;
 
     /// <summary>
@@ -44,6 +64,17 @@ public sealed record WebhookSecretRotated
     /// </summary>
     [JsonPropertyName("previous_secret_valid_until")]
     public string PreviousSecretValidUntil { get; init; } = string.Empty;
+
+    /// <summary>Prints the rotation without the new secret.</summary>
+    /// <param name="builder">Buffer the record's <c>ToString()</c> writes into.</param>
+    private bool PrintMembers(StringBuilder builder)
+    {
+        builder.Append("EndpointId = ").Append(EndpointId)
+            .Append(", Url = ").Append(Url)
+            .Append(", ").AppendRedacted(nameof(Secret))
+            .Append(", PreviousSecretValidUntil = ").Append(PreviousSecretValidUntil);
+        return true;
+    }
 }
 
 /// <summary>
@@ -160,10 +191,13 @@ public abstract record WebhookEvent
     public string EventAt { get; init; } = string.Empty;
 
     /// <summary>
-    /// Global, increasing counter (gaps are normal); a lower sequence arriving later is stale.
+    /// Global, increasing counter (gaps are normal); a lower sequence arriving later is stale. Null when
+    /// the delivery carried no usable sequence — <c>WebhookVerifier.IsStale</c> then answers false rather
+    /// than dropping an authentic event over a field it could not read.
     /// </summary>
     [JsonPropertyName("sequence")]
-    public long Sequence { get; init; }
+    [JsonConverter(typeof(LenientInt64JsonConverter))]
+    public long? Sequence { get; init; }
 
     /// <summary>On-chain transaction hash, when there is one.</summary>
     [JsonPropertyName("txid")]
@@ -301,6 +335,14 @@ public sealed record PayoutEvent : WebhookEvent
     [JsonPropertyName("updated_at")]
     public string UpdatedAt { get; init; } = string.Empty;
 }
+
+/// <summary>
+/// An event whose <c>type</c> this snapshot does not know. The gateway may add event families at any
+/// time, and a receiver that throws on one it has not been taught about would reject an authentic,
+/// signed delivery. The raw type stays in <see cref="WebhookEvent.Type"/>, and every helper —
+/// <c>IsTestEvent</c>, <c>IsStale</c> — works on it unchanged.
+/// </summary>
+public sealed record UnknownWebhookEvent : WebhookEvent;
 
 /// <summary><c>wallet.paid</c> — a deposit landed on a static wallet.</summary>
 public sealed record WalletEvent : WebhookEvent

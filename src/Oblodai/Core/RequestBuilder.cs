@@ -1,12 +1,25 @@
 using System.Text;
+using System.Text.Json.Serialization;
 using Oblodai.Contract;
 
 namespace Oblodai;
 
-/// <summary>An API key pair.</summary>
+/// <summary>
+/// An API key pair. <see cref="Secret"/> never reaches a log: the compiler-generated
+/// <c>ToString()</c> is overridden to print <c>[redacted]</c>, and the secret is not serialized.
+/// </summary>
 /// <param name="PublicId">Public id, sent as <c>X-Public-Id</c>.</param>
-/// <param name="Secret">Secret used to sign.</param>
-public sealed record Credentials(string PublicId, string Secret);
+/// <param name="Secret">Secret used to sign; redacted in <c>ToString()</c> and never serialized.</param>
+public sealed record Credentials(string PublicId, [property: JsonIgnore] string Secret)
+{
+    /// <summary>Prints the public id and <c>[redacted]</c> in place of the secret.</summary>
+    /// <param name="builder">Buffer the record's <c>ToString()</c> writes into.</param>
+    private bool PrintMembers(StringBuilder builder)
+    {
+        builder.Append("PublicId = ").Append(PublicId).Append(", Secret = ").Append(Redaction.Placeholder);
+        return true;
+    }
+}
 
 /// <summary>The outgoing request, fully materialized.</summary>
 /// <param name="Url">Absolute URL to send to.</param>
@@ -53,6 +66,9 @@ public sealed record BuildInput
 
     /// <summary>Caller headers; those colliding with signed or reserved names are dropped.</summary>
     public IReadOnlyDictionary<string, string>? ExtraHeaders { get; init; }
+
+    /// <summary>Admin token of a self-hosted gateway; attached to onboarding routes only.</summary>
+    public string? AdminToken { get; init; }
 }
 
 /// <summary>
@@ -62,13 +78,20 @@ public sealed record BuildInput
 /// </summary>
 public static class RequestBuilder
 {
-    /// <summary>Headers the SDK owns; a caller-supplied header with one of these names is dropped.</summary>
+    /// <summary>
+    /// Headers the SDK owns; a caller-supplied header with one of these names is dropped, compared
+    /// case-insensitively. <c>X-Admin-Token</c> is here so it can only be attached by the transport,
+    /// on onboarding routes — a caller header must never smuggle it onto a signed route.
+    /// </summary>
     private static readonly HashSet<string> ReservedHeaders = new(StringComparer.OrdinalIgnoreCase)
     {
         RequestSigner.HeaderPublicId,
         RequestSigner.HeaderSignature,
         RequestSigner.HeaderTimestamp,
         RequestSigner.HeaderIdempotencyKey,
+        RequestSigner.HeaderAdminToken,
+        "Accept",
+        "User-Agent",
         "Content-Type",
         "Content-Length",
         "Host",
@@ -104,6 +127,7 @@ public static class RequestBuilder
         var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (key, value) in input.ExtraHeaders ?? new Dictionary<string, string>())
         {
+            AssertHeaderIsSendable(key, value);
             if (!ReservedHeaders.Contains(key))
             {
                 headers[key] = value;
@@ -112,6 +136,11 @@ public static class RequestBuilder
 
         headers["Accept"] = "application/json";
         headers["User-Agent"] = input.UserAgent;
+
+        if (route.Auth == RouteAuth.Onboard && !string.IsNullOrEmpty(input.AdminToken))
+        {
+            headers[RequestSigner.HeaderAdminToken] = input.AdminToken!;
+        }
 
         var hasBody = route.Method != "GET";
         if (hasBody)
@@ -147,6 +176,36 @@ public static class RequestBuilder
         }
 
         return new BuiltRequest(url, route.Method, headers, hasBody ? input.Body : null, requestUri);
+    }
+
+    /// <summary>
+    /// A caller header must be sendable verbatim: visible ASCII with ordinary spaces and tabs. A CR or
+    /// LF would let one header value inject another (or a whole request) into the connection, and a
+    /// non-ASCII byte is encoded differently by every HTTP stack — both are refused before signing.
+    /// </summary>
+    /// <param name="name">Header name.</param>
+    /// <param name="value">Header value.</param>
+    /// <exception cref="ConfigException">The name or value cannot be sent as it stands.</exception>
+    public static void AssertHeaderIsSendable(string name, string value)
+    {
+        if (string.IsNullOrEmpty(name) || name.Any(c => c is < '!' or > '~'))
+        {
+            throw new ConfigException(
+                SdkErrorCodes.BadHeader,
+                $"header name \"{name}\" must be non-empty visible ASCII without spaces",
+                "Headers");
+        }
+
+        foreach (var c in value ?? string.Empty)
+        {
+            if (c is '\r' or '\n' or > (char)126 || (c < ' ' && c != '\t'))
+            {
+                throw new ConfigException(
+                    SdkErrorCodes.BadHeader,
+                    $"header \"{name}\" has a value that cannot be sent verbatim (control or non-ASCII character)",
+                    "Headers");
+            }
+        }
     }
 
     /// <summary>

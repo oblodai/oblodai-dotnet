@@ -85,6 +85,13 @@ public readonly struct DecodedEnvelope
 /// </summary>
 public static class EnvelopeDecoder
 {
+    /// <summary>
+    /// Ceiling on any server-provided pause, in seconds (one day). Bounds the value before it becomes an
+    /// <see cref="int"/> of milliseconds anywhere, so no arithmetic downstream can overflow; the retry
+    /// policy applies its own, much smaller, <see cref="RetryOptions.MaxRetryAfterMs"/> on top.
+    /// </summary>
+    public const int MaxRetryAfterSeconds = 86_400;
+
     /// <summary>Interpret a response body.</summary>
     /// <param name="httpStatus">HTTP status of the response.</param>
     /// <param name="text">The raw body, so non-JSON failures keep their evidence.</param>
@@ -139,7 +146,15 @@ public static class EnvelopeDecoder
             && body.TryGetProperty("error", out var error)
             && error.ValueKind == JsonValueKind.Object)
         {
-            var detail = error.Deserialize<ErrorDetail>(OblodaiJson.Options) ?? new ErrorDetail();
+            var detail = ReadErrorDetail(error);
+            if (detail is null)
+            {
+                // An "error" object without a usable code is not an envelope the gateway wrote; the answer
+                // still has to classify as its HTTP status rather than as a JSON parse crash.
+                var requestId = String(error, "request_id");
+                return DecodedEnvelope.Failure(NoEnvelope(httpStatus, text, retryAfter, requestId));
+            }
+
             return DecodedEnvelope.Failure(ApiExceptionFactory.Create(httpStatus, detail, text, retryAfterHeader: retryAfter));
         }
 
@@ -161,6 +176,69 @@ public static class EnvelopeDecoder
             $"response is not a {{state:0,result}} envelope: {Describe(text)}", httpStatus, text);
     }
 
+    /// <summary>
+    /// The <c>error</c> object read one field at a time. Returns null when the object carries no usable
+    /// <c>code</c> — the caller then synthesizes a no-envelope error from the HTTP status. A field of the
+    /// wrong JSON type is treated as absent, never as a reason to throw: a gateway that starts sending
+    /// <c>retryable: "yes"</c> must degrade to the status-derived default, not crash the call.
+    /// </summary>
+    /// <param name="error">The <c>error</c> object.</param>
+    public static ErrorDetail? ReadErrorDetail(JsonElement error)
+    {
+        var code = String(error, "code");
+        if (string.IsNullOrEmpty(code))
+        {
+            return null;
+        }
+
+        return new ErrorDetail
+        {
+            Code = code!,
+            Message = String(error, "message"),
+            Field = String(error, "field"),
+            RequestId = String(error, "request_id"),
+            Retryable = error.TryGetProperty("retryable", out var retryable)
+                ? retryable.ValueKind switch
+                {
+                    JsonValueKind.True => true,
+                    JsonValueKind.False => false,
+                    _ => null,
+                }
+                : null,
+            RetryAfter = ReadRetryAfter(error),
+        };
+    }
+
+    /// <summary>
+    /// <c>retry_after</c> as an integer, a float or a numeric string; anything else is absent. Read in
+    /// <see cref="double"/> and clamped before it becomes an <see cref="int"/>, so a body claiming
+    /// <c>1e30</c> seconds cannot wrap around into a negative pause.
+    /// </summary>
+    /// <param name="error">The <c>error</c> object.</param>
+    public static int? ReadRetryAfter(JsonElement error)
+    {
+        if (!error.TryGetProperty("retry_after", out var value))
+        {
+            return null;
+        }
+
+        double seconds;
+        switch (value.ValueKind)
+        {
+            case JsonValueKind.Number when value.TryGetDouble(out var number):
+                seconds = number;
+                break;
+            case JsonValueKind.String when double.TryParse(
+                value.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed):
+                seconds = parsed;
+                break;
+            default:
+                return null;
+        }
+
+        return ClampSeconds(seconds);
+    }
+
     /// <summary><c>Retry-After</c> as delta-seconds or an HTTP-date; null when absent or unparsable.</summary>
     /// <param name="value">Header value.</param>
     /// <param name="now">Reference time for HTTP-date forms.</param>
@@ -172,21 +250,40 @@ public static class EnvelopeDecoder
         }
 
         var v = value.Trim();
-        if (int.TryParse(v, NumberStyles.None, CultureInfo.InvariantCulture, out var seconds))
+
+        // Delta-seconds. Parsed as a double so "999999999999" is a pause to clamp, not an unparsable value.
+        if (double.TryParse(v, NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds))
         {
-            return seconds;
+            return ClampSeconds(seconds);
         }
 
         if (DateTimeOffset.TryParse(v, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var at))
         {
-            var delta = (at - (now ?? DateTimeOffset.UtcNow)).TotalSeconds;
-            return delta <= 0 ? 0 : (int)Math.Ceiling(delta);
+            // Subtracting two DateTimeOffsets cannot overflow, and the clamp catches the year-9999 case.
+            return ClampSeconds(Math.Ceiling((at - (now ?? DateTimeOffset.UtcNow)).TotalSeconds));
         }
 
         return null;
     }
 
-    private static ApiException NoEnvelope(int httpStatus, string text, int? retryAfter) =>
+    /// <summary>Into <c>[0, <see cref="MaxRetryAfterSeconds"/>]</c>; NaN is not a pause at all.</summary>
+    /// <param name="seconds">Seconds as the wire stated them.</param>
+    private static int? ClampSeconds(double seconds)
+    {
+        if (double.IsNaN(seconds))
+        {
+            return null;
+        }
+
+        return seconds <= 0 ? 0 : (int)Math.Min(Math.Ceiling(seconds), MaxRetryAfterSeconds);
+    }
+
+    private static string? String(JsonElement element, string name)
+        => element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
+
+    private static ApiException NoEnvelope(int httpStatus, string text, int? retryAfter, string? requestId = null) =>
         ApiExceptionFactory.Create(
             httpStatus,
             new ErrorDetail
@@ -194,11 +291,18 @@ public static class EnvelopeDecoder
                 Code = "internal",
                 Message = $"HTTP {httpStatus} without an Oblodai error envelope ({Describe(text)}) — the answer came "
                           + "from a proxy or load balancer, not the API",
+                RequestId = requestId,
             },
             text,
             synthetic: true,
             retryAfterHeader: retryAfter);
 
+    /// <summary>
+    /// What the body was, never what it said. The message of an exception ends up in logs, crash
+    /// reports and bug trackers; quoting the payload there would undo every other rule about keeping
+    /// response data out of them.
+    /// </summary>
+    /// <param name="text">The body.</param>
     private static string Describe(string text)
     {
         if (text.Length == 0)
@@ -206,7 +310,13 @@ public static class EnvelopeDecoder
             return "<empty body>";
         }
 
-        var head = string.Join(' ', text[..Math.Min(120, text.Length)].Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
-        return text.Length > 120 ? head + "…" : head;
+        var trimmed = text.TrimStart();
+        var shape = trimmed.Length == 0 ? "blank"
+            : trimmed[0] == '{' ? "JSON object"
+            : trimmed[0] == '[' ? "JSON array"
+            : trimmed[0] == '<' ? "markup"
+            : "text";
+
+        return $"<{shape}, {text.Length} chars>";
     }
 }

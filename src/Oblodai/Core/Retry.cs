@@ -69,10 +69,16 @@ public static class RetryPolicy
     {
         if (error is OblodaiException { RetryAfter: > 0 } err)
         {
-            return Math.Min(err.RetryAfter!.Value * 1000, options.MaxRetryAfterMs);
+            // In milliseconds a plausible Retry-After already exceeds int.MaxValue, and the wrapped value
+            // is negative: the pause would vanish and three attempts would leave in the same millisecond.
+            var requested = (long)err.RetryAfter!.Value * 1000L;
+            return (int)Math.Clamp(requested, 0L, Math.Max(0L, options.MaxRetryAfterMs));
         }
 
-        var exp = Math.Min(options.MaxDelayMs, options.BaseDelayMs * (1 << Math.Min(attempt, 20)));
+        var exp = (int)Math.Clamp(
+            (long)options.BaseDelayMs * (1L << Math.Min(Math.Max(attempt, 0), 20)),
+            0L,
+            Math.Max(0L, options.MaxDelayMs));
         var roll = (random ?? Random.Shared.NextDouble)();
 
         // Full jitter with a floor so a burst of retries never lands in the same instant.

@@ -224,9 +224,26 @@ public class WebhookTests
         Assert.False(WebhookVerifier.IsStale(parsed, 6));
         Assert.False(WebhookVerifier.IsStale(parsed, null));
 
-        Assert.Throws<SignatureException>(() => WebhookVerifier.Parse("""{"type":"alien","uuid":"x"}"""));
-        Assert.Throws<SignatureException>(() => WebhookVerifier.Parse("not json"));
-        Assert.Throws<SignatureException>(() => WebhookVerifier.Parse("""{"uuid":"x"}"""));
+        // An event family this snapshot does not know is carried through, not thrown on: the gateway
+        // adds them without asking, and an authentic delivery must not become an exception.
+        var alien = Assert.IsType<UnknownWebhookEvent>(WebhookVerifier.Parse("""{"type":"alien","uuid":"x"}"""));
+        Assert.Equal("alien", alien.Type);
+        Assert.Equal("x", alien.Uuid);
+        Assert.False(WebhookVerifier.IsStale(alien, 99));
+        Assert.False(WebhookVerifier.IsTestEvent(alien));
+        Assert.False(WebhookVerifier.IsKnownEvent(alien));
+        Assert.True(WebhookVerifier.IsKnownEvent(parsed));
+
+        // A body that verified but cannot be read is a CONTRACT failure, never a signature one: a
+        // receiver answering 401 to signature failures would tell the gateway to retire the endpoint.
+        foreach (var body in new[] { "not json", """{"uuid":"x"}""", """{"type":5,"uuid":"x"}""" })
+        {
+            var bad = Assert.Throws<WebhookPayloadException>(() => WebhookVerifier.Parse(body));
+            Assert.IsAssignableFrom<ContractException>(bad);
+            Assert.Equal(SdkErrorCodes.WebhookBadPayload, bad.Code);
+            Assert.IsNotType<SignatureException>(bad);
+            Assert.NotEqual(SdkErrorCodes.WebhookBadSignature, bad.Code);
+        }
     }
 
     private static byte[] Body() => Encoding.UTF8.GetBytes(

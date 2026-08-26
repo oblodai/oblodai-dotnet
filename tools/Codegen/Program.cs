@@ -14,7 +14,18 @@ if (mode is not ("generate" or "check"))
 }
 
 var repoRoot = FindRepoRoot();
-var contract = Contract.Load(repoRoot);
+Contract contract;
+try
+{
+    contract = Contract.Load(repoRoot);
+}
+catch (InvalidOperationException error)
+{
+    // The snapshot itself is unusable — say what is wrong in one line, rather than a stack trace.
+    Console.Error.WriteLine($"codegen: {error.Message}");
+    return 2;
+}
+
 var requests = new RequestsEmitter(contract);
 
 var files = new Dictionary<string, string>(StringComparer.Ordinal)

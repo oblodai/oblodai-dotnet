@@ -179,7 +179,10 @@ internal sealed class RequestsEmitter
             }
 
             var note = RouteFieldNotes.GetValueOrDefault($"{routeKey}#{wireName}");
-            var example = property.Value.TryGetProperty("example", out var ex)
+            // The contract's examples come from the gateway's own Russian field docs. An English
+            // documentation set does not quote them: a non-ASCII example is dropped rather than pasted
+            // into a <summary> an English-speaking caller has to read past.
+            var example = property.Value.TryGetProperty("example", out var ex) && IsAscii(ex.GetRawText())
                 ? $" Example: <c>{Naming.Xml(ex.GetRawText())}</c>."
                 : string.Empty;
             var isMoney = MoneyFields.Contains(wireName);
@@ -209,6 +212,10 @@ internal sealed class RequestsEmitter
             EmitRecord(name, nestedDoc, nestedSchema, routeKey, nestedPrefix);
         }
     }
+
+    /// <summary>True when every character can be written in a plain-ASCII English document.</summary>
+    /// <param name="value">Candidate text.</param>
+    private static bool IsAscii(string value) => value.All(char.IsAscii);
 
     private string TypeOf(
         JsonElement schema,

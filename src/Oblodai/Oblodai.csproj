@@ -25,6 +25,17 @@
     <PackageReleaseNotes>1.3.0 — rewrite generated from the gateway contract snapshot: five-field request signing, every merchant route, retry/idempotency/clock-skew rules, webhook verification.</PackageReleaseNotes>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+    <!--
+      Source Link. The .NET 8 SDK ships the GitHub provider, so publishing the repository URL and
+      embedding the sources git does not track is all it takes for a debugger to step into this package
+      from a stack trace. ContinuousIntegrationBuild normalizes the paths baked into the PDB, which is
+      what makes the package byte-identical when the same commit is built twice.
+    -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <DebugType>portable</DebugType>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
   <ItemGroup>

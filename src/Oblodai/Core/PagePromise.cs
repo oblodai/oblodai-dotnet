@@ -18,6 +18,7 @@ public sealed class PagePromise<T> : IAsyncEnumerable<T>
     private readonly int _limit;
     private readonly int _offset;
     private readonly CancellationToken _cancellationToken;
+    private readonly object _gate = new();
     private Task<Page<T>>? _firstPage;
 
     /// <summary>Build a lazy list handle.</summary>
@@ -37,10 +38,24 @@ public sealed class PagePromise<T> : IAsyncEnumerable<T>
         _cancellationToken = cancellationToken;
     }
 
-    /// <summary>Fetch (once) and return the first page.</summary>
-    public Task<Page<T>> FirstPageAsync() => _firstPage ??= _fetchPage(_limit, _offset, _cancellationToken);
+    /// <summary>
+    /// Fetch (once) and return the first page. Two threads awaiting the same promise must not each send
+    /// the request: <c>??=</c> is not atomic, and a duplicated page fetch is a duplicated signed call.
+    /// </summary>
+    public Task<Page<T>> FirstPageAsync()
+    {
+        lock (_gate)
+        {
+            return _firstPage ??= _fetchPage(_limit, _offset, _cancellationToken);
+        }
+    }
 
-    /// <summary>Makes <c>await client.Payments.History(…)</c> yield the first page.</summary>
+    /// <summary>
+    /// Makes <c>await client.Payments.HistoryAsync(…)</c> yield the first page. Where a real
+    /// <see cref="Task{TResult}"/> is wanted — <c>Task.WhenAll</c>, <c>ConfigureAwait</c>, a
+    /// continuation — call <see cref="FirstPageAsync"/>, which is that task and is fetched once
+    /// however many ways it is consumed.
+    /// </summary>
     public TaskAwaiter<Page<T>> GetAwaiter() => FirstPageAsync().GetAwaiter();
 
     /// <summary>Collect every item into a list, optionally capped.</summary>
@@ -69,7 +84,12 @@ public sealed class PagePromise<T> : IAsyncEnumerable<T>
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(_cancellationToken, cancellationToken);
         var token = linked.Token;
         var offset = _offset;
-        var pending = _firstPage; // reuse the first page when it was already requested
+        Task<Page<T>>? pending;
+        lock (_gate)
+        {
+            pending = _firstPage; // reuse the first page when it was already requested
+        }
+
 
         while (true)
         {

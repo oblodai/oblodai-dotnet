@@ -202,9 +202,14 @@ internal static class Emitters
         output.AppendLine("    /// <param name=\"value\">The wrapper.</param>");
         output.AppendLine($"    public static implicit operator string({name} value) => value.Value ?? string.Empty;");
         output.AppendLine();
-        output.AppendLine("    /// <summary>Wrap a wire value.</summary>");
+        output.AppendLine("    /// <summary>");
+        output.AppendLine("    /// Wrap a wire value. Deliberately <c>explicit</c>: an implicit conversion would let");
+        output.AppendLine($"    /// <c>Status = \"padi\"</c> compile as a {name} and only fail at the gateway, hours later, on");
+        output.AppendLine("    /// a status that never matches. Use the constants, or <c>FromValue</c> for a value the");
+        output.AppendLine("    /// gateway added after this snapshot.");
+        output.AppendLine("    /// </summary>");
         output.AppendLine("    /// <param name=\"value\">The wire value.</param>");
-        output.AppendLine($"    public static implicit operator {name}(string value) => new(value);");
+        output.AppendLine($"    public static explicit operator {name}(string value) => new(value);");
         output.AppendLine();
         output.AppendLine("    /// <inheritdoc />");
         output.AppendLine("    public override string ToString() => Value ?? string.Empty;");

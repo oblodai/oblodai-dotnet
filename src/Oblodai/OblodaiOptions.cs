@@ -1,3 +1,6 @@
+using System.Text;
+using System.Text.Json.Serialization;
+
 namespace Oblodai;
 
 /// <summary>
@@ -12,7 +15,11 @@ public sealed record OblodaiOptions
     /// <summary>Public id of the API key (<c>X-Public-Id</c>). Falls back to <c>OBLODAI_PUBLIC_ID</c>.</summary>
     public string? PublicId { get; init; }
 
-    /// <summary>Secret of the API key. Falls back to <c>OBLODAI_SECRET</c>.</summary>
+    /// <summary>
+    /// Secret of the API key. Falls back to <c>OBLODAI_SECRET</c>. Redacted by <c>ToString()</c> and
+    /// never serialized — options objects are dumped into logs and configuration endpoints constantly.
+    /// </summary>
+    [JsonIgnore]
     public string? Secret { get; init; }
 
     /// <summary>
@@ -21,7 +28,8 @@ public sealed record OblodaiOptions
     /// </summary>
     public string? PayoutPublicId { get; init; }
 
-    /// <summary>Secret of the payout key. Falls back to <c>OBLODAI_PAYOUT_SECRET</c>.</summary>
+    /// <summary>Secret of the payout key. Falls back to <c>OBLODAI_PAYOUT_SECRET</c>. Redacted and never serialized.</summary>
+    [JsonIgnore]
     public string? PayoutSecret { get; init; }
 
     /// <summary>API origin. Falls back to <c>OBLODAI_BASE_URL</c>, then <see cref="DefaultBaseUrl"/>.</summary>
@@ -44,8 +52,9 @@ public sealed record OblodaiOptions
 
     /// <summary>
     /// Admin token of a self-hosted gateway; only the merchant-provisioning routes use it. Falls back to
-    /// <c>OBLODAI_ADMIN_TOKEN</c>.
+    /// <c>OBLODAI_ADMIN_TOKEN</c>. Redacted and never serialized.
     /// </summary>
+    [JsonIgnore]
     public string? AdminToken { get; init; }
 
     /// <summary>Permit plain <c>http://</c> base URLs outside loopback (local gateway, CI). Default false.</summary>
@@ -53,6 +62,26 @@ public sealed record OblodaiOptions
 
     /// <summary>Signing clock; injectable for tests.</summary>
     public SkewCorrectingClock? Clock { get; init; }
+
+    /// <summary>Prints every option, with the three secret-bearing ones replaced by a placeholder.</summary>
+    /// <param name="builder">Buffer the record's <c>ToString()</c> writes into.</param>
+    private bool PrintMembers(StringBuilder builder)
+    {
+        builder.Append("PublicId = ").Append(PublicId)
+            .Append(", ").AppendRedacted(nameof(Secret), Secret is not null)
+            .Append(", PayoutPublicId = ").Append(PayoutPublicId)
+            .Append(", ").AppendRedacted(nameof(PayoutSecret), PayoutSecret is not null)
+            .Append(", BaseUrl = ").Append(BaseUrl)
+            .Append(", TimeoutMs = ").Append(TimeoutMs)
+            .Append(", DeadlineMs = ").Append(DeadlineMs)
+            .Append(", Retry = ").Append(Retry)
+            .Append(", Logger = ").Append(Logger)
+            .Append(", Headers = ").Append(Headers)
+            .Append(", ").AppendRedacted(nameof(AdminToken), AdminToken is not null)
+            .Append(", AllowInsecureBaseUrl = ").Append(AllowInsecureBaseUrl)
+            .Append(", Clock = ").Append(Clock);
+        return true;
+    }
 
     /// <summary>Merge these options with the environment and validate what can be validated up front.</summary>
     /// <param name="env">Environment lookup; the process environment by default.</param>
@@ -144,10 +173,10 @@ public sealed record ResolvedOptions
     /// <summary>API origin without a trailing slash.</summary>
     public required string BaseUrl { get; init; }
 
-    /// <summary>Payment (or unified) key pair, when configured.</summary>
+    /// <summary>Payment (or unified) key pair, when configured. Its secret is redacted and not serialized.</summary>
     public Credentials? Credentials { get; init; }
 
-    /// <summary>Payout key pair, when configured.</summary>
+    /// <summary>Payout key pair, when configured. Its secret is redacted and not serialized.</summary>
     public Credentials? PayoutCredentials { get; init; }
 
     /// <summary>Per-attempt timeout, ms.</summary>
@@ -165,11 +194,29 @@ public sealed record ResolvedOptions
     /// <summary>Extra headers on every request.</summary>
     public IReadOnlyDictionary<string, string>? Headers { get; init; }
 
-    /// <summary>Admin token for merchant provisioning on a self-hosted gateway.</summary>
+    /// <summary>Admin token for merchant provisioning on a self-hosted gateway. Redacted and never serialized.</summary>
+    [JsonIgnore]
     public string? AdminToken { get; init; }
 
     /// <summary>Signing clock.</summary>
     public SkewCorrectingClock? Clock { get; init; }
+
+    /// <summary>Prints the resolved wiring with the admin token replaced by a placeholder.</summary>
+    /// <param name="builder">Buffer the record's <c>ToString()</c> writes into.</param>
+    private bool PrintMembers(StringBuilder builder)
+    {
+        builder.Append("BaseUrl = ").Append(BaseUrl)
+            .Append(", Credentials = ").Append(Credentials)
+            .Append(", PayoutCredentials = ").Append(PayoutCredentials)
+            .Append(", TimeoutMs = ").Append(TimeoutMs)
+            .Append(", DeadlineMs = ").Append(DeadlineMs)
+            .Append(", Retry = ").Append(Retry)
+            .Append(", Logger = ").Append(Logger)
+            .Append(", Headers = ").Append(Headers)
+            .Append(", ").AppendRedacted(nameof(AdminToken), AdminToken is not null)
+            .Append(", Clock = ").Append(Clock);
+        return true;
+    }
 }
 
 /// <summary>Per-call options every resource method accepts as its last argument.</summary>
@@ -186,6 +233,14 @@ public sealed record RequestOptions
 
     /// <summary>Overall budget including retries, ms.</summary>
     public int? DeadlineMs { get; init; }
+
+    /// <summary>
+    /// Extra headers for this call only, merged over the client's own. Names the SDK owns (the signature
+    /// headers, <c>Idempotency-Key</c>, <c>Accept</c>, <c>Content-Type</c>, <c>User-Agent</c>,
+    /// <c>X-Admin-Token</c>) are ignored, and a value with a CR, LF or non-ASCII character is refused
+    /// with <c>sdk.bad_header</c> before anything is signed.
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? Headers { get; init; }
 
     /// <summary>Sign with the payout key on a route that accepts either key kind (e.g. batch lookups).</summary>
     public bool PreferPayoutKey { get; init; }

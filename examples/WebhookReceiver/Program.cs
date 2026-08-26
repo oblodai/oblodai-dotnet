@@ -41,8 +41,17 @@ while (listener.IsListening)
     }
     catch (SignatureException error)
     {
+        // Not from Oblodai (or not fresh): refuse it.
         Console.Error.WriteLine($"rejected: {error.Code}");
         response.StatusCode = (int)HttpStatusCode.BadRequest;
+        continue;
+    }
+    catch (WebhookPayloadException error)
+    {
+        // The signature matched — this delivery IS authentic, we just could not read it. Refusing it
+        // would tell the gateway the endpoint is broken and eventually retire it; ask for a retry.
+        Console.Error.WriteLine($"authentic but unreadable: {error.Code} — {error.Message}");
+        response.StatusCode = (int)HttpStatusCode.InternalServerError;
         continue;
     }
 
@@ -68,7 +77,10 @@ while (listener.IsListening)
         continue;
     }
 
-    lastSequence[webhookEvent.Uuid] = webhookEvent.Sequence;
+    if (webhookEvent.Sequence is { } sequence)
+    {
+        lastSequence[webhookEvent.Uuid] = sequence;
+    }
 
     switch (webhookEvent)
     {
@@ -83,6 +95,10 @@ while (listener.IsListening)
             break;
         case WalletEvent deposit:
             Console.WriteLine($"deposit on static wallet {deposit.Address}: {deposit.PaymentAmount}");
+            break;
+        default:
+            // An event family this snapshot does not know: acknowledged, logged, never acted on.
+            Console.WriteLine($"unknown event type \"{webhookEvent.Type}\" ({webhookEvent.Uuid})");
             break;
     }
 }

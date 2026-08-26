@@ -5,6 +5,11 @@ namespace Oblodai;
 
 /// <summary>
 /// The gateway's error envelope: <c>{ "error": { code, message, field?, retryable, retry_after?, request_id? } }</c>.
+/// <para>
+/// Never deserialized as a unit: <see cref="EnvelopeDecoder"/> reads it field by field, because a body
+/// whose <c>retryable</c> is a string or whose <c>retry_after</c> overflows must still classify as the
+/// HTTP failure it is, not crash the call with a JSON exception.
+/// </para>
 /// </summary>
 public sealed record ErrorDetail
 {
@@ -60,8 +65,6 @@ public static class SdkErrorCodes
     /// <summary>DNS, TCP, TLS or socket failure.</summary>
     public const string TransportNetwork = "transport.network";
 
-    /// <summary>The caller cancelled the call.</summary>
-    public const string TransportAborted = "transport.aborted";
 
     /// <summary>A retry would have exceeded the call deadline.</summary>
     public const string TransportDeadline = "transport.deadline";
@@ -74,6 +77,22 @@ public static class SdkErrorCodes
 
     /// <summary>A webhook delivery lacks the timestamp or signature header.</summary>
     public const string WebhookMissingHeader = "webhook.missing_header";
+
+    /// <summary>
+    /// The delivery's signature matched but its body is not an event this SDK can read. Deliberately
+    /// NOT in the signature family: a receiver that answers 401 to signature failures must not answer
+    /// 401 to an authentic event it merely failed to parse.
+    /// </summary>
+    public const string WebhookBadPayload = "webhook.bad_payload";
+
+    /// <summary>A string that should have been a decimal amount was not one.</summary>
+    public const string BadAmount = "sdk.bad_amount";
+
+    /// <summary>A caller-supplied header cannot be sent verbatim (CR/LF, control or non-ASCII).</summary>
+    public const string BadHeader = "sdk.bad_header";
+
+    /// <summary>The response body exceeded the size the SDK is willing to buffer.</summary>
+    public const string ResponseTooLarge = "sdk.response_too_large";
 }
 
 /// <summary>
@@ -173,9 +192,17 @@ public class OblodaiException : Exception
     /// <summary>JSON view of <see cref="ToLogRecord"/>.</summary>
     public string ToJson() => JsonSerializer.Serialize(ToLogRecord());
 
-    /// <inheritdoc />
+    /// <summary>
+    /// The SDK facts first, then everything <see cref="Exception.ToString"/> normally prints — message,
+    /// inner exception chain and stack trace. Dropping those would make an SDK error the one exception
+    /// in the process a crash dump cannot be traced from. The raw body is not part of it.
+    /// </summary>
     public override string ToString()
-        => $"{GetType().Name}: {Code} (HTTP {HttpStatus}{(RequestId is null ? string.Empty : $", request {RequestId}")}) {Message}";
+        => $"{GetType().Name}: {Code} (HTTP {HttpStatus}"
+           + $"{(RequestId is null ? string.Empty : $", request {RequestId}")}"
+           + $"{(Field is null ? string.Empty : $", field {Field}")})"
+           + Environment.NewLine
+           + base.ToString();
 }
 
 /// <summary>The fields of an error envelope, as the SDK reconstructs them from a response.</summary>
@@ -198,221 +225,3 @@ public sealed record ApiErrorInit(
     string? Field = null,
     bool Synthetic = false,
     object? Raw = null);
-
-/// <summary>The gateway (or something in front of it) answered with an error status.</summary>
-public class ApiException : OblodaiException
-{
-    /// <summary>Build an API error from a (possibly synthesized) envelope.</summary>
-    /// <param name="init">Envelope fields.</param>
-    public ApiException(ApiErrorInit init)
-        : base(init.Code, init.Message, init.HttpStatus, init.Retryable, init.RetryAfter, init.RequestId, init.Field,
-            init.Synthetic, init.Raw)
-    {
-    }
-}
-
-/// <summary>400 — the request is malformed or violates a business rule; see <see cref="OblodaiException.Field"/>.</summary>
-public sealed class ValidationException : ApiException
-{
-    /// <summary>Build the error from an envelope.</summary>
-    /// <param name="init">Envelope fields.</param>
-    public ValidationException(ApiErrorInit init)
-        : base(init)
-    {
-    }
-}
-
-/// <summary>401 — bad signature, unknown key, clock skew, IP not in the allow-list.</summary>
-public sealed class AuthenticationException : ApiException
-{
-    /// <summary>Build the error from an envelope.</summary>
-    /// <param name="init">Envelope fields.</param>
-    public AuthenticationException(ApiErrorInit init)
-        : base(init)
-    {
-    }
-}
-
-/// <summary>403 — the key is valid but not allowed to do this (wrong key kind, feature disabled).</summary>
-public sealed class PermissionException : ApiException
-{
-    /// <summary>Build the error from an envelope.</summary>
-    /// <param name="init">Envelope fields.</param>
-    public PermissionException(ApiErrorInit init)
-        : base(init)
-    {
-    }
-}
-
-/// <summary>404 — the referenced object does not exist for this merchant.</summary>
-public sealed class NotFoundException : ApiException
-{
-    /// <summary>Build the error from an envelope.</summary>
-    /// <param name="init">Envelope fields.</param>
-    public NotFoundException(ApiErrorInit init)
-        : base(init)
-    {
-    }
-}
-
-/// <summary>409 — state or idempotency conflict.</summary>
-public class ConflictException : ApiException
-{
-    /// <summary>Build the error from an envelope.</summary>
-    /// <param name="init">Envelope fields.</param>
-    public ConflictException(ApiErrorInit init)
-        : base(init)
-    {
-    }
-}
-
-/// <summary>409 <c>idempotency.key_reused</c> — the same key was used with a different request body.</summary>
-public sealed class IdempotencyConflictException : ConflictException
-{
-    /// <summary>Build the error from an envelope.</summary>
-    /// <param name="init">Envelope fields.</param>
-    public IdempotencyConflictException(ApiErrorInit init)
-        : base(init)
-    {
-    }
-}
-
-/// <summary>429 — rate limited; <see cref="OblodaiException.RetryAfter"/> is set.</summary>
-public sealed class RateLimitException : ApiException
-{
-    /// <summary>Build the error from an envelope.</summary>
-    /// <param name="init">Envelope fields.</param>
-    public RateLimitException(ApiErrorInit init)
-        : base(init)
-    {
-    }
-}
-
-/// <summary>503 — an upstream dependency is down; safe to retry after a pause.</summary>
-public sealed class UnavailableException : ApiException
-{
-    /// <summary>Build the error from an envelope.</summary>
-    /// <param name="init">Envelope fields.</param>
-    public UnavailableException(ApiErrorInit init)
-        : base(init)
-    {
-    }
-}
-
-/// <summary>5xx other than 503.</summary>
-public sealed class InternalException : ApiException
-{
-    /// <summary>Build the error from an envelope.</summary>
-    /// <param name="init">Envelope fields.</param>
-    public InternalException(ApiErrorInit init)
-        : base(init)
-    {
-    }
-}
-
-/// <summary>The request never produced an HTTP response: DNS, TCP, TLS, timeout, cancellation, deadline.</summary>
-public sealed class TransportException : OblodaiException
-{
-    /// <summary>Build a transport failure.</summary>
-    /// <param name="code">One of the <c>transport.*</c> codes.</param>
-    /// <param name="message">What happened.</param>
-    /// <param name="innerException">Underlying exception.</param>
-    public TransportException(string code, string message, Exception? innerException = null)
-        : base(
-            code,
-            message,
-            httpStatus: 0,
-            retryable: code is SdkErrorCodes.TransportTimeout or SdkErrorCodes.TransportNetwork,
-            innerException: innerException)
-    {
-    }
-}
-
-/// <summary>Raised before any request is sent: bad options, missing credentials, unusable arguments.</summary>
-public sealed class ConfigException : OblodaiException
-{
-    /// <summary>Build a configuration failure.</summary>
-    /// <param name="code">One of the <c>sdk.*</c> codes.</param>
-    /// <param name="message">What is wrong.</param>
-    /// <param name="field">The option or argument at fault.</param>
-    public ConfigException(string code, string message, string? field = null)
-        : base(code, message, httpStatus: 0, retryable: false, field: field)
-    {
-    }
-}
-
-/// <summary>The response could not be interpreted as the documented envelope.</summary>
-public sealed class ContractException : OblodaiException
-{
-    /// <summary>Build an envelope failure.</summary>
-    /// <param name="message">What the body looked like.</param>
-    /// <param name="httpStatus">HTTP status of the response.</param>
-    /// <param name="raw">Raw body (never logged).</param>
-    public ContractException(string message, int httpStatus, object? raw = null)
-        : base(SdkErrorCodes.BadEnvelope, message, httpStatus, retryable: false, raw: raw)
-    {
-    }
-}
-
-/// <summary>Webhook verification failed (bad signature, stale timestamp, missing headers).</summary>
-public sealed class SignatureException : OblodaiException
-{
-    /// <summary>Build a verification failure.</summary>
-    /// <param name="code">One of the <c>webhook.*</c> codes.</param>
-    /// <param name="message">Why the delivery was rejected.</param>
-    public SignatureException(string code, string message)
-        : base(code, message, httpStatus: 0, retryable: false)
-    {
-    }
-}
-
-/// <summary>Builds the right subclass from an error envelope (or a synthesized one) and the HTTP status.</summary>
-public static class ApiExceptionFactory
-{
-    /// <summary>Statuses a response without an envelope may carry transiently (LB/proxy/timeouts).</summary>
-    private static readonly HashSet<int> TransientStatuses = [408, 425, 429, 500, 502, 503, 504];
-
-    /// <summary>Create the error that matches <paramref name="httpStatus"/> and <paramref name="detail"/>.</summary>
-    /// <param name="httpStatus">HTTP status of the answer.</param>
-    /// <param name="detail">The envelope's <c>error</c> object, or a synthesized stand-in.</param>
-    /// <param name="raw">Raw body for debugging; never serialized.</param>
-    /// <param name="synthetic">True when the answer carried no gateway envelope.</param>
-    /// <param name="retryAfterHeader">Parsed <c>Retry-After</c> header, seconds.</param>
-    public static ApiException Create(
-        int httpStatus,
-        ErrorDetail detail,
-        object? raw = null,
-        bool synthetic = false,
-        int? retryAfterHeader = null)
-    {
-        var code = string.IsNullOrEmpty(detail.Code) ? "internal" : detail.Code;
-        var message = string.IsNullOrEmpty(detail.Message)
-            ? $"request failed with HTTP {httpStatus} ({(string.IsNullOrEmpty(detail.Code) ? "no envelope" : detail.Code)})"
-            : detail.Message!;
-        var retryable = synthetic
-            ? TransientStatuses.Contains(httpStatus)
-            : detail.Retryable ?? (httpStatus is 429 or 503);
-        var retryAfter = detail.RetryAfter ?? retryAfterHeader;
-
-        var init = new ApiErrorInit(code, message, httpStatus, retryable, retryAfter, detail.RequestId, detail.Field,
-            synthetic, raw);
-
-        if (code == "idempotency.key_reused")
-        {
-            return new IdempotencyConflictException(init);
-        }
-
-        return httpStatus switch
-        {
-            400 => new ValidationException(init),
-            401 => new AuthenticationException(init),
-            403 => new PermissionException(init),
-            404 => new NotFoundException(init),
-            409 => new ConflictException(init),
-            429 => new RateLimitException(init),
-            503 => new UnavailableException(init),
-            >= 500 => new InternalException(init),
-            _ => new ApiException(init),
-        };
-    }
-}

@@ -16,7 +16,15 @@ public sealed class Wallets : Resource
     {
     }
 
-    /// <summary><c>POST /v1/wallet</c> — idempotent by <c>order_id</c>.</summary>
+    /// <summary>
+    /// <c>POST /v1/wallet</c> — idempotent by <c>order_id</c>.
+    /// <para>
+    /// Codes worth branching on: <c>wallet.static_disabled</c>, <c>wallet.unsupported_network</c>,
+    /// <c>wallet.no_network</c> (multi-network asset, no <c>network</c> given), <c>wallet.no_address</c>
+    /// (derivation is temporarily unavailable — retryable), <c>wallet.sandbox_unsupported</c>,
+    /// <c>request.unknown_currency</c>, <c>idempotency.key_reused</c>.
+    /// </para>
+    /// </summary>
     /// <param name="request">Asset, network and your customer reference.</param>
     /// <param name="options">Per-call options.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -56,6 +64,11 @@ public sealed class Wallets : Resource
     /// <summary>
     /// <c>POST /v1/wallet/blocked-address-refund</c> — send funds that landed on a blocked address back.
     /// Payout key.
+    /// <para>
+    /// Codes worth branching on: <c>wallet.bad_uuid</c>, <c>refund.no_address</c>,
+    /// <c>refund.nothing_to_refund</c>, <c>refund.dust</c>, <c>refund.destination_internal</c>,
+    /// <c>merchant.wrong_key_kind</c>.
+    /// </para>
     /// </summary>
     /// <param name="request">Which deposit to return, and where.</param>
     /// <param name="options">Per-call options.</param>

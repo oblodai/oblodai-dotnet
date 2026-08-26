@@ -3,27 +3,6 @@ using Oblodai.Models;
 
 namespace Oblodai.Resources;
 
-/// <summary>
-/// Identify a payout by its <c>uuid</c> or by your <c>order_id</c> (one of them is required; the
-/// <c>uuid</c> wins when both are set). A bare string converts to a lookup by <c>uuid</c>.
-/// </summary>
-public sealed record PayoutLookup
-{
-    /// <summary>Payout id in Oblodai.</summary>
-    public string? Uuid { get; init; }
-
-    /// <summary>Your own order reference.</summary>
-    public string? OrderId { get; init; }
-
-    /// <summary>A bare string is taken as the <c>uuid</c>.</summary>
-    /// <param name="uuid">Payout id in Oblodai.</param>
-    public static implicit operator PayoutLookup(string uuid) => new() { Uuid = uuid };
-
-    /// <summary>Named form of the string conversion.</summary>
-    /// <param name="uuid">Payout id in Oblodai.</param>
-    public static PayoutLookup FromUuid(string uuid) => new() { Uuid = uuid };
-}
-
 /// <summary>Outgoing transfers to external addresses. Every route here needs the payout key.</summary>
 public sealed class Payouts : Resource
 {
@@ -36,8 +15,14 @@ public sealed class Payouts : Resource
 
     /// <summary>
     /// <c>POST /v1/payout</c> — create and (for API keys) auto-approve a payout. Idempotent by
-    /// <c>order_id</c> and by Idempotency-Key. Errors to handle: <c>payout.insufficient_funds</c>
-    /// (retryable), <c>payout.funds_maturing</c>, <c>payout.bad_address</c>, <c>payout.memo_required</c>.
+    /// <c>order_id</c> and by Idempotency-Key.
+    /// <para>
+    /// Codes worth branching on: <c>payout.insufficient_funds</c> (retryable — top up and repeat with the
+    /// SAME key), <c>payout.funds_maturing</c> (retryable — deposits not yet mature),
+    /// <c>payout.bad_address</c>, <c>payout.address_network_mismatch</c>, <c>payout.memo_required</c>,
+    /// <c>payout.amount_below_fee</c>, <c>payout.frozen</c>, <c>payout.order_id_required</c>,
+    /// <c>idempotency.key_reused</c>, <c>merchant.wrong_key_kind</c> (payment key on a payout route).
+    /// </para>
     /// </summary>
     /// <param name="request">The payout to create.</param>
     /// <param name="options">Per-call options.</param>
@@ -99,30 +84,30 @@ public sealed class Payouts : Resource
     /// <c>POST /v1/payout/cancel</c> — cancel while not yet broadcast (pending/approved/awaiting_cosign);
     /// 409 <c>payout.not_pending</c> after.
     /// </summary>
-    /// <param name="uuid">Payout id.</param>
+    /// <param name="payout">Payout id, or the payout itself.</param>
     /// <param name="options">Per-call options.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<Payout> CancelAsync(
-        string uuid,
+        PayoutRef payout,
         RequestOptions? options = null,
         CancellationToken cancellationToken = default)
         => CallAsync<Payout>(
             Routes.PostV1PayoutCancel,
-            new PayoutCancelRequest { Uuid = uuid },
+            new PayoutCancelRequest { Uuid = payout.Uuid },
             options,
             cancellationToken);
 
     /// <summary><c>POST /v1/payout/approve</c> — approve a payout awaiting manual approval.</summary>
-    /// <param name="uuid">Payout id.</param>
+    /// <param name="payout">Payout id, or the payout itself.</param>
     /// <param name="options">Per-call options.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<Payout> ApproveAsync(
-        string uuid,
+        PayoutRef payout,
         RequestOptions? options = null,
         CancellationToken cancellationToken = default)
         => CallAsync<Payout>(
             Routes.PostV1PayoutApprove,
-            new PayoutApproveRequest { Uuid = uuid },
+            new PayoutApproveRequest { Uuid = payout.Uuid },
             options,
             cancellationToken);
 
@@ -149,6 +134,12 @@ public sealed class Payouts : Resource
     /// <summary>
     /// <c>POST /v1/payout/mass</c> — SYNCHRONOUS batch (≤100): each element reports its own outcome in
     /// the response.
+    /// <para>
+    /// Call-level codes worth branching on: <c>payout.batch_too_large</c> (&gt;100),
+    /// <c>payout.empty_batch</c>, <c>payout.insufficient_funds</c> (retryable), <c>payout.frozen</c>,
+    /// <c>merchant.wrong_key_kind</c>. Per-element failures arrive as <c>Items[].Message</c> with the
+    /// same vocabulary — a 200 can still contain failures, so check every <c>Items[].Ok</c>.
+    /// </para>
     /// </summary>
     /// <param name="request">The payouts to send.</param>
     /// <param name="options">Per-call options.</param>
@@ -162,6 +153,12 @@ public sealed class Payouts : Resource
     /// <summary>
     /// <c>POST /v1/payout/batch</c> — ASYNCHRONOUS batch (≤5000): returns a ticket; poll
     /// <c>Batches.InfoAsync</c>. <c>order_id</c> is required on every item.
+    /// <para>
+    /// Codes worth branching on: <c>payout.batch_too_large</c>, <c>payout.empty_batch</c>,
+    /// <c>payout.order_id_required</c>, <c>payout.reference_collision</c>, <c>payout.frozen</c>,
+    /// <c>merchant.wrong_key_kind</c>, <c>idempotency.key_reused</c>. Insufficient funds surface per
+    /// element in the batch result, not on this call.
+    /// </para>
     /// </summary>
     /// <param name="request">The payouts to submit.</param>
     /// <param name="options">Per-call options.</param>

@@ -44,14 +44,14 @@ public class LiveSandboxTests : IClassFixture<LiveEnvironment>
         Assert.Equal(PaymentStatus.Created, _invoice.Status);
         Assert.NotEmpty(_invoice.Address);
 
-        var byOrderId = await _live.Merchant.Payments.InfoAsync(new Resources.PaymentLookup { OrderId = _invoice.OrderId });
+        var byOrderId = await _live.Merchant.Payments.InfoAsync(new PaymentLookup { OrderId = _invoice.OrderId });
         Assert.Equal(_invoice.Uuid, byOrderId.Uuid);
 
         var page = await _live.Merchant.Payments.HistoryAsync(new PaymentHistoryRequest { Limit = 5 });
         Assert.Contains(page.Items, p => p.Uuid == _invoice.Uuid);
 
         // A signed GET with a query string: the signature covers path + raw query.
-        var deliveries = await _live.Merchant.Sandbox.WebhooksAsync(new Resources.PageParams { Limit = 5, Offset = 0 });
+        var deliveries = await _live.Merchant.Sandbox.WebhooksAsync(new PageParams { Limit = 5, Offset = 0 });
         Assert.NotNull(deliveries.Items);
     }
 

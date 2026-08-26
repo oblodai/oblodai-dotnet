@@ -99,14 +99,22 @@ public class PagingTests
     }
 
     [Fact]
-    public async Task DoesNotForwardACallerIdempotencyKeyToListPages()
+    public void RefusesACallerIdempotencyKeyOnAListRouteInsteadOfDroppingIt()
     {
         var handler = new FakeHttpHandler(ScriptedResponse.Page("[]", 0, 0, 50, false));
         using var client = Client(handler);
 
-        await client.Payouts.HistoryAsync(null, new RequestOptions { IdempotencyKey = "k" });
+        // Silently dropping the key would leave the caller believing a lost page request is safe to
+        // repeat under it. The refusal happens at the call site, before any page is fetched.
+        var post = Assert.Throws<ConfigException>(
+            () => client.Payouts.HistoryAsync(null, new RequestOptions { IdempotencyKey = "k" }));
+        Assert.Equal(SdkErrorCodes.IdempotencyUnsupported, post.Code);
 
-        Assert.False(handler.Calls[0].HasHeader(RequestSigner.HeaderIdempotencyKey));
+        var get = Assert.Throws<ConfigException>(
+            () => client.Sandbox.WebhooksAsync(null, new RequestOptions { IdempotencyKey = "k" }));
+        Assert.Equal(SdkErrorCodes.IdempotencyUnsupported, get.Code);
+
+        Assert.Empty(handler.Calls);
     }
 
     [Fact]
@@ -156,7 +164,7 @@ public class PagingTests
             ScriptedResponse.Page("""[{"id":"d2"}]""", 1, 2, 1, false));
         using var client = Client(handler);
 
-        var deliveries = await client.Sandbox.WebhooksAsync(new Resources.PageParams { Limit = 1 }).AllAsync();
+        var deliveries = await client.Sandbox.WebhooksAsync(new PageParams { Limit = 1 }).AllAsync();
 
         Assert.Equal(2, deliveries.Count);
         Assert.Contains("limit=1&offset=0", handler.Calls[0].Url);

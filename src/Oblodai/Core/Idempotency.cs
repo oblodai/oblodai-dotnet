@@ -14,9 +14,13 @@ public static class Idempotency
     /// <summary>A fresh v4 UUID key from the platform CSPRNG.</summary>
     public static string NewKey() => Guid.NewGuid().ToString();
 
-    /// <summary>Validate a caller-supplied key before it is signed and sent.</summary>
+    /// <summary>
+    /// Validate a caller-supplied key before it is signed and sent. The failure is a
+    /// <see cref="ConfigException"/> — like every other refusal the SDK makes before a request leaves —
+    /// and never an <see cref="ApiException"/>, which would claim the gateway had answered.
+    /// </summary>
     /// <param name="key">The key.</param>
-    /// <exception cref="ValidationException">The key could not be sent verbatim as a header value.</exception>
+    /// <exception cref="ConfigException">The key could not be sent verbatim as a header value.</exception>
     public static void AssertValid(string key)
     {
         if (string.IsNullOrEmpty(key))
@@ -40,10 +44,6 @@ public static class Idempotency
         }
     }
 
-    private static ValidationException Invalid(string message) => new(new ApiErrorInit(
-        SdkErrorCodes.BadIdempotencyKey,
-        message,
-        HttpStatus: 0,
-        Retryable: false,
-        Field: "IdempotencyKey"));
+    private static ConfigException Invalid(string message)
+        => new(SdkErrorCodes.BadIdempotencyKey, message, "IdempotencyKey");
 }

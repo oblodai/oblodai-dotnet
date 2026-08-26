@@ -31,9 +31,9 @@ public sealed record BatchElement<T>
     public string? Message { get; init; }
 
     /// <summary>
-    /// Machine-readable error code — the one a single call would return
-    /// (<c>payment.below_minimum</c>, <c>payout.address_network_mismatch</c>, …);
-    /// <c>batch.stopped</c> / <c>batch.key_revoked</c> mean the item was never executed.
+    /// Machine-readable error code — the same one a single call would have returned
+    /// (<c>payment.below_minimum</c>, <c>payout.address_network_mismatch</c>, …), from the
+    /// <c>ErrorCodes</c> catalogue.
     /// </summary>
     [JsonPropertyName("error_code")]
     public string? ErrorCode { get; init; }

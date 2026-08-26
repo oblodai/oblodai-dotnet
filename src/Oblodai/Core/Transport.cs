@@ -5,82 +5,23 @@ using Oblodai.Contract;
 
 namespace Oblodai;
 
-/// <summary>Per-call knobs the transport understands.</summary>
-public sealed record CallOptions
-{
-    /// <summary>Request body object; serialized once and signed byte-exactly.</summary>
-    public object? Body { get; init; }
-
-    /// <summary>Query parameters, in order.</summary>
-    public IReadOnlyList<KeyValuePair<string, string?>>? Query { get; init; }
-
-    /// <summary>Values for the <c>{name}</c> segments of the route path.</summary>
-    public IReadOnlyDictionary<string, string>? PathParams { get; init; }
-
-    /// <summary>Your own idempotency key; generated automatically on create routes when omitted.</summary>
-    public string? IdempotencyKey { get; init; }
-
-    /// <summary>Prefer the payout key pair on a route that accepts either kind.</summary>
-    public bool PreferPayoutKey { get; init; }
-
-    /// <summary>Per-attempt timeout, milliseconds.</summary>
-    public int? TimeoutMs { get; init; }
-
-    /// <summary>Overall budget for this call including retries, milliseconds.</summary>
-    public int? DeadlineMs { get; init; }
-}
-
-/// <summary>A raw (bare-route) response: the bytes plus the headers that describe them.</summary>
-/// <param name="Status">HTTP status.</param>
-/// <param name="Body">Response bytes.</param>
-/// <param name="ContentType">Value of the <c>Content-Type</c> header.</param>
-/// <param name="ContentDisposition">Value of the <c>Content-Disposition</c> header.</param>
-public sealed record RawResponse(int Status, byte[] Body, string? ContentType, string? ContentDisposition);
-
-/// <summary>How the transport is wired up.</summary>
-public sealed record TransportOptions
-{
-    /// <summary>Gateway origin, optionally with a path prefix.</summary>
-    public required string BaseUrl { get; init; }
-
-    /// <summary>Used for payment and <c>any</c> routes, and for payout routes when no payout pair exists.</summary>
-    public Credentials? Credentials { get; init; }
-
-    /// <summary>Optional second key pair for payout routes.</summary>
-    public Credentials? PayoutCredentials { get; init; }
-
-    /// <summary>Per-attempt timeout, ms. Default 30000.</summary>
-    public int TimeoutMs { get; init; } = 30_000;
-
-    /// <summary>Overall budget per call including retries and pauses, ms. Default 90000.</summary>
-    public int DeadlineMs { get; init; } = 90_000;
-
-    /// <summary>Retry policy.</summary>
-    public RetryOptions Retry { get; init; } = RetryOptions.Default;
-
-    /// <summary>Signing clock.</summary>
-    public SkewCorrectingClock? Clock { get; init; }
-
-    /// <summary>Structured logger.</summary>
-    public IOblodaiLogger? Logger { get; init; }
-
-    /// <summary>Value of the <c>User-Agent</c> header.</summary>
-    public required string UserAgent { get; init; }
-
-    /// <summary>Extra headers on every request. Never signed material.</summary>
-    public IReadOnlyDictionary<string, string>? Headers { get; init; }
-
-    /// <summary>Sent as <c>X-Admin-Token</c> on merchant-provisioning routes only.</summary>
-    public string? AdminToken { get; init; }
-}
-
 /// <summary>
 /// The HTTP engine every resource goes through. One method, <see cref="CallAsync{T}"/>, does the whole
 /// lifecycle: serialize → sign → send (with timeout) → decode envelope → classify error → retry per
 /// policy. <see cref="CallRawAsync"/> serves the few bare routes that return bytes instead of JSON.
 /// </summary>
-public sealed class OblodaiTransport : IDisposable
+public sealed partial class OblodaiTransport : IDisposable
 {
+    /// <summary>
+    /// How much of a JSON answer the SDK will buffer. Every enveloped route answers in kilobytes; a body
+    /// past this is a proxy error page, a misrouted download or a compression bomb, and reading it to the
+    /// end would trade a failed call for an exhausted process.
+    /// </summary>
+    public const long MaxJsonResponseBytes = 8L * 1024 * 1024;
+
+    /// <summary>How much of a bare (PDF/CSV) answer the SDK will buffer.</summary>
+    public const long MaxBareResponseBytes = 64L * 1024 * 1024;
+
     /// <summary>Error codes that mean the gateway rejected the signature because of the timestamp or MAC.</summary>
     private static readonly HashSet<string> SignatureFailureCodes = ["merchant.bad_signature", "auth.bad_timestamp"];
 
@@ -100,12 +41,36 @@ public sealed class OblodaiTransport : IDisposable
     {
         _options = options;
         _ownsHttpClient = httpClient is null;
-        _http = httpClient ?? new HttpClient(new SocketsHttpHandler { AllowAutoRedirect = false })
+        _http = httpClient ?? new HttpClient(new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+
+            // Without this a pooled connection outlives DNS: a gateway that fails over to a new address
+            // keeps receiving requests on the old one until the socket happens to close.
+            PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+        })
         {
             Timeout = Timeout.InfiniteTimeSpan,
         };
         _clock = options.Clock ?? new SkewCorrectingClock();
         _logger = options.Logger ?? NoopLogger.Instance;
+
+        // A finite HttpClient.Timeout silently caps every per-attempt timeout and every deadline this SDK
+        // computes, and reports the cancellation as the SDK's own timeout with the SDK's own (larger)
+        // number. Say so once, with both values, rather than let a call "time out after 30000 ms" in 5 s.
+        if (!_ownsHttpClient && _http.Timeout != Timeout.InfiniteTimeSpan)
+        {
+            _logger.Log(
+                OblodaiLogLevel.Warn,
+                "the injected HttpClient has a finite Timeout; it overrides the SDK's own timeouts",
+                new Dictionary<string, object?>
+                {
+                    ["httpClientTimeoutMs"] = (long)_http.Timeout.TotalMilliseconds,
+                    ["sdkTimeoutMs"] = options.TimeoutMs,
+                    ["sdkDeadlineMs"] = options.DeadlineMs,
+                    ["fix"] = "set HttpClient.Timeout = Timeout.InfiniteTimeSpan and use TimeoutMs/DeadlineMs",
+                });
+        }
     }
 
     /// <summary>The signing clock, exposed for tests and diagnostics.</summary>
@@ -169,6 +134,37 @@ public sealed class OblodaiTransport : IDisposable
         }
     }
 
+    /// <summary>Per-call headers over client headers; either side may be absent.</summary>
+    /// <param name="client">Headers configured on the client.</param>
+    /// <param name="call">Headers passed to this call.</param>
+    private static IReadOnlyDictionary<string, string>? MergeHeaders(
+        IReadOnlyDictionary<string, string>? client,
+        IReadOnlyDictionary<string, string>? call)
+    {
+        if (call is null or { Count: 0 })
+        {
+            return client;
+        }
+
+        if (client is null or { Count: 0 })
+        {
+            return call;
+        }
+
+        var merged = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (key, value) in client)
+        {
+            merged[key] = value;
+        }
+
+        foreach (var (key, value) in call)
+        {
+            merged[key] = value;
+        }
+
+        return merged;
+    }
+
     /// <summary>Which key pair signs a route. <c>any</c> routes take the payment key unless told otherwise.</summary>
     private Credentials? CredentialsFor(RouteSpec route, bool preferPayout)
         => route.Auth == RouteAuth.Payout || (route.Auth == RouteAuth.Any && preferPayout)
@@ -203,23 +199,15 @@ public sealed class OblodaiTransport : IDisposable
 
         var attempt = 0;
         var skewTried = false;
-        long skewBefore = 0;
+        long offsetBeforeCorrection = 0;
+        long offsetThisCallInstalled = 0;
 
         while (true)
         {
-            var extraHeaders = _options.Headers;
-            if (route.Auth == RouteAuth.Onboard && !string.IsNullOrEmpty(_options.AdminToken))
-            {
-                var merged = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                foreach (var (k, v) in _options.Headers ?? new Dictionary<string, string>())
-                {
-                    merged[k] = v;
-                }
-
-                merged[RequestSigner.HeaderAdminToken] = _options.AdminToken!;
-                extraHeaders = merged;
-            }
-
+            // The offset this attempt is signed with, remembered per call. Comparing the server's time
+            // against the SHARED offset instead would misread a correction another thread just installed
+            // as this call's own, and re-sign against a clock nobody measured for this request.
+            var signedWithOffset = _clock.Offset;
             var request = RequestBuilder.Build(new BuildInput
             {
                 BaseUrl = _options.BaseUrl,
@@ -229,9 +217,10 @@ public sealed class OblodaiTransport : IDisposable
                 Body = body,
                 Credentials = CredentialsFor(route, options.PreferPayoutKey),
                 IdempotencyKey = idempotencyKey,
-                Ts = _clock.NowUnixSeconds(),
+                Ts = _clock.BaseNowUnixSeconds() + signedWithOffset,
                 UserAgent = _options.UserAgent,
-                ExtraHeaders = extraHeaders,
+                ExtraHeaders = MergeHeaders(_options.Headers, options.Headers),
+                AdminToken = _options.AdminToken,
             });
 
             _logger.Log(OblodaiLogLevel.Debug, "request", new Dictionary<string, object?>
@@ -245,7 +234,8 @@ public sealed class OblodaiTransport : IDisposable
             HttpResponseHeaders? responseHeaders;
             try
             {
-                (raw, responseHeaders) = await SendAsync(request, options, deadline, cancellationToken).ConfigureAwait(false);
+                (raw, responseHeaders) = await SendAsync(route, request, options, deadline, cancellationToken)
+                    .ConfigureAwait(false);
             }
             catch (OblodaiException err)
             {
@@ -280,19 +270,24 @@ public sealed class OblodaiTransport : IDisposable
                 if (!skewTried)
                 {
                     var observed = _clock.ObserveServerDate(responseHeaders?.Date);
-                    if (observed is { } offset && Math.Abs(offset - _clock.Offset) > RequestSigner.SignatureSkewSeconds / 2)
+                    if (observed is { } offset
+                        && Math.Abs(offset - signedWithOffset) > RequestSigner.SignatureSkewSeconds / 2)
                     {
                         _logger.Log(OblodaiLogLevel.Warn, "clock skew detected; re-signing with server time",
                             new Dictionary<string, object?> { ["route"] = label, ["offsetSec"] = offset });
                         skewTried = true;
-                        skewBefore = _clock.Offset;
+                        offsetBeforeCorrection = signedWithOffset;
+                        offsetThisCallInstalled = offset;
                         _clock.Correct(offset);
                         continue;
                     }
                 }
                 else
                 {
-                    _clock.Correct(skewBefore); // the corrected timestamp did not help: it was not skew
+                    // It was not skew. Undo the correction only while it is still the one this call made:
+                    // between the two attempts another thread may have measured a real offset, and
+                    // reverting that would put every concurrent call back on the wrong clock.
+                    _clock.CorrectIfUnchanged(offsetThisCallInstalled, offsetBeforeCorrection);
                 }
             }
 
@@ -326,94 +321,17 @@ public sealed class OblodaiTransport : IDisposable
         {
             return err;
         }
+        catch (Exception err)
+        {
+            // The decoder is written not to throw anything else, but classifying a failure must never be
+            // the thing that fails: a body nobody anticipated still has to come back as its HTTP status.
+            return new ContractException(
+                $"{route.Method} {route.Path}: HTTP {raw.Status} could not be read as an envelope ({err.GetType().Name})",
+                raw.Status,
+                text);
+        }
 
         return new ContractException(
             $"{route.Method} {route.Path}: HTTP {raw.Status} with a success envelope", raw.Status, text);
-    }
-
-    private async Task PauseAsync(OblodaiException error, int attempt, DateTimeOffset deadline, CancellationToken cancellationToken)
-    {
-        var ms = RetryPolicy.DelayMs(error, attempt, _options.Retry);
-        if (DateTimeOffset.UtcNow.AddMilliseconds(ms) > deadline)
-        {
-            throw new TransportException(
-                SdkErrorCodes.TransportDeadline,
-                $"retry would exceed the call deadline; last error: {error.Message}",
-                error);
-        }
-
-        if (ms <= 0)
-        {
-            return;
-        }
-
-        try
-        {
-            await Task.Delay(ms, cancellationToken).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException ex)
-        {
-            throw new TransportException(
-                SdkErrorCodes.TransportAborted, "request cancelled by the caller during a retry pause", ex);
-        }
-    }
-
-    private async Task<(RawResponse Raw, HttpResponseHeaders Headers)> SendAsync(
-        BuiltRequest request,
-        CallOptions options,
-        DateTimeOffset deadline,
-        CancellationToken cancellationToken)
-    {
-        var budget = (int)Math.Max(1, (deadline - DateTimeOffset.UtcNow).TotalMilliseconds);
-        var timeoutMs = Math.Min(options.TimeoutMs ?? _options.TimeoutMs, budget);
-
-        using var timeoutSource = new CancellationTokenSource(timeoutMs);
-        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutSource.Token);
-
-        using var message = new HttpRequestMessage(new HttpMethod(request.Method), request.Url);
-        if (request.Body is not null)
-        {
-            message.Content = new StringContent(request.Body, Encoding.UTF8, "application/json");
-        }
-
-        foreach (var (key, value) in request.Headers)
-        {
-            if (key.Equals("Content-Type", StringComparison.OrdinalIgnoreCase))
-            {
-                continue; // set on the content above
-            }
-
-            message.Headers.TryAddWithoutValidation(key, value);
-        }
-
-        try
-        {
-            using var response = await _http.SendAsync(message, HttpCompletionOption.ResponseContentRead, linked.Token)
-                .ConfigureAwait(false);
-            var bytes = await response.Content.ReadAsByteArrayAsync(linked.Token).ConfigureAwait(false);
-            var raw = new RawResponse(
-                (int)response.StatusCode,
-                bytes,
-                response.Content.Headers.ContentType?.ToString(),
-                response.Content.Headers.ContentDisposition?.ToString());
-            return (raw, response.Headers);
-        }
-        catch (OperationCanceledException ex)
-        {
-            if (cancellationToken.IsCancellationRequested)
-            {
-                throw new TransportException(SdkErrorCodes.TransportAborted, "request cancelled by the caller", ex);
-            }
-
-            throw new TransportException(SdkErrorCodes.TransportTimeout, $"request timed out after {timeoutMs} ms", ex);
-        }
-        catch (HttpRequestException ex)
-        {
-            throw new TransportException(SdkErrorCodes.TransportNetwork, $"network error: {ex.Message}", ex);
-        }
-        catch (IOException ex)
-        {
-            throw new TransportException(SdkErrorCodes.TransportNetwork, $"network error: {ex.Message}", ex);
-        }
     }
 }

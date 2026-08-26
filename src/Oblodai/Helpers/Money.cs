@@ -45,11 +45,25 @@ public static class Money
     /// <param name="amount">The amount.</param>
     public static bool IsZero(string amount) => Scaled(amount, ScaleOf(amount)).IsZero;
 
-    private static (bool Negative, string Integer, string Fraction) Parts(string amount)
+    /// <summary>
+    /// Longest amount these helpers accept. The wire has no amount anywhere near it; the bound exists so
+    /// a hostile or corrupted string cannot turn a comparison into a multi-megabyte <see cref="BigInteger"/>.
+    /// </summary>
+    public const int MaxLength = 64;
+
+    private static (bool Negative, string Integer, string Fraction) Parts(string? amount)
     {
         if (string.IsNullOrEmpty(amount))
         {
-            throw new FormatException("not a decimal amount: \"\"");
+            throw Invalid(amount);
+        }
+
+        if (amount.Length > MaxLength)
+        {
+            throw new ConfigException(
+                SdkErrorCodes.BadAmount,
+                $"not a decimal amount: {amount.Length} characters, the maximum is {MaxLength}",
+                "amount");
         }
 
         var negative = amount[0] == '-';
@@ -58,14 +72,24 @@ public static class Money
         var integer = dot < 0 ? body : body[..dot];
         var fraction = dot < 0 ? string.Empty : body[(dot + 1)..];
 
+        // One dot at most, digits on both sides of it, and nothing else: no exponent, no thousands
+        // separator, no leading plus, no whitespace. Everything the gateway sends passes; nothing that
+        // would silently mean a different number does.
         if (integer.Length == 0 || !integer.All(char.IsAsciiDigit) || !fraction.All(char.IsAsciiDigit)
             || (dot >= 0 && fraction.Length == 0))
         {
-            throw new FormatException($"not a decimal amount: \"{amount}\"");
+            throw Invalid(amount);
         }
 
         return (negative, integer, fraction);
     }
+
+    /// <summary>
+    /// The SDK's own error, never a native <see cref="FormatException"/>: a caller catching
+    /// <c>OblodaiException</c> around SDK calls must not have one kind of bad input escape that net.
+    /// </summary>
+    private static ConfigException Invalid(string? amount)
+        => new(SdkErrorCodes.BadAmount, $"not a decimal amount: \"{amount}\"", "amount");
 
     private static int ScaleOf(string amount) => Parts(amount).Fraction.Length;
 

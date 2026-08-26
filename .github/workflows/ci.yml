@@ -1,0 +1,54 @@
+name: ci
+
+# Every gate the repository can fail, in the order a maintainer would run them locally:
+# the generated code matches the contract, the code builds with warnings as errors, the suite passes,
+# and the package that would be published actually builds. Live tests need a running gateway and are
+# not part of this workflow.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore Oblodai.sln
+
+      # Before anything else: the committed *.g.cs must be exactly what contract/contract.json produces.
+      # A hand-edited registry — a flipped `safe`, an invented route — is caught here and nowhere else.
+      - name: Contract drift
+        run: dotnet run --project tools/Codegen --no-launch-profile -- check
+
+      - name: Build (warnings are errors)
+        run: dotnet build Oblodai.sln --no-restore -c Release -warnaserror
+
+      # The live tier skips itself without OBLODAI_LIVE_URL, so this is the unit + contract suite.
+      - name: Test
+        run: dotnet test Oblodai.sln --no-build -c Release --logger "console;verbosity=normal"
+
+      - name: Pack
+        run: dotnet pack src/Oblodai/Oblodai.csproj --no-build -c Release -o artifacts
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nupkg
+          path: artifacts/*.*nupkg
+          if-no-files-found: error
