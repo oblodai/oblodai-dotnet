@@ -11,10 +11,15 @@ namespace Oblodai;
 /// </summary>
 public sealed partial class OblodaiTransport
 {
-    private async Task PauseAsync(OblodaiException error, int attempt, DateTimeOffset deadline, CancellationToken cancellationToken)
+    private async Task PauseAsync(
+        OblodaiException error,
+        int attempt,
+        RetryOptions retry,
+        DateTimeOffset deadline,
+        CancellationToken cancellationToken)
     {
-        var ms = RetryPolicy.DelayMs(error, attempt, _options.Retry);
-        if (DateTimeOffset.UtcNow.AddMilliseconds(ms) > deadline)
+        var ms = RetryPolicy.DelayMs(error, attempt, retry);
+        if (_options.TimeProvider.GetUtcNow().AddMilliseconds(ms) > deadline)
         {
             throw new TransportException(
                 SdkErrorCodes.TransportDeadline,
@@ -29,7 +34,7 @@ public sealed partial class OblodaiTransport
 
         // A cancellation during the pause is the caller's own: it propagates as itself, so the awaiting
         // code sees the OperationCanceledException it registered the token for.
-        await Task.Delay(ms, cancellationToken).ConfigureAwait(false);
+        await Task.Delay(TimeSpan.FromMilliseconds(ms), _options.TimeProvider, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<(RawResponse Raw, HttpResponseHeaders Headers)> SendAsync(
@@ -39,8 +44,8 @@ public sealed partial class OblodaiTransport
         DateTimeOffset deadline,
         CancellationToken cancellationToken)
     {
-        var budget = (int)Math.Max(1, Math.Min((deadline - DateTimeOffset.UtcNow).TotalMilliseconds, int.MaxValue));
-        var timeoutMs = Math.Min(options.TimeoutMs ?? _options.TimeoutMs, budget);
+        var budget = (int)Math.Max(1, Math.Min((deadline - _options.TimeProvider.GetUtcNow()).TotalMilliseconds, int.MaxValue));
+        var timeoutMs = (int)Math.Min(Math.Max(1, (options.Timeout ?? _options.Timeout).TotalMilliseconds), budget);
 
         using var timeoutSource = new CancellationTokenSource(timeoutMs);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutSource.Token);
@@ -72,11 +77,20 @@ public sealed partial class OblodaiTransport
             AssertNoRedirectWasFollowed(sentTo, response);
 
             var bytes = await ReadCappedAsync(response, CapFor(route), linked.Token).ConfigureAwait(false);
+            var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (name, values) in response.Headers.Concat(response.Content.Headers))
+            {
+                headers[name] = string.Join(", ", values);
+            }
+
             var raw = new RawResponse(
                 (int)response.StatusCode,
                 bytes,
                 response.Content.Headers.ContentType?.ToString(),
-                response.Content.Headers.ContentDisposition?.ToString());
+                response.Content.Headers.ContentDisposition?.ToString())
+            {
+                Headers = headers,
+            };
             return (raw, response.Headers);
         }
         catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested)

@@ -25,14 +25,23 @@ public sealed record OblodaiOptions
     /// <summary>API origin. Falls back to <c>OBLODAI_BASE_URL</c>, then <see cref="DefaultBaseUrl"/>.</summary>
     public string? BaseUrl { get; init; }
 
-    /// <summary>Per-attempt timeout, ms. Default 30000.</summary>
-    public int? TimeoutMs { get; init; }
+    /// <summary>Per-attempt timeout. Default 30 seconds.</summary>
+    public TimeSpan? Timeout { get; init; }
 
-    /// <summary>Overall budget per call including retries, ms. Default 90000.</summary>
-    public int? DeadlineMs { get; init; }
+    /// <summary>Overall budget per call, retries and pauses included. Default 90 seconds.</summary>
+    public TimeSpan? Deadline { get; init; }
 
     /// <summary>Retry policy; <c>new RetryOptions { MaxRetries = 0 }</c> disables retries.</summary>
     public RetryOptions? Retry { get; init; }
+
+    /// <summary>Called once per attempt before and after it is sent: metrics, tracing, structured logs.</summary>
+    public Hooks? Hooks { get; init; }
+
+    /// <summary>
+    /// Time source for retry pauses and the call deadline; <see cref="TimeProvider.System"/> by default.
+    /// A test passes its own to observe pauses without waiting them out.
+    /// </summary>
+    public TimeProvider? TimeProvider { get; init; }
 
     /// <summary>Structured logger; <c>OBLODAI_LOG=debug</c> selects a console logger when omitted.</summary>
     public IOblodaiLogger? Logger { get; init; }
@@ -60,9 +69,10 @@ public sealed record OblodaiOptions
         builder.Append("PublicId = ").Append(PublicId)
             .Append(", ").AppendRedacted(nameof(Secret), Secret is not null)
             .Append(", BaseUrl = ").Append(BaseUrl)
-            .Append(", TimeoutMs = ").Append(TimeoutMs)
-            .Append(", DeadlineMs = ").Append(DeadlineMs)
+            .Append(", Timeout = ").Append(Timeout)
+            .Append(", Deadline = ").Append(Deadline)
             .Append(", Retry = ").Append(Retry)
+            .Append(", Hooks = ").Append(Hooks)
             .Append(", Logger = ").Append(Logger)
             .Append(", Headers = ").Append(Headers)
             .Append(", ").AppendRedacted(nameof(AdminToken), AdminToken is not null)
@@ -107,9 +117,11 @@ public sealed record OblodaiOptions
         {
             BaseUrl = baseUrl,
             Credentials = publicId is null || secret is null ? null : new Credentials(publicId, secret),
-            TimeoutMs = TimeoutMs,
-            DeadlineMs = DeadlineMs,
+            Timeout = Positive(Timeout, nameof(Timeout)),
+            Deadline = Positive(Deadline, nameof(Deadline)),
             Retry = Retry,
+            Hooks = Hooks,
+            TimeProvider = TimeProvider,
             Logger = logger,
             Headers = Headers,
             AdminToken = Empty(AdminToken ?? env("OBLODAI_ADMIN_TOKEN")),
@@ -118,6 +130,16 @@ public sealed record OblodaiOptions
     }
 
     private static string? Empty(string? value) => string.IsNullOrEmpty(value) ? null : value;
+
+    private static TimeSpan? Positive(TimeSpan? value, string name)
+    {
+        if (value is { } span && span <= TimeSpan.Zero)
+        {
+            throw new ConfigException(SdkErrorCodes.BadConfig, $"{name} must be positive (got {span})", name);
+        }
+
+        return value;
+    }
 
     private static void AssertBaseUrl(string baseUrl, bool allowInsecure)
     {
@@ -153,14 +175,20 @@ public sealed record ResolvedOptions
     /// <summary>The merchant's API key pair, when configured. Its secret is redacted and not serialized.</summary>
     public Credentials? Credentials { get; init; }
 
-    /// <summary>Per-attempt timeout, ms.</summary>
-    public int? TimeoutMs { get; init; }
+    /// <summary>Per-attempt timeout.</summary>
+    public TimeSpan? Timeout { get; init; }
 
-    /// <summary>Overall budget per call, ms.</summary>
-    public int? DeadlineMs { get; init; }
+    /// <summary>Overall budget per call.</summary>
+    public TimeSpan? Deadline { get; init; }
 
     /// <summary>Retry policy.</summary>
     public RetryOptions? Retry { get; init; }
+
+    /// <summary>Request and response hooks.</summary>
+    public Hooks? Hooks { get; init; }
+
+    /// <summary>Time source for pauses and deadlines.</summary>
+    public TimeProvider? TimeProvider { get; init; }
 
     /// <summary>Structured logger.</summary>
     public IOblodaiLogger? Logger { get; init; }
@@ -181,9 +209,10 @@ public sealed record ResolvedOptions
     {
         builder.Append("BaseUrl = ").Append(BaseUrl)
             .Append(", Credentials = ").Append(Credentials)
-            .Append(", TimeoutMs = ").Append(TimeoutMs)
-            .Append(", DeadlineMs = ").Append(DeadlineMs)
+            .Append(", Timeout = ").Append(Timeout)
+            .Append(", Deadline = ").Append(Deadline)
             .Append(", Retry = ").Append(Retry)
+            .Append(", Hooks = ").Append(Hooks)
             .Append(", Logger = ").Append(Logger)
             .Append(", Headers = ").Append(Headers)
             .Append(", ").AppendRedacted(nameof(AdminToken), AdminToken is not null)
@@ -192,26 +221,36 @@ public sealed record ResolvedOptions
     }
 }
 
-/// <summary>Per-call options every resource method accepts as its last argument.</summary>
+/// <summary>
+/// Overrides for one call — the last-but-one argument of every resource method. Every field left
+/// null falls back to the client's setting.
+/// </summary>
 public sealed record RequestOptions
 {
     /// <summary>
-    /// Your own idempotency key; generated automatically on create routes when omitted, and rejected on
-    /// routes the gateway does not deduplicate.
+    /// Your own idempotency key; generated automatically on routes the gateway deduplicates, and
+    /// rejected (<c>sdk.idempotency_unsupported</c>) on routes it does not. On a route whose body has
+    /// its own <c>idempotency_key</c> field this fills that field instead.
     /// </summary>
     public string? IdempotencyKey { get; init; }
 
-    /// <summary>Per-attempt timeout, ms.</summary>
-    public int? TimeoutMs { get; init; }
+    /// <summary>Per-attempt timeout for this call (capped by the client's <see cref="OblodaiOptions.Deadline"/>).</summary>
+    public TimeSpan? Timeout { get; init; }
 
-    /// <summary>Overall budget including retries, ms.</summary>
-    public int? DeadlineMs { get; init; }
+    /// <summary>Retries after the first attempt for this call; overrides <see cref="RetryOptions.MaxRetries"/>.</summary>
+    public int? MaxRetries { get; init; }
 
     /// <summary>
-    /// Extra headers for this call only, merged over the client's own. Names the SDK owns (the signature
-    /// headers, <c>Idempotency-Key</c>, <c>Accept</c>, <c>Content-Type</c>, <c>User-Agent</c>,
-    /// <c>X-Admin-Token</c>) are ignored, and a value with a CR, LF or non-ASCII character is refused
-    /// with <c>sdk.bad_header</c> before anything is signed.
+    /// Extra headers for this call alone, merged over the client's own. Names the SDK owns (the
+    /// signature headers, <c>Idempotency-Key</c>, <c>X-Request-ID</c>, <c>Accept</c>,
+    /// <c>Content-Type</c>, <c>User-Agent</c>, <c>X-Admin-Token</c>) are ignored, and a value with a
+    /// CR, LF or non-ASCII character is refused with <c>sdk.bad_header</c> before anything is signed.
     /// </summary>
-    public IReadOnlyDictionary<string, string>? Headers { get; init; }
+    public IReadOnlyDictionary<string, string>? ExtraHeaders { get; init; }
+
+    /// <summary>
+    /// Sent as <c>X-Request-ID</c> on every attempt of this call, to tie your logs to the gateway's;
+    /// a fresh id is generated when omitted.
+    /// </summary>
+    public string? RequestId { get; init; }
 }

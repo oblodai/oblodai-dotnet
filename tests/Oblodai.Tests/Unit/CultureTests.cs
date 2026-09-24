@@ -1,5 +1,6 @@
 using System.Globalization;
 using Oblodai.Contract;
+using Oblodai.Resources;
 using Xunit;
 
 namespace Oblodai.Tests.Unit;
@@ -55,7 +56,7 @@ public class CultureTests
         var built = Under(CommaDecimal, () => RequestBuilder.Build(new BuildInput
         {
             BaseUrl = "https://api.test",
-            Route = Routes.PostV1Balance,
+            Route = Routes.GetBalance,
             Credentials = new Credentials("pk", "s"),
             Ts = 1_800_000_000,
             UserAgent = "ua",

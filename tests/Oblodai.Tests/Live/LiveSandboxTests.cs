@@ -1,5 +1,3 @@
-using Oblodai.Contract;
-using Oblodai.Models;
 using Xunit;
 
 namespace Oblodai.Tests.Live;
@@ -12,7 +10,7 @@ namespace Oblodai.Tests.Live;
 [TestCaseOrderer(StepOrderer.TypeName, StepOrderer.AssemblyName)]
 public class LiveSandboxTests : IClassFixture<LiveEnvironment>
 {
-    private static Payment? _invoice;
+    private static PaymentView? _invoice;
 
     private readonly LiveEnvironment _live;
 
@@ -22,36 +20,30 @@ public class LiveSandboxTests : IClassFixture<LiveEnvironment>
     [Step(1)]
     public async Task ReadsPublicCatalogDataWithoutCredentials()
     {
-        var currencies = await _live.Anonymous.Catalog.CurrenciesAsync();
+        var currencies = await _live.Anonymous.Checkout.ListCurrenciesAsync();
 
-        Assert.NotEmpty(currencies.Assets);
+        Assert.NotEmpty(currencies.Currencies);
         Assert.NotEmpty(currencies.PricingCurrencies);
-        Assert.All(currencies.Assets, asset => Assert.NotEmpty(asset.Currency));
     }
 
     [LiveFact]
     [Step(2)]
     public async Task CreatesAnInvoiceAndReadsItBackByOrderIdAndUuid()
     {
-        _invoice = await _live.Merchant.Payments.CreateAsync(new PaymentRequest
-        {
-            Amount = "25",
-            Currency = "USDT",
-            Network = Network.Tron,
-            OrderId = LiveEnvironment.Unique("sdk-live"),
-        });
+        _invoice = await _live.Merchant.Payments.CreateAsync(
+            amount: 25m, currency: "USDT", network: "tron", orderId: LiveEnvironment.Unique("sdk-live"));
 
         Assert.Equal(PaymentStatus.Created, _invoice.Status);
         Assert.NotEmpty(_invoice.Address);
 
-        var byOrderId = await _live.Merchant.Payments.InfoAsync(new PaymentLookup { OrderId = _invoice.OrderId });
+        var byOrderId = await _live.Merchant.Payments.GetInfoAsync(orderId: _invoice.OrderId);
         Assert.Equal(_invoice.Uuid, byOrderId.Uuid);
 
-        var page = await _live.Merchant.Payments.HistoryAsync(new PaymentHistoryRequest { Limit = 5 });
+        var page = await _live.Merchant.Payments.ListHistoryAsync(limit: 5);
         Assert.Contains(page.Items, p => p.Uuid == _invoice.Uuid);
 
         // A signed GET with a query string: the signature covers path + raw query.
-        var deliveries = await _live.Merchant.Sandbox.WebhooksAsync(new PageParams { Limit = 5, Offset = 0 });
+        var deliveries = await _live.Merchant.Sandbox.ListWebhooksAsync(limit: 5, offset: 0);
         Assert.NotNull(deliveries.Items);
     }
 
@@ -61,21 +53,16 @@ public class LiveSandboxTests : IClassFixture<LiveEnvironment>
     {
         var key = LiveEnvironment.Unique("sdk-idem");
         var orderId = $"{key}-o";
+        var options = new RequestOptions { IdempotencyKey = key };
 
-        var first = await _live.Merchant.Payments.CreateAsync(
-            new PaymentRequest { Amount = "5", Currency = "USDT", Network = Network.Tron, OrderId = orderId },
-            new RequestOptions { IdempotencyKey = key });
-        var replay = await _live.Merchant.Payments.CreateAsync(
-            new PaymentRequest { Amount = "5", Currency = "USDT", Network = Network.Tron, OrderId = orderId },
-            new RequestOptions { IdempotencyKey = key });
-
+        var first = await _live.Merchant.Payments.CreateAsync(5m, "USDT", network: "tron", orderId: orderId, options: options);
+        var replay = await _live.Merchant.Payments.CreateAsync(5m, "USDT", network: "tron", orderId: orderId, options: options);
         Assert.Equal(first.Uuid, replay.Uuid);
 
         var error = await Assert.ThrowsAsync<IdempotencyConflictException>(() => _live.Merchant.Payments.CreateAsync(
-            new PaymentRequest { Amount = "2", Currency = "USDT", Network = Network.Tron, OrderId = $"{key}-o2" },
-            new RequestOptions { IdempotencyKey = key }));
+            2m, "USDT", network: "tron", orderId: $"{key}-o2", options: options));
 
-        Assert.Equal(ErrorCodes.IdempotencyKeyReused, error.Code);
+        Assert.Equal("idempotency.key_reused", error.Code);
         Assert.Equal(409, error.HttpStatus);
     }
 
@@ -85,68 +72,40 @@ public class LiveSandboxTests : IClassFixture<LiveEnvironment>
     {
         Assert.NotNull(_invoice);
 
-        await _live.Merchant.Sandbox.DepositAsync(new SandboxDepositRequest
-        {
-            InvoiceId = _invoice!.Uuid,
-            Amount = "25",
-            Confirmations = 20,
-            Txid = LiveEnvironment.Unique("sdk-tx"),
-        });
+        await _live.Merchant.Sandbox.SimulateDepositAsync(
+            _invoice!.Uuid, amount: "25", confirmations: 20, txid: LiveEnvironment.Unique("sdk-tx"));
 
-        var paid = await _live.Merchant.Payments.InfoAsync(_invoice.Uuid);
+        var paid = await _live.Merchant.Payments.GetInfoAsync(uuid: _invoice.Uuid);
         Assert.True(Statuses.IsPaymentPaid(paid.Status), $"invoice ended as {paid.Status}");
 
-        await _live.Merchant.Sandbox.FaucetAsync(new SandboxFaucetRequest { Asset = "USDT", Amount = "100" });
-        var balance = await _live.Merchant.Account.BalanceAsync();
-        Assert.Contains(balance.Balances.Merchant, entry => entry.Currency == "USDT");
+        await _live.Merchant.Sandbox.FaucetAsync(amount: 100m, asset: "USDT");
+        var balance = await _live.Merchant.Account.GetBalanceAsync();
+        Assert.NotNull(balance.Balance);
 
-        var calculation = await _live.Merchant.Payouts.CalculateAsync(new PayoutCalculateRequest
-        {
-            Amount = "10",
-            Currency = "USDT",
-            Network = Network.Tron,
-        });
+        var calculation = await _live.Merchant.Payouts.CalculateAsync(10m, "USDT", network: "tron");
         Assert.Equal("USDT", calculation.Currency);
-        Assert.NotEmpty(calculation.FeeBearer.Value);
 
-        var validation = await _live.Merchant.Payouts.ValidateAsync(new PayoutValidateRequest
-        {
-            Amount = "10",
-            Currency = "USDT",
-            Network = Network.Tron,
-            Address = LiveEnvironment.Address,
-        });
+        var validation = await _live.Merchant.Payouts.ValidateAsync(LiveEnvironment.Address, 10m, "USDT", network: "tron");
         Assert.True(validation.Valid);
 
-        var payout = await _live.Merchant.Payouts.CreateAsync(new PayoutRequest
-        {
-            Amount = "10",
-            Currency = "USDT",
-            Network = Network.Tron,
-            Address = LiveEnvironment.Address,
-            OrderId = LiveEnvironment.Unique("sdk-po"),
-        });
+        var payout = await _live.Merchant.Payouts.CreateAsync(
+            LiveEnvironment.Address, 10m, "USDT", LiveEnvironment.Unique("sdk-po"), network: "tron");
 
         Assert.NotEmpty(payout.Uuid);
-        Assert.Equal(payout.OrderId, (await _live.Merchant.Payouts.InfoAsync(payout.Uuid)).OrderId);
+        Assert.Equal(payout.OrderId, (await _live.Merchant.Payouts.GetInfoAsync(uuid: payout.Uuid)).OrderId);
     }
 
     [LiveFact]
     [Step(5)]
     public async Task ClassifiesADomainRefusalWithTheGatewaysOwnRetryableFlag()
     {
-        var error = await Assert.ThrowsAsync<ConflictException>(() => _live.Merchant.Payouts.CreateAsync(new PayoutRequest
-        {
-            Amount = "999999",
-            Currency = "USDT",
-            Network = Network.Tron,
-            Address = LiveEnvironment.Address,
-            OrderId = LiveEnvironment.Unique("sdk-big"),
-        }));
+        var error = await Assert.ThrowsAsync<ConflictException>(() => _live.Merchant.Payouts.CreateAsync(
+            LiveEnvironment.Address, 999999m, "USDT", LiveEnvironment.Unique("sdk-big"), network: "tron"));
 
-        Assert.Equal(ErrorCodes.PayoutInsufficientFunds, error.Code);
+        Assert.Equal("payout.insufficient_funds", error.Code);
         Assert.Equal(409, error.HttpStatus);
         Assert.False(string.IsNullOrEmpty(error.RequestId));
+        Assert.StartsWith("[payout.insufficient_funds] ", error.Message);
         Assert.False(error.Synthetic);
     }
 
@@ -160,19 +119,7 @@ public class LiveSandboxTests : IClassFixture<LiveEnvironment>
         Assert.NotEmpty(endpoint.EndpointId);
         Assert.False(string.IsNullOrEmpty(endpoint.Secret));
 
-        // Delivery itself needs a reachable receiver; the signature contract is covered by the recorded
-        // deliveries in the contract snapshot, which the unit tier verifies byte for byte.
-        await LiveEnvironment.AcceptRefusalAsync(_live.Merchant.Webhooks.TestAsync(
-            WebhookKind.Payment,
-            new TestWebhookPaymentRequest
-            {
-                UrlCallback = hook,
-                Currency = "USDT",
-                Network = Network.Tron,
-                Status = PaymentStatus.Paid,
-            }));
-
-        var log = await _live.Merchant.Webhooks.DeliveriesAsync(new WebhooksDeliveriesRequest { Limit = 5 });
+        var log = await _live.Merchant.Webhooks.ListDeliveriesAsync(limit: 5);
         Assert.NotNull(log.Items);
     }
 }

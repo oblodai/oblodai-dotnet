@@ -78,8 +78,12 @@ public sealed class PagePromise<T> : IAsyncEnumerable<T>
         return output;
     }
 
-    /// <inheritdoc />
-    public async IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Walk the list page by page: one request per page, the first page reused when it was already
+    /// fetched. Stops after a page that is empty or says there are no more.
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the walk.</param>
+    public async IAsyncEnumerable<Page<T>> ByPageAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(_cancellationToken, cancellationToken);
         var token = linked.Token;
@@ -90,21 +94,28 @@ public sealed class PagePromise<T> : IAsyncEnumerable<T>
             pending = _firstPage; // reuse the first page when it was already requested
         }
 
-
         while (true)
         {
             var page = await (pending ?? _fetchPage(_limit, offset, token)).ConfigureAwait(false);
             pending = null;
-
-            foreach (var item in page.Items)
-            {
-                yield return item;
-            }
+            yield return page;
 
             offset += page.Items.Count;
             if (page.Items.Count == 0 || !page.Paginate.HasPages)
             {
                 yield break;
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public async IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+    {
+        await foreach (var page in ByPageAsync(cancellationToken).ConfigureAwait(false))
+        {
+            foreach (var item in page.Items)
+            {
+                yield return item;
             }
         }
     }

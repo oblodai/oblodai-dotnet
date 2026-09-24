@@ -1,6 +1,5 @@
 using System.Text;
 using System.Text.Json;
-using Oblodai.Models;
 using Oblodai.Tests.Support;
 using Xunit;
 
@@ -13,10 +12,9 @@ namespace Oblodai.Tests.Unit;
 public class WebhookTests
 {
     /// <summary>The endpoint secret in force when the samples were delivered.</summary>
-    private static readonly string Secret =
-        Fixtures.For("POST /v1/webhooks/rotate-secret").Result.GetProperty("secret").GetString()!;
+    private const string Secret = Repo.WebhookSamplesSecret;
 
-    private static readonly JsonElement[] Samples = Fixtures.WebhookSamples.EnumerateArray().ToArray();
+    private static readonly JsonElement[] Samples = Repo.WebhookSamples.EnumerateArray().ToArray();
 
     public static TheoryData<int> SampleIndexes()
     {
@@ -83,7 +81,7 @@ public class WebhookTests
         });
 
         var body = sample.GetProperty("body");
-        Assert.Equal(body.GetProperty("uuid").GetString(), delivery.Event.Uuid);
+        Assert.Equal(body.GetProperty("uuid").GetString(), UuidOf(delivery.Event));
         Assert.Equal(body.GetProperty("type").GetString(), delivery.Event.Type);
         Assert.Equal(headers[WebhookVerifier.HeaderId], delivery.Id);
         Assert.Equal(headers[WebhookVerifier.HeaderEvent], delivery.EventType);
@@ -94,8 +92,8 @@ public class WebhookTests
         // outside the event stream, so it carries sequence 0 where a live delivery carries a real one.
         var isRehearsal = body.TryGetProperty("test", out var test) && test.GetBoolean();
         Assert.True(
-            isRehearsal ? delivery.Event.Sequence == 0 : delivery.Event.Sequence > 0,
-            $"sample {index}: sequence {delivery.Event.Sequence} does not match test={isRehearsal}");
+            isRehearsal ? delivery.Event.EventSequence == 0 : delivery.Event.EventSequence > 0,
+            $"sample {index}: sequence {delivery.Event.EventSequence} does not match test={isRehearsal}");
         Assert.Equal(isRehearsal, delivery.IsTest);
         Assert.Equal(isRehearsal, WebhookVerifier.IsTestEvent(delivery.Event));
         Assert.Equal(isRehearsal, headers.ContainsKey(WebhookVerifier.HeaderTest));
@@ -104,13 +102,13 @@ public class WebhookTests
         switch (body.GetProperty("type").GetString())
         {
             case "payment":
-                Assert.IsType<PaymentEvent>(delivery.Event);
+                Assert.IsType<PaymentWebhook>(delivery.Event);
                 break;
             case "payout":
-                Assert.IsType<PayoutEvent>(delivery.Event);
+                Assert.IsType<PayoutWebhook>(delivery.Event);
                 break;
             default:
-                Assert.IsType<WalletEvent>(delivery.Event);
+                Assert.IsType<WalletWebhook>(delivery.Event);
                 break;
         }
 
@@ -168,7 +166,7 @@ public class WebhookTests
             Now = () => ts + 600,
             ToleranceSeconds = 0,
         });
-        Assert.Equal("u1", verified.Uuid);
+        Assert.Equal("u1", UuidOf(verified));
     }
 
     [Fact]
@@ -184,18 +182,18 @@ public class WebhookTests
         };
 
         // Not swapped yet: the stored secret is the old one, the Prev header carries its signature.
-        Assert.Equal("u1", WebhookVerifier.Verify(body, headers, new WebhookVerifyOptions { Secret = "old", Now = () => ts }).Uuid);
+        Assert.Equal("u1", UuidOf(WebhookVerifier.Verify(body, headers, new WebhookVerifyOptions { Secret = "old", Now = () => ts })));
 
         // Already swapped: the main header verifies with the new secret.
-        Assert.Equal("u1", WebhookVerifier.Verify(body, headers, new WebhookVerifyOptions { Secret = "new", Now = () => ts }).Uuid);
+        Assert.Equal("u1", UuidOf(WebhookVerifier.Verify(body, headers, new WebhookVerifyOptions { Secret = "new", Now = () => ts })));
 
         // Kept the old copy alongside an unrelated new one.
-        Assert.Equal("u1", WebhookVerifier.Verify(body, headers, new WebhookVerifyOptions
+        Assert.Equal("u1", UuidOf(WebhookVerifier.Verify(body, headers, new WebhookVerifyOptions
         {
             Secret = "unrelated",
             PreviousSecret = "old",
             Now = () => ts,
-        }).Uuid);
+        })));
     }
 
     [Fact]
@@ -218,7 +216,7 @@ public class WebhookTests
     {
         var parsed = WebhookVerifier.Parse(Body());
 
-        var payment = Assert.IsType<PaymentEvent>(parsed);
+        var payment = Assert.IsType<PaymentWebhook>(parsed);
         Assert.Equal("paid", payment.Status.Value);
         Assert.True(WebhookVerifier.IsStale(parsed, 7));
         Assert.False(WebhookVerifier.IsStale(parsed, 6));
@@ -228,7 +226,7 @@ public class WebhookTests
         // adds them without asking, and an authentic delivery must not become an exception.
         var alien = Assert.IsType<UnknownWebhookEvent>(WebhookVerifier.Parse("""{"type":"alien","uuid":"x"}"""));
         Assert.Equal("alien", alien.Type);
-        Assert.Equal("x", alien.Uuid);
+        Assert.Equal("x", alien.Extra!["uuid"].GetString());
         Assert.False(WebhookVerifier.IsStale(alien, 99));
         Assert.False(WebhookVerifier.IsTestEvent(alien));
         Assert.False(WebhookVerifier.IsKnownEvent(alien));
@@ -266,4 +264,12 @@ public class WebhookTests
 
         return headers;
     }
+
+    private static string UuidOf(IWebhookEvent webhookEvent) => webhookEvent switch
+    {
+        PaymentWebhook payment => payment.Uuid,
+        PayoutWebhook payout => payout.Uuid,
+        WalletWebhook wallet => wallet.Uuid,
+        _ => throw new InvalidOperationException($"no uuid on {webhookEvent.GetType().Name}"),
+    };
 }

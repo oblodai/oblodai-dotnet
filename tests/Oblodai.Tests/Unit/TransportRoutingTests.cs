@@ -33,14 +33,8 @@ public class TransportRoutingTests
         var handler = new FakeHttpHandler(ScriptedResponse.Ok("""{"uuid":"p"}"""), ScriptedResponse.Ok("""{"uuid":"i"}"""));
         using var client = Client(handler);
 
-        await client.Payouts.CreateAsync(new PayoutRequest
-        {
-            Amount = "1",
-            Currency = "USDT",
-            Address = Address,
-            OrderId = "o",
-        });
-        await client.Payments.CreateAsync(new PaymentRequest { Amount = "1", Currency = "USDT" });
+        await client.Payouts.CreateAsync(Address, 1m, "USDT", "o");
+        await client.Payments.CreateAsync(1m, "USDT");
 
         Assert.Equal("pk_test_1", handler.Calls[0].Header(RequestSigner.HeaderPublicId));
         Assert.Equal("pk_test_1", handler.Calls[1].Header(RequestSigner.HeaderPublicId));
@@ -52,10 +46,10 @@ public class TransportRoutingTests
         var handler = new FakeHttpHandler(ScriptedResponse.Ok("""{"currencies":[],"pricing_currencies":[]}"""));
         using var client = new OblodaiClient(new OblodaiOptions { BaseUrl = "https://api.test" }, handler.Client());
 
-        var currencies = await client.Catalog.CurrenciesAsync();
-        Assert.Empty(currencies.Assets);
+        var currencies = await client.Checkout.ListCurrenciesAsync();
+        Assert.Empty(currencies.Currencies);
 
-        var error = await Assert.ThrowsAsync<ConfigException>(() => client.Account.BalanceAsync());
+        var error = await Assert.ThrowsAsync<ConfigException>(() => client.Account.GetBalanceAsync());
         Assert.Equal(SdkErrorCodes.MissingCredentials, error.Code);
     }
 
@@ -63,12 +57,12 @@ public class TransportRoutingTests
     public async Task SendsTheAdminTokenOnProvisioningRoutesOnly()
     {
         var handler = new FakeHttpHandler(
-            ScriptedResponse.Ok(Fixtures.ResultJson("POST /v1/merchants")),
+            ScriptedResponse.Ok("""{"merchant_id":"m1","project_id":"p1","created":true,"api_key":{"public_id":"pk","secret":"s"}}"""),
             ScriptedResponse.Ok("""{"balance":{"merchant":[]}}"""));
         using var client = Client(handler, new OblodaiOptions { AdminToken = "adm" });
 
-        await client.Merchants.CreateAsync(new MerchantsRequest { Email = "a@b.c" });
-        await client.Account.BalanceAsync();
+        await client.Sandbox.OnboardStoreAsync("m1");
+        await client.Account.GetBalanceAsync();
 
         Assert.Equal("adm", handler.Calls[0].Header(RequestSigner.HeaderAdminToken));
         Assert.False(handler.Calls[0].HasHeader(RequestSigner.HeaderSignature));
@@ -85,7 +79,7 @@ public class TransportRoutingTests
             Headers = new Dictionary<string, string> { ["X-Signature"] = "zz", ["X-Trace"] = "t1" },
         });
 
-        await client.Account.BalanceAsync();
+        await client.Account.GetBalanceAsync();
 
         var call = Assert.Single(handler.Calls);
         Assert.Equal("https://gw.corp/oblodai/v1/balance", call.Url);
@@ -101,7 +95,7 @@ public class TransportRoutingTests
 
         foreach (var bad in new[] { "..", "a/b" })
         {
-            var error = await Assert.ThrowsAsync<ConfigException>(() => client.Payments.PublicViewAsync(bad));
+            var error = await Assert.ThrowsAsync<ConfigException>(() => client.Checkout.GetAsync(bad));
             Assert.Equal(SdkErrorCodes.BadPathParam, error.Code);
         }
 
@@ -119,7 +113,7 @@ public class TransportRoutingTests
         });
         using var client = Client(handler);
 
-        var file = await client.Documents.BatchReportAsync("b-1", new FormatQuery { Format = "csv" });
+        var file = await client.Documents.GetBatchAsync("b-1", format: "csv");
 
         Assert.Contains("uuid=b-1", handler.Calls[0].Uri.Query);
         Assert.Contains("format=csv", handler.Calls[0].Uri.Query);
@@ -139,7 +133,7 @@ public class TransportRoutingTests
         });
         using var client = Client(handler, new OblodaiOptions { Retry = new RetryOptions { MaxRetries = 0 } });
 
-        var error = await Assert.ThrowsAsync<ApiException>(() => client.Account.BalanceAsync());
+        var error = await Assert.ThrowsAsync<ApiException>(() => client.Account.GetBalanceAsync());
 
         Assert.Equal(301, error.HttpStatus);
         Assert.Contains("redirect", error.Message);
@@ -154,7 +148,7 @@ public class TransportRoutingTests
         using var client = Client(handler);
 
         var error = await Assert.ThrowsAsync<ContractException>(
-            () => client.Payments.CreateAsync(new PaymentRequest { Amount = "1", Currency = "USDT" }));
+            () => client.Payments.CreateAsync(1m, "USDT"));
 
         Assert.Equal(SdkErrorCodes.BadEnvelope, error.Code);
         Assert.Contains("already processed", error.Message);

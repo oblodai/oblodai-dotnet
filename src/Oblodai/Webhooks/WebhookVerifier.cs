@@ -2,7 +2,6 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Oblodai.Models;
 
 namespace Oblodai;
 
@@ -46,7 +45,11 @@ public sealed record WebhookVerifyOptions
 
 /// <summary>A verified delivery: the event plus the advisory headers worth keeping.</summary>
 /// <param name="Event">The parsed event.</param>
-/// <param name="Id"><c>X-Webhook-Id</c> — stable across retries; use it as your idempotency key.</param>
+/// <param name="Id"><c>X-Webhook-Id</c> — stable across retries of this one delivery only.</param>
+/// <param name="EventId">
+/// <c>X-Webhook-Event-Id</c> — the id of the STATE this delivery carries: the same for a resend of a
+/// state you already handled, different as soon as the state differs. Deduplicate on this one.
+/// </param>
 /// <param name="EventType"><c>X-Webhook-Event</c> — <c>invoice.&lt;status&gt;</c>, <c>payout.&lt;status&gt;</c>, <c>wallet.paid</c>.</param>
 /// <param name="EventTime"><c>X-Webhook-Event-Time</c> — unix seconds when the state change committed.</param>
 /// <param name="SentAt"><c>X-Webhook-Timestamp</c> — unix seconds when this attempt was sent.</param>
@@ -55,8 +58,9 @@ public sealed record WebhookVerifyOptions
 /// but no money moved — never act on it as if it did.
 /// </param>
 public sealed record WebhookDeliveryInfo(
-    WebhookEvent Event,
+    IWebhookEvent Event,
     string? Id,
+    string? EventId,
     string? EventType,
     long? EventTime,
     long SentAt,
@@ -69,7 +73,8 @@ public sealed record WebhookDeliveryInfo(
 /// X-Webhook-Signature: hex(HMAC-SHA256(secret, "&lt;ts&gt;." + rawBody))
 /// X-Webhook-Signature-Prev: same, with the previous secret — only during a rotation overlap
 /// X-Webhook-Event: invoice.&lt;status&gt; | payout.&lt;status&gt; | wallet.paid
-/// X-Webhook-Id: stable per delivery (identical across retries) — use it as your idempotency key
+/// X-Webhook-Id: stable per delivery (identical across retries of THAT delivery)
+/// X-Webhook-Event-Id: stable per STATE — deduplicate on it
 /// X-Webhook-Event-Time: unix seconds when the state change committed (order events by it)
 /// X-Webhook-Test: true — a rehearsal delivery, mirrored by "test": true in the signed body
 /// </code>
@@ -92,6 +97,9 @@ public static class WebhookVerifier
     /// <summary><c>X-Webhook-Id</c>.</summary>
     public const string HeaderId = "X-Webhook-Id";
 
+    /// <summary><c>X-Webhook-Event-Id</c>.</summary>
+    public const string HeaderEventId = "X-Webhook-Event-Id";
+
     /// <summary><c>X-Webhook-Event-Time</c>.</summary>
     public const string HeaderEventTime = "X-Webhook-Event-Time";
 
@@ -103,14 +111,14 @@ public static class WebhookVerifier
     /// <param name="header">Case-insensitive header lookup.</param>
     /// <param name="options">Secret, rotation overlap and tolerance.</param>
     /// <exception cref="SignatureException">Missing header, stale timestamp or bad signature.</exception>
-    public static WebhookEvent Verify(ReadOnlySpan<byte> rawBody, Func<string, string?> header, WebhookVerifyOptions options)
+    public static IWebhookEvent Verify(ReadOnlySpan<byte> rawBody, Func<string, string?> header, WebhookVerifyOptions options)
         => VerifyDelivery(rawBody, header, options).Event;
 
     /// <summary>Verify a delivery whose headers come as a dictionary.</summary>
     /// <param name="rawBody">The raw request bytes.</param>
     /// <param name="headers">Delivery headers.</param>
     /// <param name="options">Secret, rotation overlap and tolerance.</param>
-    public static WebhookEvent Verify(
+    public static IWebhookEvent Verify(
         ReadOnlySpan<byte> rawBody,
         IReadOnlyDictionary<string, string> headers,
         WebhookVerifyOptions options)
@@ -202,7 +210,8 @@ public static class WebhookVerifier
         var isTest = string.Equals(header(HeaderTest)?.Trim(), "true", StringComparison.OrdinalIgnoreCase)
                      || IsTestEvent(parsed);
 
-        return new WebhookDeliveryInfo(parsed, header(HeaderId), header(HeaderEvent), eventTime, ts, isTest);
+        return new WebhookDeliveryInfo(
+            parsed, header(HeaderId), header(HeaderEventId), header(HeaderEvent), eventTime, ts, isTest);
     }
 
     /// <summary>
@@ -262,7 +271,7 @@ public static class WebhookVerifier
     /// money moved.
     /// </summary>
     /// <param name="webhookEvent">The parsed event.</param>
-    public static bool IsTestEvent(WebhookEvent webhookEvent) => webhookEvent.Test == true;
+    public static bool IsTestEvent(IWebhookEvent webhookEvent) => webhookEvent.Test == true;
 
     /// <summary>
     /// Parse a (previously verified) delivery body into a typed event, discriminated by <c>type</c>.
@@ -275,7 +284,7 @@ public static class WebhookVerifier
     /// </summary>
     /// <param name="rawBody">The delivery body.</param>
     /// <exception cref="ContractException">The body is not JSON, or lacks the fields every event carries.</exception>
-    public static WebhookEvent Parse(ReadOnlySpan<byte> rawBody)
+    public static IWebhookEvent Parse(ReadOnlySpan<byte> rawBody)
     {
         JsonElement body;
         try
@@ -289,40 +298,41 @@ public static class WebhookVerifier
         }
 
         if (body.ValueKind != JsonValueKind.Object
-            || !body.TryGetProperty("type", out var type) || type.ValueKind != JsonValueKind.String
-            || !body.TryGetProperty("uuid", out var uuid) || uuid.ValueKind != JsonValueKind.String)
+            || !body.TryGetProperty("type", out var type) || type.ValueKind != JsonValueKind.String)
         {
-            throw new WebhookPayloadException("delivery body lacks the string type/uuid fields every event carries");
+            throw new WebhookPayloadException("delivery body lacks the string type field every event carries");
         }
 
         try
         {
             return type.GetString() switch
             {
-                "payment" => OblodaiJson.Deserialize<PaymentEvent>(body),
-                "payout" => OblodaiJson.Deserialize<PayoutEvent>(body),
-                "wallet" => OblodaiJson.Deserialize<WalletEvent>(body),
+                "payment" => OblodaiJson.Deserialize<PaymentWebhook>(body),
+                "payout" => OblodaiJson.Deserialize<PayoutWebhook>(body),
+                "wallet" => OblodaiJson.Deserialize<WalletWebhook>(body),
+                "conversion" => OblodaiJson.Deserialize<ConversionWebhook>(body),
                 _ => OblodaiJson.Deserialize<UnknownWebhookEvent>(body),
             };
         }
         catch (ContractException error)
         {
-            throw new WebhookPayloadException(error.Message);
+            throw new WebhookPayloadException(error.Description);
         }
     }
 
     /// <summary>
     /// True when the event is one of the families this snapshot models
-    /// (<see cref="PaymentEvent"/>, <see cref="PayoutEvent"/>, <see cref="WalletEvent"/>) rather than an
+    /// (<see cref="PaymentWebhook"/>, <see cref="PayoutWebhook"/>, <see cref="WalletWebhook"/>,
+    /// <see cref="ConversionWebhook"/>) rather than an
     /// <see cref="UnknownWebhookEvent"/> the gateway added later. Guard a <c>switch</c> with it before
     /// treating an event as money.
     /// </summary>
     /// <param name="webhookEvent">The parsed event.</param>
-    public static bool IsKnownEvent(WebhookEvent webhookEvent) => webhookEvent is not UnknownWebhookEvent;
+    public static bool IsKnownEvent(IWebhookEvent webhookEvent) => webhookEvent is not UnknownWebhookEvent;
 
     /// <summary>Parse a (previously verified) delivery body given as text.</summary>
     /// <param name="rawBody">The delivery body.</param>
-    public static WebhookEvent Parse(string rawBody) => Parse(Encoding.UTF8.GetBytes(rawBody));
+    public static IWebhookEvent Parse(string rawBody) => Parse(Encoding.UTF8.GetBytes(rawBody));
 
     /// <summary>
     /// Deliveries can arrive out of order (a retried <c>paid</c> after a refund). Keep the last
@@ -330,8 +340,8 @@ public static class WebhookVerifier
     /// </summary>
     /// <param name="webhookEvent">The event just received.</param>
     /// <param name="lastProcessedSequence">The highest sequence already applied, if any.</param>
-    public static bool IsStale(WebhookEvent webhookEvent, long? lastProcessedSequence)
-        => lastProcessedSequence is { } last && webhookEvent.Sequence is { } sequence && sequence <= last;
+    public static bool IsStale(IWebhookEvent webhookEvent, long? lastProcessedSequence)
+        => lastProcessedSequence is { } last && webhookEvent.EventSequence is { } sequence && sequence <= last;
 
     private static Func<string, string?> Lookup(IReadOnlyDictionary<string, string> headers)
         => name =>

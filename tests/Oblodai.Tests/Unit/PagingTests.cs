@@ -31,7 +31,7 @@ public class PagingTests
         var handler = new FakeHttpHandler(ScriptedResponse.Page(Payments("a", "b"), 0, 5, 2, true));
         using var client = Client(handler);
 
-        var page = await client.Payments.HistoryAsync(new PaymentHistoryRequest { Limit = 2 });
+        var page = await client.Payments.ListHistoryAsync(limit: 2);
 
         Assert.Equal(2, page.Items.Count);
         Assert.Equal(5, page.Paginate.Total);
@@ -50,7 +50,7 @@ public class PagingTests
         using var client = Client(handler);
 
         var seen = new List<string>();
-        await foreach (var payment in client.Payments.HistoryAsync(new PaymentHistoryRequest { Limit = 2 }))
+        await foreach (var payment in client.Payments.ListHistoryAsync(limit: 2))
         {
             seen.Add(payment.Uuid);
         }
@@ -71,12 +71,12 @@ public class PagingTests
             ScriptedResponse.Page(Payments("c"), 2, 3, 2, false));
         using var client = Client(handler);
 
-        var all = await client.Payments.HistoryAsync(new PaymentHistoryRequest { Limit = 2 }).AllAsync();
+        var all = await client.Payments.ListHistoryAsync(limit: 2).AllAsync();
         Assert.Equal(3, all.Count);
 
         var capped = new FakeHttpHandler(ScriptedResponse.Page(Payments("a", "b"), 0, 9, 2, true));
         using var cappedClient = Client(capped);
-        var first = await cappedClient.Payments.HistoryAsync(new PaymentHistoryRequest { Limit = 2 }).AllAsync(2);
+        var first = await cappedClient.Payments.ListHistoryAsync(limit: 2).AllAsync(2);
 
         Assert.Equal(2, first.Count);
         Assert.Single(capped.Calls);
@@ -89,7 +89,7 @@ public class PagingTests
             ScriptedResponse.Error(404, """{"code":"payment.not_found","retryable":false}"""));
         using var client = Client(handler);
 
-        var pending = client.Payments.HistoryAsync();
+        var pending = client.Payments.ListHistoryAsync();
         Assert.Empty(handler.Calls);
 
         // An unconsumed failing list must never take the process down; consuming it raises the error.
@@ -107,11 +107,11 @@ public class PagingTests
         // Silently dropping the key would leave the caller believing a lost page request is safe to
         // repeat under it. The refusal happens at the call site, before any page is fetched.
         var post = Assert.Throws<ConfigException>(
-            () => client.Payouts.HistoryAsync(null, new RequestOptions { IdempotencyKey = "k" }));
+            () => client.Payouts.ListHistoryAsync(options: new RequestOptions { IdempotencyKey = "k" }));
         Assert.Equal(SdkErrorCodes.IdempotencyUnsupported, post.Code);
 
         var get = Assert.Throws<ConfigException>(
-            () => client.Sandbox.WebhooksAsync(null, new RequestOptions { IdempotencyKey = "k" }));
+            () => client.Sandbox.ListWebhooksAsync(options: new RequestOptions { IdempotencyKey = "k" }));
         Assert.Equal(SdkErrorCodes.IdempotencyUnsupported, get.Code);
 
         Assert.Empty(handler.Calls);
@@ -125,12 +125,7 @@ public class PagingTests
             ScriptedResponse.Page(Payments("b"), 1, 2, 1, false));
         using var client = Client(handler);
 
-        await client.Payouts.HistoryAsync(new PayoutHistoryRequest
-        {
-            Kind = "refund",
-            Status = PayoutStatus.Confirmed,
-            Limit = 1,
-        }).AllAsync();
+        await client.Payouts.ListHistoryAsync(kind: PayoutKind.Refund, status: "confirmed", limit: 1).AllAsync();
 
         foreach (var call in handler.Calls)
         {
@@ -150,7 +145,7 @@ public class PagingTests
         var handler = new FakeHttpHandler(ScriptedResponse.Page("[]", 0, 99, 50, true));
         using var client = Client(handler);
 
-        var all = await client.Payments.HistoryAsync().AllAsync();
+        var all = await client.Payments.ListHistoryAsync().AllAsync();
 
         Assert.Empty(all);
         Assert.Single(handler.Calls);
@@ -164,11 +159,46 @@ public class PagingTests
             ScriptedResponse.Page("""[{"id":"d2"}]""", 1, 2, 1, false));
         using var client = Client(handler);
 
-        var deliveries = await client.Sandbox.WebhooksAsync(new PageParams { Limit = 1 }).AllAsync();
+        var deliveries = await client.Sandbox.ListWebhooksAsync(limit: 1).AllAsync();
 
         Assert.Equal(2, deliveries.Count);
         Assert.Contains("limit=1&offset=0", handler.Calls[0].Url);
         Assert.Contains("limit=1&offset=1", handler.Calls[1].Url);
         Assert.All(handler.Calls, call => Assert.Null(call.Body));
+    }
+
+    [Fact]
+    public async Task ByPageWalksPageByPageReusingAnAlreadyFetchedFirstPage()
+    {
+        var handler = new FakeHttpHandler(
+            ScriptedResponse.Page(Payments("a", "b"), 0, 3, 2, true),
+            ScriptedResponse.Page(Payments("c"), 2, 3, 2, false));
+        using var client = Client(handler);
+
+        var list = client.Payments.ListHistoryAsync(limit: 2);
+        var first = await list;
+        var pages = new List<Page<PaymentView>>();
+        await foreach (var page in list.ByPageAsync())
+        {
+            pages.Add(page);
+        }
+
+        Assert.Same(first, pages[0]);
+        Assert.Equal([2, 1], pages.Select(p => p.Items.Count));
+        Assert.Equal(2, handler.Calls.Count);
+    }
+
+    [Fact]
+    public async Task ItemsAreGeneratedModelsWithTheirFields()
+    {
+        var handler = new FakeHttpHandler(
+            ScriptedResponse.Page("""[{"uuid":"a","status":"paid","amount":"25.10","new_field":1}]""", 0, 1, 1, false));
+        using var client = Client(handler);
+
+        var payment = Assert.Single(await client.Payments.ListHistoryAsync().AllAsync());
+
+        Assert.Equal(PaymentStatus.Paid, payment.Status);
+        Assert.Equal(25.10m, payment.Amount);
+        Assert.True(payment.Extra!.ContainsKey("new_field"));
     }
 }
