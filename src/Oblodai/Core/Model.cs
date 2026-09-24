@@ -84,7 +84,7 @@ public abstract partial record Model
             first = false;
             var wire = property.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name ?? property.Name;
             text.Append(property.Name).Append(" = ");
-            text.Append(IsSensitive(wire) ? Redaction.Placeholder : Show(value));
+            text.Append(IsSensitive(wire) && value is string or IEnumerable ? Redaction.Placeholder : Show(value));
             if (text.Length > ToStringLimit)
             {
                 break;
