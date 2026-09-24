@@ -1,14 +1,58 @@
+using System.Globalization;
 using System.Numerics;
 
 namespace Oblodai;
 
 /// <summary>
-/// Amounts are decimal strings on the wire and stay strings here; never parse one into a
-/// <see cref="double"/> (USDT has 6 decimals, BTC 8, ETH 18). These helpers compare and add at
-/// arbitrary precision using <see cref="BigInteger"/>.
+/// Amounts are decimal strings on the wire and <see cref="decimal"/> in the models; never put one into
+/// a <see cref="double"/> (USDT has 6 decimals, BTC 8, ETH 18). <see cref="Of"/> and
+/// <see cref="Parse"/> turn what you have into a <see cref="decimal"/> — refusing binary floating
+/// point with <c>sdk.float_amount</c> — and the string helpers compare and add at arbitrary precision
+/// using <see cref="BigInteger"/>, for amounts wider than <see cref="decimal"/> (18-decimal tokens).
 /// </summary>
 public static class Money
 {
+    /// <summary>
+    /// A decimal amount from a <see cref="decimal"/>, an integer or a decimal string. A
+    /// <see cref="double"/> or <see cref="float"/> is refused with <c>sdk.float_amount</c>: it cannot
+    /// hold <c>0.1</c> exactly, and the wrong cent would reach the gateway without a word.
+    /// </summary>
+    /// <param name="value">The amount.</param>
+    /// <exception cref="ConfigException"><c>sdk.float_amount</c>, or <c>sdk.bad_amount</c> for anything else.</exception>
+    public static decimal Of(object? value) => value switch
+    {
+        decimal d => d,
+        string s => Parse(s),
+        int or long or short or byte or sbyte or ushort or uint or ulong => Convert.ToDecimal(value, CultureInfo.InvariantCulture),
+        double or float or Half => throw new ConfigException(
+            SdkErrorCodes.FloatAmount,
+            $"amount {Convert.ToString(value, CultureInfo.InvariantCulture)} is binary floating point; use a decimal (25.10m) or a decimal string (\"25.10\")",
+            "amount"),
+        _ => throw new ConfigException(
+            SdkErrorCodes.BadAmount, $"not a decimal amount: {value?.GetType().Name ?? "null"}", "amount"),
+    };
+
+    /// <summary>A decimal string (<c>"25.10"</c>) as a <see cref="decimal"/>, keeping its scale; invariant culture.</summary>
+    /// <param name="amount">The amount as the wire writes it.</param>
+    /// <exception cref="ConfigException"><c>sdk.bad_amount</c>: not a plain decimal, or out of <see cref="decimal"/>'s range.</exception>
+    public static decimal Parse(string amount)
+    {
+        Parts(amount);
+        try
+        {
+            return decimal.Parse(amount, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture);
+        }
+        catch (OverflowException)
+        {
+            throw new ConfigException(
+                SdkErrorCodes.BadAmount, $"amount \"{amount}\" does not fit a decimal; keep it as a string", "amount");
+        }
+    }
+
+    /// <summary>The wire form of an amount: invariant digits, the scale kept (<c>25.10m</c> → <c>"25.10"</c>).</summary>
+    /// <param name="amount">The amount.</param>
+    public static string Format(decimal amount) => amount.ToString(CultureInfo.InvariantCulture);
+
     /// <summary>-1, 0 or 1, comparing two decimal amounts exactly.</summary>
     /// <param name="a">Left amount.</param>
     /// <param name="b">Right amount.</param>
