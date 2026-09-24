@@ -33,13 +33,14 @@ DOTNET_ENTRYPOINT=bash ./scripts/dotnet.sh -euo pipefail -c "
 
 echo "== package"
 python3 - <<'PY'
-import pathlib, sys, zipfile
+import pathlib, re, sys, zipfile
 
 packages = [p for p in pathlib.Path(".cache/pack").glob("Oblodai.*.nupkg") if not p.name.endswith(".symbols.nupkg")]
 if len(packages) != 1:
     sys.exit(f"expected one Oblodai package, got {packages}")
 package = packages[0]
-if package.name != "Oblodai.2.0.0.nupkg":
+version = re.search(r"<Version>([^<]+)</Version>", pathlib.Path("src/Oblodai/Oblodai.csproj").read_text()).group(1)
+if package.name != f"Oblodai.{version}.nupkg":
     sys.exit(f"unexpected package {package.name}")
 names = zipfile.ZipFile(package).namelist()
 for path in ("lib/net8.0/Oblodai.dll", "lib/net10.0/Oblodai.dll", "lib/net8.0/Oblodai.xml", "README.md", "AGENTS.md", "LICENSE"):
