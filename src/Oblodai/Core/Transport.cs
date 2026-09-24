@@ -25,6 +25,9 @@ public sealed partial class OblodaiTransport : IDisposable
     /// <summary>Error codes that mean the gateway rejected the signature because of the timestamp or MAC.</summary>
     private static readonly HashSet<string> SignatureFailureCodes = ["merchant.bad_signature", "auth.bad_timestamp"];
 
+    private static readonly IReadOnlyDictionary<string, string> EmptyHeaders =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
     private readonly TransportOptions _options;
     private readonly HttpClient _http;
     private readonly bool _ownsHttpClient;
@@ -66,15 +69,21 @@ public sealed partial class OblodaiTransport : IDisposable
                 new Dictionary<string, object?>
                 {
                     ["httpClientTimeoutMs"] = (long)_http.Timeout.TotalMilliseconds,
-                    ["sdkTimeoutMs"] = options.TimeoutMs,
-                    ["sdkDeadlineMs"] = options.DeadlineMs,
-                    ["fix"] = "set HttpClient.Timeout = Timeout.InfiniteTimeSpan and use TimeoutMs/DeadlineMs",
+                    ["sdkTimeoutMs"] = (long)options.Timeout.TotalMilliseconds,
+                    ["sdkDeadlineMs"] = (long)options.Deadline.TotalMilliseconds,
+                    ["fix"] = "set HttpClient.Timeout = Timeout.InfiniteTimeSpan and use Timeout/Deadline",
                 });
         }
     }
 
     /// <summary>The signing clock, exposed for tests and diagnostics.</summary>
     public SkewCorrectingClock Clock => _clock;
+
+    /// <summary>The wiring this transport was built with.</summary>
+    public TransportOptions Options => _options;
+
+    /// <summary>The HTTP client requests go through.</summary>
+    internal HttpClient HttpClient => _http;
 
     /// <summary>Call an envelope route and decode its <c>result</c>.</summary>
     /// <typeparam name="T">Model of the <c>result</c> payload.</typeparam>
@@ -187,8 +196,12 @@ public sealed partial class OblodaiTransport : IDisposable
             idempotencyKey = Idempotency.NewKey();
         }
 
+        var requestId = options.RequestId ?? Guid.NewGuid().ToString();
+        RequestBuilder.AssertHeaderIsSendable(RequestBuilder.HeaderRequestId, requestId);
+        var retry = RetryFor(options);
         var safeToRepeat = route.Safe || (route.Idempotent && idempotencyKey is not null);
-        var deadline = DateTimeOffset.UtcNow.AddMilliseconds(options.DeadlineMs ?? _options.DeadlineMs);
+        var time = _options.TimeProvider;
+        var deadline = time.GetUtcNow() + _options.Deadline;
         var label = $"{route.Method} {route.Path}";
 
         var attempt = 0;
@@ -211,9 +224,10 @@ public sealed partial class OblodaiTransport : IDisposable
                 Body = body,
                 Credentials = _options.Credentials,
                 IdempotencyKey = idempotencyKey,
+                RequestId = requestId,
                 Ts = _clock.BaseNowUnixSeconds() + signedWithOffset,
                 UserAgent = _options.UserAgent,
-                ExtraHeaders = MergeHeaders(_options.Headers, options.Headers),
+                ExtraHeaders = MergeHeaders(_options.Headers, options.ExtraHeaders),
                 AdminToken = _options.AdminToken,
             });
 
@@ -222,7 +236,13 @@ public sealed partial class OblodaiTransport : IDisposable
                 ["route"] = label,
                 ["attempt"] = attempt,
                 ["idempotencyKey"] = idempotencyKey,
+                ["requestId"] = requestId,
             });
+
+            var info = new RequestInfo(
+                request.Method, request.Url, RedactHeaders(request.Headers), attempt + 1, requestId, route.OperationId);
+            _options.Hooks?.OnRequest?.Invoke(info);
+            var started = time.GetTimestamp();
 
             RawResponse raw;
             HttpResponseHeaders? responseHeaders;
@@ -233,9 +253,11 @@ public sealed partial class OblodaiTransport : IDisposable
             }
             catch (OblodaiException err)
             {
-                if (RetryPolicy.ShouldRetry(err, attempt, safeToRepeat, _options.Retry))
+                _options.Hooks?.OnResponse?.Invoke(new ResponseInfo(
+                    info, 0, EmptyHeaders, time.GetElapsedTime(started), err));
+                if (RetryPolicy.ShouldRetry(err, attempt, safeToRepeat, retry))
                 {
-                    await PauseAsync(err, attempt, deadline, cancellationToken).ConfigureAwait(false);
+                    await PauseAsync(err, attempt, retry, deadline, cancellationToken).ConfigureAwait(false);
                     attempt++;
                     continue;
                 }
@@ -243,18 +265,29 @@ public sealed partial class OblodaiTransport : IDisposable
                 throw;
             }
 
+            raw = raw with
+            {
+                RequestId = raw.Headers.TryGetValue(RequestBuilder.HeaderRequestId, out var echoed)
+                            && !string.IsNullOrEmpty(echoed) ? echoed : requestId,
+            };
+
             if (raw.Status is >= 200 and < 300)
             {
+                _options.Hooks?.OnResponse?.Invoke(new ResponseInfo(
+                    info, raw.Status, raw.Headers, time.GetElapsedTime(started), null));
+                RawCapture.Record(raw);
                 return raw;
             }
 
             var failure = Classify(route, raw, responseHeaders);
+            _options.Hooks?.OnResponse?.Invoke(new ResponseInfo(
+                info, raw.Status, raw.Headers, time.GetElapsedTime(started), failure));
             _logger.Log(OblodaiLogLevel.Debug, "response", LogRedaction.Redact(new Dictionary<string, object?>
             {
                 ["route"] = label,
                 ["status"] = raw.Status,
                 ["code"] = failure.Code,
-                ["requestId"] = failure.RequestId,
+                ["requestId"] = failure.RequestId ?? raw.RequestId,
             }));
 
             // Clock skew: the gateway rejected the timestamp/MAC. Learn its time from the `Date` header,
@@ -285,15 +318,46 @@ public sealed partial class OblodaiTransport : IDisposable
                 }
             }
 
-            if (RetryPolicy.ShouldRetry(failure, attempt, safeToRepeat, _options.Retry))
+            if (RetryPolicy.ShouldRetry(failure, attempt, safeToRepeat, retry))
             {
-                await PauseAsync(failure, attempt, deadline, cancellationToken).ConfigureAwait(false);
+                await PauseAsync(failure, attempt, retry, deadline, cancellationToken).ConfigureAwait(false);
                 attempt++;
                 continue;
             }
 
             throw failure;
         }
+    }
+
+    private RetryOptions RetryFor(CallOptions options)
+    {
+        if (options.MaxRetries is not { } max)
+        {
+            return _options.Retry;
+        }
+
+        if (max < 0)
+        {
+            throw new ConfigException(SdkErrorCodes.BadConfig, $"MaxRetries must not be negative (got {max})", "MaxRetries");
+        }
+
+        return _options.Retry with { MaxRetries = max };
+    }
+
+    /// <summary>The headers of an attempt as hooks see them: the signature and the admin token redacted.</summary>
+    /// <param name="headers">Headers as sent.</param>
+    private static IReadOnlyDictionary<string, string> RedactHeaders(IReadOnlyDictionary<string, string> headers)
+    {
+        var output = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (key, value) in headers)
+        {
+            output[key] = key.Equals(RequestSigner.HeaderSignature, StringComparison.OrdinalIgnoreCase)
+                          || key.Equals(RequestSigner.HeaderAdminToken, StringComparison.OrdinalIgnoreCase)
+                ? Redaction.Placeholder
+                : value;
+        }
+
+        return output;
     }
 
     private static OblodaiException Classify(RouteSpec route, RawResponse raw, HttpResponseHeaders? headers)

@@ -1,4 +1,3 @@
-using Oblodai.Contract;
 using Xunit;
 using Xunit.Abstractions;
 using Xunit.Sdk;
@@ -48,9 +47,9 @@ public sealed class StepOrderer : ITestCaseOrderer
 }
 
 /// <summary>
-/// A freshly provisioned merchant with a sandbox key on the gateway under test. Onboarding goes through
-/// the SDK itself (`POST /v1/merchants` then `/sandbox`), so the unsigned provisioning routes are
-/// exercised too.
+/// A freshly provisioned merchant with a sandbox key on the gateway under test. Onboarding is open on a
+/// dev stand: <c>POST /v1/merchants</c> (not part of the merchant API, so plain HTTP here) and then the
+/// SDK's own <c>Sandbox.OnboardStoreAsync</c>, which mints the sandbox key pair.
 /// </summary>
 public class LiveEnvironment : IAsyncLifetime
 {
@@ -72,9 +71,6 @@ public class LiveEnvironment : IAsyncLifetime
     /// <summary>A client with no credentials, for the payer-facing routes.</summary>
     public OblodaiClient Anonymous => _anonymous ?? throw new InvalidOperationException("live environment not initialised");
 
-    /// <summary>The merchant this run provisioned.</summary>
-    public string MerchantId { get; private set; } = string.Empty;
-
     /// <summary>Something unique per run, for order ids and references.</summary>
     public static string Unique(string prefix) => $"{prefix}-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}-{Random.Shared.Next(1000, 9999)}";
 
@@ -89,14 +85,17 @@ public class LiveEnvironment : IAsyncLifetime
         var options = new OblodaiOptions { BaseUrl = BaseUrl, AllowInsecureBaseUrl = true };
         _anonymous = new OblodaiClient(options);
 
-        var merchant = await _anonymous.Merchants.CreateAsync(new MerchantsRequest
-        {
-            Email = $"{Unique("sdk-dotnet")}@example.com",
-            Name = "SDK dotnet live",
-        });
-        MerchantId = merchant.MerchantId;
+        using var http = new HttpClient();
+        var created = await http.PostAsync(
+            $"{BaseUrl.TrimEnd('/')}/v1/merchants",
+            new StringContent(
+                $"{{\"email\":\"{Unique("sdk-dotnet")}@example.com\",\"name\":\"SDK dotnet live\"}}",
+                System.Text.Encoding.UTF8,
+                "application/json"));
+        using var merchant = System.Text.Json.JsonDocument.Parse(await created.Content.ReadAsStringAsync());
+        var merchantId = merchant.RootElement.GetProperty("result").GetProperty("merchant_id").GetString()!;
 
-        var sandbox = await _anonymous.Merchants.CreateSandboxAsync(merchant.MerchantId);
+        var sandbox = await _anonymous.Sandbox.OnboardStoreAsync(merchantId);
         _merchant = new OblodaiClient(options with
         {
             PublicId = sandbox.ApiKey.PublicId,
@@ -110,31 +109,5 @@ public class LiveEnvironment : IAsyncLifetime
         _merchant?.Dispose();
         _anonymous?.Dispose();
         return Task.CompletedTask;
-    }
-
-    /// <summary>
-    /// Runs a call that may be refused for business reasons on this stand (a feature that is off, an
-    /// object in the wrong state). A shape problem — our body rejected, or an answer we cannot decode —
-    /// still fails the test.
-    /// </summary>
-    public static async Task<T?> AcceptRefusalAsync<T>(Task<T> call)
-        where T : class
-    {
-        try
-        {
-            return await call;
-        }
-        catch (ValidationException)
-        {
-            throw;
-        }
-        catch (ContractException)
-        {
-            throw;
-        }
-        catch (ApiException)
-        {
-            return null;
-        }
     }
 }

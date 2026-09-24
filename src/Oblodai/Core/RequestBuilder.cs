@@ -58,6 +58,9 @@ public sealed record BuildInput
     /// <summary>Idempotency key to send and sign, when there is one.</summary>
     public string? IdempotencyKey { get; init; }
 
+    /// <summary>Sent as <c>X-Request-ID</c>; not signed.</summary>
+    public string? RequestId { get; init; }
+
     /// <summary>Unix seconds; signed into <c>X-Timestamp</c>.</summary>
     public required long Ts { get; init; }
 
@@ -78,6 +81,9 @@ public sealed record BuildInput
 /// </summary>
 public static class RequestBuilder
 {
+    /// <summary><c>X-Request-ID</c>: ties one call (all its attempts) to the gateway's logs.</summary>
+    public const string HeaderRequestId = "X-Request-ID";
+
     /// <summary>
     /// Headers the SDK owns; a caller-supplied header with one of these names is dropped, compared
     /// case-insensitively. <c>X-Admin-Token</c> is here so it can only be attached by the transport,
@@ -90,6 +96,7 @@ public static class RequestBuilder
         RequestSigner.HeaderTimestamp,
         RequestSigner.HeaderIdempotencyKey,
         RequestSigner.HeaderAdminToken,
+        HeaderRequestId,
         "Accept",
         "User-Agent",
         "Content-Type",
@@ -136,6 +143,10 @@ public static class RequestBuilder
 
         headers["Accept"] = "application/json";
         headers["User-Agent"] = input.UserAgent;
+        if (!string.IsNullOrEmpty(input.RequestId))
+        {
+            headers[HeaderRequestId] = input.RequestId!;
+        }
 
         if (route.Auth == RouteAuth.Onboard && !string.IsNullOrEmpty(input.AdminToken))
         {

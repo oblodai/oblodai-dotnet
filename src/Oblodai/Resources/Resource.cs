@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Oblodai.Contract;
@@ -5,8 +6,9 @@ using Oblodai.Contract;
 namespace Oblodai.Resources;
 
 /// <summary>
-/// Shared plumbing for the resource namespaces: it turns a route plus a body into a transport call,
-/// and a list route into a lazy <see cref="PagePromise{T}"/>.
+/// Shared plumbing of the generated resource namespaces (<c>Generated/Resources.g.cs</c>): it turns a
+/// route plus a body into a transport call, a list route into a lazy <see cref="PagePromise{T}"/> and a
+/// bare route into a <see cref="FileResult"/>.
 /// </summary>
 public abstract class Resource
 {
@@ -17,7 +19,7 @@ public abstract class Resource
     /// <summary>The transport every call goes through.</summary>
     protected OblodaiTransport Transport { get; }
 
-    /// <summary>Call an envelope route and decode its result.</summary>
+    /// <summary>Call an envelope route and decode its <c>result</c> — the entry point of generated methods.</summary>
     /// <typeparam name="T">Model of the result payload.</typeparam>
     /// <param name="route">Route to call.</param>
     /// <param name="body">Request body, or null.</param>
@@ -25,41 +27,91 @@ public abstract class Resource
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <param name="pathParams">Values for <c>{name}</c> path segments.</param>
     /// <param name="query">Query parameters.</param>
-    protected Task<T> CallAsync<T>(
+    protected Task<T> RequestAsync<T>(
         RouteSpec route,
         object? body,
         RequestOptions? options,
         CancellationToken cancellationToken,
         IReadOnlyDictionary<string, string>? pathParams = null,
         IReadOnlyList<KeyValuePair<string, string?>>? query = null)
-        => Transport.CallAsync<T>(route, CallOptionsFrom(options, body, pathParams, query), cancellationToken);
+        => Transport.CallAsync<T>(route, CallOptions.From(options, body, pathParams, query), cancellationToken);
 
-    /// <summary>Call a paged POST list route; the filter's own <c>limit</c>/<c>offset</c> seed the window.</summary>
+    /// <summary>
+    /// Call a paged list route lazily. The request's own <c>limit</c>/<c>offset</c> (body, or query
+    /// on a GET route) pick the first page; every page repeats the rest of the request.
+    /// </summary>
     /// <typeparam name="T">Item model.</typeparam>
     /// <param name="route">Route to call.</param>
-    /// <param name="filter">Filter record, or null.</param>
+    /// <param name="body">Request body (filter), or null.</param>
     /// <param name="options">Per-call options.</param>
     /// <param name="cancellationToken">Cancels every page fetch.</param>
-    protected PagePromise<T> PagedPost<T>(
+    /// <param name="pathParams">Values for <c>{name}</c> path segments.</param>
+    /// <param name="query">Query parameters.</param>
+    protected PagePromise<T> RequestPaged<T>(
         RouteSpec route,
-        object? filter,
+        object? body,
         RequestOptions? options,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlyDictionary<string, string>? pathParams = null,
+        IReadOnlyList<KeyValuePair<string, string?>>? query = null)
     {
         AssertNoIdempotencyKey(route, options);
-        var body = ToJsonObject(filter);
-        var limit = TakeInt(body, "limit");
-        var offset = TakeInt(body, "offset");
-        var pageOptions = options;
+        var useQuery = route.Method == "GET";
+        var filter = ToJsonObject(body);
+        var rest = new List<KeyValuePair<string, string?>>();
+        var limit = TakeInt(filter, "limit");
+        var offset = TakeInt(filter, "offset");
+        foreach (var pair in query ?? [])
+        {
+            if (pair.Key is "limit" or "offset")
+            {
+                if (pair.Value is not null)
+                {
+                    var value = ParseInt(pair.Key, pair.Value);
+                    if (pair.Key == "limit")
+                    {
+                        limit = value;
+                    }
+                    else
+                    {
+                        offset = value;
+                    }
+                }
+
+                continue;
+            }
+
+            rest.Add(pair);
+        }
 
         return new PagePromise<T>(
             async (pageLimit, pageOffset, token) =>
             {
-                var pageBody = body.DeepClone().AsObject();
-                pageBody["limit"] = pageLimit;
-                pageBody["offset"] = pageOffset;
+                object? pageBody = null;
+                var pageQuery = new List<KeyValuePair<string, string?>>(rest);
+                var window = new[]
+                {
+                    new KeyValuePair<string, string?>("limit", pageLimit.ToString(CultureInfo.InvariantCulture)),
+                    new KeyValuePair<string, string?>("offset", pageOffset.ToString(CultureInfo.InvariantCulture)),
+                };
+                if (useQuery)
+                {
+                    pageQuery.AddRange(window);
+                    pageBody = body is null ? null : filter;
+                }
+                else
+                {
+                    var copy = filter.DeepClone().AsObject();
+                    copy["limit"] = pageLimit;
+                    copy["offset"] = pageOffset;
+                    pageBody = copy;
+                }
+
                 var element = await Transport
-                    .CallElementAsync(route, CallOptionsFrom(pageOptions, pageBody, null, null), token)
+                    .CallElementAsync(
+                        route,
+                        CallOptions.From((options ?? new RequestOptions()) with { IdempotencyKey = null }, pageBody, pathParams, pageQuery),
+                        token)
                     .ConfigureAwait(false);
                 return AsPage<T>(element);
             },
@@ -68,92 +120,29 @@ public abstract class Resource
             cancellationToken);
     }
 
-    /// <summary>Call a paged GET list route, passing the window as query parameters.</summary>
-    /// <typeparam name="T">Item model.</typeparam>
-    /// <param name="route">Route to call.</param>
-    /// <param name="page">Requested window.</param>
-    /// <param name="options">Per-call options.</param>
-    /// <param name="cancellationToken">Cancels every page fetch.</param>
-    /// <param name="extraQuery">Query parameters besides the window.</param>
-    protected PagePromise<T> PagedGet<T>(
-        RouteSpec route,
-        PageParams? page,
-        RequestOptions? options,
-        CancellationToken cancellationToken,
-        IReadOnlyList<KeyValuePair<string, string?>>? extraQuery = null)
-    {
-        AssertNoIdempotencyKey(route, options);
-        var pageOptions = options;
-        return new PagePromise<T>(
-            async (pageLimit, pageOffset, token) =>
-            {
-                var query = new List<KeyValuePair<string, string?>>(extraQuery ?? [])
-                {
-                    new("limit", pageLimit.ToString()),
-                    new("offset", pageOffset.ToString()),
-                };
-                var element = await Transport
-                    .CallElementAsync(route, CallOptionsFrom(pageOptions, null, null, query), token)
-                    .ConfigureAwait(false);
-                return AsPage<T>(element);
-            },
-            page?.Limit,
-            page?.Offset,
-            cancellationToken);
-    }
-
-    /// <summary>Call a plain list route (<c>{items}</c> without a paginate block).</summary>
-    /// <typeparam name="T">Item model.</typeparam>
-    /// <param name="route">Route to call.</param>
-    /// <param name="body">Request body, or null.</param>
-    /// <param name="options">Per-call options.</param>
-    /// <param name="cancellationToken">Cancels the call.</param>
-    protected async Task<IReadOnlyList<T>> PlainListAsync<T>(
-        RouteSpec route,
-        object? body,
-        RequestOptions? options,
-        CancellationToken cancellationToken)
-    {
-        var element = await Transport
-            .CallElementAsync(route, CallOptionsFrom(options, body, null, null), cancellationToken)
-            .ConfigureAwait(false);
-        if (element.ValueKind != JsonValueKind.Object || !element.TryGetProperty("items", out var items)
-            || items.ValueKind != JsonValueKind.Array)
-        {
-            throw new ContractException("expected an {items} list result", 200, element.ToString());
-        }
-
-        return OblodaiJson.Deserialize<List<T>>(items);
-    }
-
     /// <summary>Call a bare route and return the bytes it answered with.</summary>
     /// <param name="route">Route to call.</param>
+    /// <param name="body">Request body for bare POST routes, or null.</param>
     /// <param name="options">Per-call options.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     /// <param name="pathParams">Values for <c>{name}</c> path segments.</param>
     /// <param name="query">Query parameters.</param>
-    /// <param name="body">Request body for bare POST routes.</param>
-    protected async Task<FileResult> FileAsync(
+    protected async Task<FileResult> RequestFileAsync(
         RouteSpec route,
+        object? body,
         RequestOptions? options,
         CancellationToken cancellationToken,
         IReadOnlyDictionary<string, string>? pathParams = null,
-        IReadOnlyList<KeyValuePair<string, string?>>? query = null,
-        object? body = null)
+        IReadOnlyList<KeyValuePair<string, string?>>? query = null)
     {
         var raw = await Transport
-            .CallRawAsync(route, CallOptionsFrom(options, body, pathParams, query), cancellationToken)
+            .CallRawAsync(route, CallOptions.From(options, body, pathParams, query), cancellationToken)
             .ConfigureAwait(false);
         return new FileResult(
             raw.Body,
             raw.ContentType ?? "application/octet-stream",
             FilenameFrom(raw.ContentDisposition));
     }
-
-    /// <summary>Build the query list from name/value pairs, dropping the ones that are null.</summary>
-    /// <param name="pairs">Candidate parameters.</param>
-    protected static List<KeyValuePair<string, string?>> Query(params (string Name, string? Value)[] pairs)
-        => pairs.Where(p => p.Value is not null).Select(p => new KeyValuePair<string, string?>(p.Name, p.Value)).ToList();
 
     /// <summary>
     /// A list route is read-only, so the gateway never deduplicates it by <c>Idempotency-Key</c>. Dropping
@@ -176,22 +165,6 @@ public abstract class Resource
             $"{route.Method} {route.Path} does not deduplicate by Idempotency-Key; drop IdempotencyKey from this call",
             "IdempotencyKey");
     }
-
-    private static CallOptions CallOptionsFrom(
-        RequestOptions? options,
-        object? body,
-        IReadOnlyDictionary<string, string>? pathParams,
-        IReadOnlyList<KeyValuePair<string, string?>>? query)
-        => new()
-        {
-            Body = body,
-            PathParams = pathParams,
-            Query = query,
-            IdempotencyKey = options?.IdempotencyKey,
-            TimeoutMs = options?.TimeoutMs,
-            DeadlineMs = options?.DeadlineMs,
-            Headers = options?.Headers,
-        };
 
     private static Page<T> AsPage<T>(JsonElement element)
     {
@@ -219,11 +192,22 @@ public abstract class Resource
     {
         if (!body.TryGetPropertyValue(name, out var node) || node is null)
         {
+            body.Remove(name);
             return null;
         }
 
         body.Remove(name);
-        return node.GetValue<int>();
+        return ParseInt(name, node.ToJsonString());
+    }
+
+    private static int ParseInt(string name, string text)
+    {
+        if (!int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) || value < 0)
+        {
+            throw new ConfigException(SdkErrorCodes.BadConfig, $"{name} must be a non-negative integer (got {text})", name);
+        }
+
+        return value;
     }
 
     private static string? FilenameFrom(string? contentDisposition)

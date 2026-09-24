@@ -18,25 +18,58 @@ public sealed record CallOptions
     /// <summary>Values for the <c>{name}</c> segments of the route path.</summary>
     public IReadOnlyDictionary<string, string>? PathParams { get; init; }
 
-    /// <summary>Your own idempotency key; generated automatically on create routes when omitted.</summary>
+    /// <summary>Your own idempotency key; generated automatically on deduplicated routes when omitted.</summary>
     public string? IdempotencyKey { get; init; }
 
-    /// <summary>Per-attempt timeout, milliseconds.</summary>
-    public int? TimeoutMs { get; init; }
+    /// <summary>Per-attempt timeout.</summary>
+    public TimeSpan? Timeout { get; init; }
 
-    /// <summary>Overall budget for this call including retries, milliseconds.</summary>
-    public int? DeadlineMs { get; init; }
+    /// <summary>Retries after the first attempt; the client's policy when null.</summary>
+    public int? MaxRetries { get; init; }
 
     /// <summary>Extra headers for this call only, merged over the transport's own.</summary>
-    public IReadOnlyDictionary<string, string>? Headers { get; init; }
+    public IReadOnlyDictionary<string, string>? ExtraHeaders { get; init; }
+
+    /// <summary><c>X-Request-ID</c> of the call; generated when null.</summary>
+    public string? RequestId { get; init; }
+
+    /// <summary>The per-call fields of <paramref name="options"/> plus the request itself.</summary>
+    /// <param name="options">Caller's options, or null.</param>
+    /// <param name="body">Request body object.</param>
+    /// <param name="pathParams">Values of the path placeholders.</param>
+    /// <param name="query">Query parameters.</param>
+    public static CallOptions From(
+        RequestOptions? options,
+        object? body = null,
+        IReadOnlyDictionary<string, string>? pathParams = null,
+        IReadOnlyList<KeyValuePair<string, string?>>? query = null)
+        => new()
+        {
+            Body = body,
+            PathParams = pathParams,
+            Query = query,
+            IdempotencyKey = options?.IdempotencyKey,
+            Timeout = options?.Timeout,
+            MaxRetries = options?.MaxRetries,
+            ExtraHeaders = options?.ExtraHeaders,
+            RequestId = options?.RequestId,
+        };
 }
 
-/// <summary>A raw (bare-route) response: the bytes plus the headers that describe them.</summary>
+/// <summary>A successful answer as it came off the wire: status, headers and bytes.</summary>
 /// <param name="Status">HTTP status.</param>
 /// <param name="Body">Response bytes.</param>
 /// <param name="ContentType">Value of the <c>Content-Type</c> header.</param>
 /// <param name="ContentDisposition">Value of the <c>Content-Disposition</c> header.</param>
-public sealed record RawResponse(int Status, byte[] Body, string? ContentType, string? ContentDisposition);
+public sealed record RawResponse(int Status, byte[] Body, string? ContentType, string? ContentDisposition)
+{
+    /// <summary>Response headers (content headers included), case-insensitive.</summary>
+    public IReadOnlyDictionary<string, string> Headers { get; init; }
+        = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The response's <c>X-Request-ID</c>, else the one the SDK sent with the call.</summary>
+    public string RequestId { get; init; } = string.Empty;
+}
 
 /// <summary>How the transport is wired up.</summary>
 public sealed record TransportOptions
@@ -47,14 +80,20 @@ public sealed record TransportOptions
     /// <summary>The merchant's API key pair; it signs every signed route.</summary>
     public Credentials? Credentials { get; init; }
 
-    /// <summary>Per-attempt timeout, ms. Default 30000.</summary>
-    public int TimeoutMs { get; init; } = 30_000;
+    /// <summary>Per-attempt timeout. Default 30 seconds.</summary>
+    public TimeSpan Timeout { get; init; } = TimeSpan.FromSeconds(30);
 
-    /// <summary>Overall budget per call including retries and pauses, ms. Default 90000.</summary>
-    public int DeadlineMs { get; init; } = 90_000;
+    /// <summary>Overall budget per call including retries and pauses. Default 90 seconds.</summary>
+    public TimeSpan Deadline { get; init; } = TimeSpan.FromSeconds(90);
 
     /// <summary>Retry policy.</summary>
     public RetryOptions Retry { get; init; } = RetryOptions.Default;
+
+    /// <summary>Request and response hooks.</summary>
+    public Hooks? Hooks { get; init; }
+
+    /// <summary>Time source for retry pauses and the call deadline.</summary>
+    public TimeProvider TimeProvider { get; init; } = TimeProvider.System;
 
     /// <summary>Signing clock.</summary>
     public SkewCorrectingClock? Clock { get; init; }
@@ -78,9 +117,10 @@ public sealed record TransportOptions
     {
         builder.Append("BaseUrl = ").Append(BaseUrl)
             .Append(", Credentials = ").Append(Credentials)
-            .Append(", TimeoutMs = ").Append(TimeoutMs)
-            .Append(", DeadlineMs = ").Append(DeadlineMs)
+            .Append(", Timeout = ").Append(Timeout)
+            .Append(", Deadline = ").Append(Deadline)
             .Append(", Retry = ").Append(Retry)
+            .Append(", Hooks = ").Append(Hooks)
             .Append(", Clock = ").Append(Clock)
             .Append(", Logger = ").Append(Logger)
             .Append(", UserAgent = ").Append(UserAgent)

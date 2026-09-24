@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Oblodai.Contract;
 using Oblodai.Tests.Support;
+using Oblodai.Resources;
 using Xunit;
 
 namespace Oblodai.Tests.Unit;
@@ -165,7 +166,7 @@ public class EnvelopeTests
         var request = RequestBuilder.Build(new BuildInput
         {
             BaseUrl = "https://gw.corp/oblodai",
-            Route = Routes.PostV1Balance,
+            Route = Routes.GetBalance,
             Credentials = new Credentials("pk", "s"),
             Ts = 1_755_600_000,
             UserAgent = "test",
@@ -185,7 +186,7 @@ public class EnvelopeTests
         var request = RequestBuilder.Build(new BuildInput
         {
             BaseUrl = "https://api.test",
-            Route = Routes.GetV1SandboxWebhooks,
+            Route = Routes.SandboxListWebhooks,
             Credentials = new Credentials("pk", "s"),
             Query = [new KeyValuePair<string, string?>("limit", "10"), new KeyValuePair<string, string?>("offset", "0")],
             Ts = 1_755_600_000,
@@ -205,7 +206,7 @@ public class EnvelopeTests
         var request = RequestBuilder.Build(new BuildInput
         {
             BaseUrl = "https://api.test",
-            Route = Routes.PostV1Balance,
+            Route = Routes.GetBalance,
             Credentials = new Credentials("pk", "s"),
             Ts = 1,
             UserAgent = "test",
@@ -237,7 +238,7 @@ public class EnvelopeTests
         var error = Assert.Throws<ConfigException>(() => RequestBuilder.Build(new BuildInput
         {
             BaseUrl = "https://api.test",
-            Route = Routes.PostV1Balance,
+            Route = Routes.GetBalance,
             Ts = 1,
             UserAgent = "test",
             Body = "{}",
@@ -249,12 +250,13 @@ public class EnvelopeTests
     [Fact]
     public void PublicAndOnboardRoutesAreNotSigned()
     {
-        foreach (var route in new[] { Routes.GetV1Currencies, Routes.PostV1Merchants })
+        foreach (var route in new[] { Routes.ListCurrencies, Routes.OnboardSandboxStore })
         {
             var request = RequestBuilder.Build(new BuildInput
             {
                 BaseUrl = "https://api.test",
                 Route = route,
+                PathParams = new Dictionary<string, string> { ["id"] = "m1" },
                 Ts = 1,
                 UserAgent = "test",
                 Body = "{}",

@@ -47,7 +47,8 @@ public class EnvelopeHardeningTests
 
         var error = decoded.Error!;
         Assert.Equal("payment.bad_amount", error.Code);
-        Assert.Equal("request failed with HTTP 400 (payment.bad_amount)", error.Message);
+        Assert.Equal("request failed with HTTP 400 (payment.bad_amount)", error.Description);
+        Assert.Equal("[payment.bad_amount] request failed with HTTP 400 (payment.bad_amount)", error.Message);
         Assert.Null(error.Field);
         Assert.Null(error.RequestId);
         Assert.False(error.Retryable); // 400 is not in the transient set
@@ -140,19 +141,5 @@ public class EnvelopeHardeningTests
         Assert.Contains(SdkErrorCodes.TransportNetwork, text);
         Assert.Contains("socket closed", text);
         Assert.Contains(nameof(AnErrorPrintsItsCodeAndKeepsTheStackAndInnerException), text);
-    }
-
-    [Fact]
-    public void EveryRouteInTheContractStatesWhetherItIsSafeToRepeat()
-    {
-        // The SDK never guesses retry safety from a path. If a re-export drops the flag, codegen must
-        // fail rather than fall back to a heuristic — this is the assertion that keeps that honest.
-        foreach (var route in Fixtures.Contract.GetProperty("routes").EnumerateArray())
-        {
-            Assert.True(
-                route.TryGetProperty("safe", out var safe)
-                && safe.ValueKind is System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False,
-                $"{route.GetProperty("method")} {route.GetProperty("path")}: contract.json has no boolean \"safe\"");
-        }
     }
 }

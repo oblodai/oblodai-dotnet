@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Oblodai.Models;
 using Oblodai.Resources;
 using Oblodai.Tests.Support;
 using Xunit;
@@ -7,10 +6,9 @@ using Xunit;
 namespace Oblodai.Tests.Unit;
 
 /// <summary>
-/// A secret must survive being printed. Records print every member by default and
-/// <see cref="JsonSerializer"/> writes every property, so the two ways an object most often reaches a
-/// log — <c>logger.LogInformation("{Options}", options)</c> and a structured logger serializing its
-/// fields — are exactly the two that would leak an API key, a webhook secret or a claim token.
+/// A secret must survive being printed. Records print every member by default, so
+/// <c>logger.LogInformation("{Options}", options)</c> would leak an API key, a webhook secret or a
+/// claim token; options are also kept out of JSON.
 /// </summary>
 public class SecrecyTests
 {
@@ -23,10 +21,16 @@ public class SecrecyTests
         new Credentials("pk", Secret),
         new TransportOptions { BaseUrl = "https://api.test", UserAgent = "ua", AdminToken = Secret },
         new WebhookVerifyOptions { Secret = Secret, PreviousSecret = Secret },
-        new WebhookEndpoint { EndpointId = "e", Url = "https://x.test", Secret = Secret },
-        new WebhookSecretRotated { EndpointId = "e", Url = "https://x.test", Secret = Secret },
-        new ApiKeyPair { PublicId = "pk", Secret = Secret },
-        new PayoutLink { LinkId = "l", ClaimToken = Secret, ClaimUrl = $"https://x.test/c/{Secret}", Passcode = Secret },
+    ];
+
+    /// <summary>Generated models whose wire fields carry a secret: they print redacted.</summary>
+    public static TheoryData<Model> SecretModels() =>
+    [
+        Parse<RegisterWebhookResult>($$"""{"endpoint_id":"e","url":"https://x.test","secret":"{{Secret}}"}"""),
+        Parse<RotateWebhookSecretResult>($$"""{"endpoint_id":"e","secret":"{{Secret}}"}"""),
+        Parse<OnboardKey>($$"""{"public_id":"pk","secret":"{{Secret}}"}"""),
+        Parse<PayoutLinkCreated>(
+            $$"""{"link_id":"l","claim_token":"{{Secret}}","claim_url":"https://x.test/c/{{Secret}}","passcode":"{{Secret}}"}"""),
     ];
 
     [Theory]
@@ -36,6 +40,20 @@ public class SecrecyTests
         Assert.DoesNotContain(Secret, bearer.ToString());
         Assert.DoesNotContain(Secret, JsonSerializer.Serialize(bearer, bearer.GetType(), OblodaiJson.Options));
         Assert.DoesNotContain(Secret, JsonSerializer.Serialize(bearer, bearer.GetType()));
+    }
+
+    [Theory]
+    [MemberData(nameof(SecretModels))]
+    public void AModelPrintsItsSecretsRedactedButStillHandsThemOver(Model model)
+    {
+        var text = model.ToString();
+
+        Assert.DoesNotContain(Secret, text);
+        Assert.Contains(Redaction.Placeholder, text);
+        Assert.StartsWith(model.GetType().Name + " { ", text);
+
+        // The property itself is the value: the code that stores a secret reads it from there.
+        Assert.Contains(Secret, JsonSerializer.Serialize(model, model.GetType(), OblodaiJson.Options));
     }
 
     [Fact]
@@ -49,35 +67,6 @@ public class SecrecyTests
 
         // An absent secret prints as absent, so "[redacted]" never implies a value that is not there.
         Assert.Contains("AdminToken = null", text);
-    }
-
-    [Fact]
-    public void ThePropertyStillHandsTheSecretOverToWhoeverAsksForIt()
-    {
-        var rotated = new WebhookSecretRotated { Secret = Secret };
-        var link = new PayoutLink { ClaimToken = Secret, ClaimUrl = "https://x.test/c/tok" };
-
-        Assert.Equal(Secret, rotated.Secret);
-        Assert.Equal(Secret, link.ClaimToken);
-
-        // And there is one explicit, un-loggable way to serialize the real values, for the code that
-        // stores a secret or mails a claim URL.
-        Assert.Contains(Secret, OblodaiJson.SerializeWithSecrets(rotated));
-        Assert.Contains("https://x.test/c/tok", OblodaiJson.SerializeWithSecrets(link));
-
-        // Revealing is scoped to the one call: the default path is redacted again straight after.
-        Assert.DoesNotContain(Secret, JsonSerializer.Serialize(rotated, OblodaiJson.Options));
-    }
-
-    [Fact]
-    public void ASecretReadFromTheWireIsStillReadable()
-    {
-        var body = $$"""{"endpoint_id":"e","url":"https://x.test","secret":"{{Secret}}"}""";
-
-        var endpoint = JsonSerializer.Deserialize<WebhookEndpoint>(body, OblodaiJson.Options)!;
-
-        Assert.Equal(Secret, endpoint.Secret);
-        Assert.DoesNotContain(Secret, JsonSerializer.Serialize(endpoint, OblodaiJson.Options));
     }
 
     [Fact]
@@ -96,7 +85,7 @@ public class SecrecyTests
             },
             handler.Client());
 
-        await client.Account.BalanceAsync();
+        await client.Account.GetBalanceAsync();
 
         Assert.NotEmpty(logger.Lines);
         Assert.DoesNotContain(logger.Lines, line => line.Contains(Secret, StringComparison.Ordinal));
@@ -114,7 +103,7 @@ public class SecrecyTests
                 PublicId = "pk",
                 Secret = "s",
                 BaseUrl = "https://api.test",
-                TimeoutMs = 30_000,
+                Timeout = TimeSpan.FromSeconds(30),
                 Logger = logger,
             },
             handler.Client(TimeSpan.FromSeconds(5)));
@@ -139,6 +128,9 @@ public class SecrecyTests
 
         Assert.DoesNotContain(logger.Lines, l => l.Contains("Timeout", StringComparison.Ordinal));
     }
+
+    private static T Parse<T>(string json)
+        => JsonSerializer.Deserialize<T>(json, OblodaiJson.Options)!;
 
     private sealed class CapturingLogger : IOblodaiLogger
     {

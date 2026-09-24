@@ -37,15 +37,6 @@ public sealed record Page<T>
     public Paginate Paginate { get; init; } = new();
 }
 
-/// <summary>A list the gateway caps by catalogue size rather than paginating: <c>{ items }</c>.</summary>
-/// <typeparam name="T">Item model.</typeparam>
-public sealed record PlainList<T>
-{
-    /// <summary>The rows.</summary>
-    [JsonPropertyName("items")]
-    public IReadOnlyList<T> Items { get; init; } = [];
-}
-
 /// <summary>Outcome of reading a response body: either a <c>result</c> payload or a classified error.</summary>
 public readonly struct DecodedEnvelope
 {

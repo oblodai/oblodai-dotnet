@@ -24,7 +24,7 @@ public static class OblodaiJson
         PropertyNameCaseInsensitive = false,
         TypeInfoResolver = new DefaultJsonTypeInfoResolver
         {
-            Modifiers = { NonNullableStringsNeverDecodeToNull },
+            Modifiers = { NonNullableStringsNeverDecodeToNull, MissingFieldsAreNotFatal },
         },
     };
 
@@ -63,15 +63,23 @@ public static class OblodaiJson
     }
 
     /// <summary>
-    /// Serialize a model with its secret-bearing properties written out in full. The default path
-    /// (<see cref="JsonSerializer"/> with <see cref="Options"/>, or any structured logger) writes
-    /// <c>[redacted]</c> for a webhook secret, an API key secret, a cheque passcode and a claim token or
-    /// URL — this is the one, explicit way to get the real values, for the code that stores or mails
-    /// them. Do not send its output to a log.
+    /// Generated models mark the fields the contract always sends with C# <c>required</c>, which the
+    /// serializer would enforce on every answer. An answer from a gateway release that dropped or
+    /// renamed a field must still parse — the field is left at its default instead of failing the call.
     /// </summary>
-    /// <param name="value">The model.</param>
-    public static string SerializeWithSecrets(object value)
-        => Redaction.Reveal(() => JsonSerializer.Serialize(value, value.GetType(), Options));
+    /// <param name="typeInfo">Contract being built for one model type.</param>
+    private static void MissingFieldsAreNotFatal(JsonTypeInfo typeInfo)
+    {
+        if (typeInfo.Kind != JsonTypeInfoKind.Object)
+        {
+            return;
+        }
+
+        foreach (var property in typeInfo.Properties)
+        {
+            property.IsRequired = false;
+        }
+    }
 
     /// <summary>Serialize a request body exactly once, so the signed bytes and the sent bytes agree.</summary>
     /// <param name="body">Body object, or null.</param>

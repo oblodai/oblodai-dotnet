@@ -88,8 +88,17 @@ public static class SdkErrorCodes
     /// <summary>A string that should have been a decimal amount was not one.</summary>
     public const string BadAmount = "sdk.bad_amount";
 
+    /// <summary>An amount was given as binary floating point (<c>double</c>/<c>float</c>); it is refused before sending.</summary>
+    public const string FloatAmount = "sdk.float_amount";
+
     /// <summary>A caller-supplied header cannot be sent verbatim (CR/LF, control or non-ASCII).</summary>
     public const string BadHeader = "sdk.bad_header";
+
+    /// <summary>A long-running operation was still running when its wait ran out.</summary>
+    public const string WaitTimeout = "sdk.wait_timeout";
+
+    /// <summary>A document job's file was asked for before the job was done.</summary>
+    public const string JobNotDone = "sdk.job_not_done";
 
     /// <summary>The response body exceeded the size the SDK is willing to buffer.</summary>
     public const string ResponseTooLarge = "sdk.response_too_large";
@@ -129,8 +138,9 @@ public class OblodaiException : Exception
         bool synthetic = false,
         object? raw = null,
         Exception? innerException = null)
-        : base(message, innerException)
+        : base(Format(code, message, requestId), innerException)
     {
+        Description = message;
         Code = code;
         HttpStatus = httpStatus;
         Retryable = retryable;
@@ -143,6 +153,12 @@ public class OblodaiException : Exception
 
     /// <summary>Stable machine code (<c>family.reason</c>), e.g. <c>payout.insufficient_funds</c>.</summary>
     public string Code { get; }
+
+    /// <summary>
+    /// The explanation alone, without the code and request id that <see cref="Exception.Message"/>
+    /// (<c>[code] text (request_id=…)</c>) wraps around it.
+    /// </summary>
+    public string Description { get; }
 
     /// <summary>HTTP status, or 0 when no response was received.</summary>
     public int HttpStatus { get; }
@@ -181,7 +197,7 @@ public class OblodaiException : Exception
     {
         ["name"] = GetType().Name,
         ["code"] = Code,
-        ["message"] = Message,
+        ["message"] = Description,
         ["httpStatus"] = HttpStatus,
         ["retryable"] = Retryable,
         ["retryAfter"] = RetryAfter,
@@ -192,17 +208,12 @@ public class OblodaiException : Exception
     /// <summary>JSON view of <see cref="ToLogRecord"/>.</summary>
     public string ToJson() => JsonSerializer.Serialize(ToLogRecord());
 
-    /// <summary>
-    /// The SDK facts first, then everything <see cref="Exception.ToString"/> normally prints — message,
-    /// inner exception chain and stack trace. Dropping those would make an SDK error the one exception
-    /// in the process a crash dump cannot be traced from. The raw body is not part of it.
-    /// </summary>
-    public override string ToString()
-        => $"{GetType().Name}: {Code} (HTTP {HttpStatus}"
-           + $"{(RequestId is null ? string.Empty : $", request {RequestId}")}"
-           + $"{(Field is null ? string.Empty : $", field {Field}")})"
-           + Environment.NewLine
-           + base.ToString();
+    /// <summary>What a log line shows: <c>[code] text (request_id=…)</c>, the request id only when known.</summary>
+    /// <param name="code">Machine code.</param>
+    /// <param name="message">Explanation.</param>
+    /// <param name="requestId">Server-side request id.</param>
+    public static string Format(string code, string message, string? requestId)
+        => string.IsNullOrEmpty(requestId) ? $"[{code}] {message}" : $"[{code}] {message} (request_id={requestId})";
 }
 
 /// <summary>The fields of an error envelope, as the SDK reconstructs them from a response.</summary>

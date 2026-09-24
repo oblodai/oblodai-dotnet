@@ -35,7 +35,7 @@ public class TransportTests
         var handler = new FakeHttpHandler(ScriptedResponse.Page("[]", 0, 0, 10, false));
         using var client = Client(handler);
 
-        await client.Sandbox.WebhooksAsync(new PageParams { Limit = 10, Offset = 0 });
+        await client.Sandbox.ListWebhooksAsync(limit: 10, offset: 0);
 
         var call = Assert.Single(handler.Calls);
         Assert.Equal("https://api.test/v1/sandbox/webhooks?limit=10&offset=0", call.Url);
@@ -53,7 +53,7 @@ public class TransportTests
             ScriptedResponse.Ok("""{"uuid":"u"}"""));
         using var client = Client(handler);
 
-        await client.Payments.CreateAsync(new PaymentRequest { Amount = "1", Currency = "USDT" });
+        await client.Payments.CreateAsync(1m, "USDT");
 
         Assert.Equal(2, handler.Calls.Count);
         var key = handler.Calls[0].Header(RequestSigner.HeaderIdempotencyKey);
@@ -68,10 +68,8 @@ public class TransportTests
         var handler = new FakeHttpHandler(ScriptedResponse.Ok("""{"uuid":"u"}"""), ScriptedResponse.Ok("""{"uuid":"u"}"""));
         using var client = Client(handler);
 
-        await client.Payouts.CreateAsync(
-            new PayoutRequest { Amount = "1", Currency = "USDT", Address = Address, OrderId = "o" },
-            new RequestOptions { IdempotencyKey = "my-key-1" });
-        await client.Payments.InfoAsync("u");
+        await client.Payouts.CreateAsync(Address, 1m, "USDT", "o", options: new RequestOptions { IdempotencyKey = "my-key-1" });
+        await client.Payments.GetInfoAsync(uuid: "u");
 
         Assert.Equal("my-key-1", handler.Calls[0].Header(RequestSigner.HeaderIdempotencyKey));
         Assert.False(handler.Calls[1].HasHeader(RequestSigner.HeaderIdempotencyKey));
@@ -97,7 +95,7 @@ public class TransportTests
             ScriptedResponse.Error(500, """{"code":"internal","message":"boom","retryable":false}"""));
         using var client = Client(handler);
 
-        var error = await Assert.ThrowsAsync<InternalException>(() => client.Account.BalanceAsync());
+        var error = await Assert.ThrowsAsync<InternalException>(() => client.Account.GetBalanceAsync());
 
         Assert.Equal("internal", error.Code);
         Assert.Equal(500, error.HttpStatus);
@@ -114,7 +112,7 @@ public class TransportTests
             Retryable(429, "request.rate_limited", 0));
         using var client = Client(handler);
 
-        var error = await Assert.ThrowsAsync<RateLimitException>(() => client.Account.BalanceAsync());
+        var error = await Assert.ThrowsAsync<RateLimitException>(() => client.Account.GetBalanceAsync());
 
         Assert.Equal(0, error.RetryAfter);
         Assert.Equal(3, handler.Calls.Count); // the first attempt plus MaxRetries (2)
@@ -130,7 +128,7 @@ public class TransportTests
             ScriptedResponse.Ok("""{"balance":{"merchant":[]}}"""));
         using (var client = Client(read))
         {
-            await client.Account.BalanceAsync();
+            await client.Account.GetBalanceAsync();
         }
 
         Assert.Equal(2, read.Calls.Count);
@@ -139,7 +137,7 @@ public class TransportTests
         using (var client = Client(unsafeWrite))
         {
             var error = await Assert.ThrowsAsync<TransportException>(
-                () => client.Settings.SetAccuracyAsync(new PaymentAccuracySetRequest { Enabled = true }));
+                () => client.Settings.SetAccuracyAsync(enabled: true));
             Assert.Equal(SdkErrorCodes.TransportNetwork, error.Code);
         }
 
@@ -150,7 +148,7 @@ public class TransportTests
             ScriptedResponse.Ok("""{"uuid":"u"}"""));
         using (var client = Client(keyedWrite))
         {
-            await client.Payments.CreateAsync(new PaymentRequest { Amount = "1", Currency = "USDT" });
+            await client.Payments.CreateAsync(1m, "USDT");
         }
 
         Assert.Equal(2, keyedWrite.Calls.Count);
@@ -178,13 +176,13 @@ public class TransportTests
             ScriptedResponse.Ok("""{"balance":{"merchant":[]}}"""));
         using var client = Client(handler);
 
-        await client.Account.BalanceAsync();
+        await client.Account.GetBalanceAsync();
         Assert.Equal(3, handler.Calls.Count);
 
         var once = new FakeHttpHandler(ScriptedResponse.Html(429, new Dictionary<string, string> { ["Retry-After"] = "120" }));
         using var strict = Client(once, new OblodaiOptions { Retry = new RetryOptions { MaxRetries = 0 } });
 
-        var error = await Assert.ThrowsAsync<RateLimitException>(() => strict.Account.BalanceAsync());
+        var error = await Assert.ThrowsAsync<RateLimitException>(() => strict.Account.GetBalanceAsync());
         Assert.Equal(120, error.RetryAfter);
     }
 
@@ -212,15 +210,15 @@ public class TransportTests
         using var client = Client(handler, new OblodaiOptions { Retry = new RetryOptions { MaxRetries = 0 } });
 
         var validation = await Assert.ThrowsAsync<ValidationException>(
-            () => client.Payments.CreateAsync(new PaymentRequest { Amount = "0", Currency = "USDT" }));
+            () => client.Payments.CreateAsync(0m, "USDT"));
         Assert.Equal("payment.below_minimum", validation.Code);
         Assert.Equal("amount", validation.Field);
         Assert.Equal("rq-1", validation.RequestId);
         Assert.Equal("payment", validation.Family);
 
-        await Assert.ThrowsAsync<AuthenticationException>(() => client.Account.BalanceAsync());
+        await Assert.ThrowsAsync<AuthenticationException>(() => client.Account.GetBalanceAsync());
         await Assert.ThrowsAsync<IdempotencyConflictException>(
-            () => client.Payments.CreateAsync(new PaymentRequest { Amount = "1", Currency = "USDT" }));
+            () => client.Payments.CreateAsync(1m, "USDT"));
     }
 
     [Fact]
@@ -235,7 +233,7 @@ public class TransportTests
             ScriptedResponse.Ok("""{"balance":{"merchant":[]}}"""));
         using var client = Client(handler, new OblodaiOptions { Retry = new RetryOptions { MaxRetries = 0 } });
 
-        await client.Account.BalanceAsync();
+        await client.Account.GetBalanceAsync();
 
         Assert.Equal(2, handler.Calls.Count);
         var stamped = long.Parse(handler.Calls[1].Header(RequestSigner.HeaderTimestamp));
@@ -251,7 +249,7 @@ public class TransportTests
             new Dictionary<string, string> { ["Date"] = DateTimeOffset.UtcNow.AddHours(1).ToString("r") }));
         using var client = Client(handler, new OblodaiOptions { Retry = new RetryOptions { MaxRetries = 0 } });
 
-        var error = await Assert.ThrowsAsync<AuthenticationException>(() => client.Account.BalanceAsync());
+        var error = await Assert.ThrowsAsync<AuthenticationException>(() => client.Account.GetBalanceAsync());
 
         Assert.Equal("auth.ip_not_allowed", error.Code);
         Assert.Single(handler.Calls);
@@ -267,8 +265,8 @@ public class TransportTests
             ScriptedResponse.Ok("""{"balance":{"merchant":[]}}"""));
         using var client = Client(handler, new OblodaiOptions { Retry = new RetryOptions { MaxRetries = 0 } });
 
-        await Assert.ThrowsAsync<AuthenticationException>(() => client.Account.BalanceAsync());
-        await client.Account.BalanceAsync();
+        await Assert.ThrowsAsync<AuthenticationException>(() => client.Account.GetBalanceAsync());
+        await client.Account.GetBalanceAsync();
 
         // One bad Date cannot wedge the client: the third attempt is stamped with local time again.
         var stamped = long.Parse(handler.Calls[2].Header(RequestSigner.HeaderTimestamp));
@@ -281,11 +279,11 @@ public class TransportTests
         var handler = new FakeHttpHandler(new ScriptedResponse { DelayMs = 2000 });
         using var client = Client(handler, new OblodaiOptions
         {
-            TimeoutMs = 20,
+            Timeout = TimeSpan.FromMilliseconds(20),
             Retry = new RetryOptions { MaxRetries = 0 },
         });
 
-        var error = await Assert.ThrowsAsync<TransportException>(() => client.Account.BalanceAsync());
+        var error = await Assert.ThrowsAsync<TransportException>(() => client.Account.GetBalanceAsync());
 
         Assert.Equal(SdkErrorCodes.TransportTimeout, error.Code);
         Assert.True(error.Retryable);
@@ -295,9 +293,9 @@ public class TransportTests
     public async Task StopsRetryingWhenTheOverallDeadlineWouldBeExceeded()
     {
         var handler = new FakeHttpHandler(Retryable(503, "db.unavailable", 2), ScriptedResponse.Ok());
-        using var client = Client(handler, new OblodaiOptions { DeadlineMs = 100 });
+        using var client = Client(handler, new OblodaiOptions { Deadline = TimeSpan.FromMilliseconds(100) });
 
-        var error = await Assert.ThrowsAsync<TransportException>(() => client.Account.BalanceAsync());
+        var error = await Assert.ThrowsAsync<TransportException>(() => client.Account.GetBalanceAsync());
 
         Assert.Equal(SdkErrorCodes.TransportDeadline, error.Code);
         Assert.Single(handler.Calls);
@@ -313,7 +311,7 @@ public class TransportTests
         // The caller's cancellation stays an OperationCanceledException: ASP.NET's request-abort handling
         // and every `catch (OperationCanceledException)` in the process depend on seeing it as itself.
         var error = await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => client.Account.BalanceAsync(cancellationToken: cancellation.Token));
+            () => client.Account.GetBalanceAsync(cancellationToken: cancellation.Token));
 
         Assert.Equal(cancellation.Token, error.CancellationToken);
         Assert.IsNotType<TransportException>(error);

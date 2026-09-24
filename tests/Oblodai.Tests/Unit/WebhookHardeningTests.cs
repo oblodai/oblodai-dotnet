@@ -1,5 +1,4 @@
 using System.Text;
-using Oblodai.Models;
 using Xunit;
 
 namespace Oblodai.Tests.Unit;
@@ -67,7 +66,7 @@ public class WebhookHardeningTests
 
         var verified = WebhookVerifier.Verify(Body, headers, Options(tolerance: 0));
 
-        Assert.Equal("u1", verified.Uuid);
+        Assert.Equal("u1", Assert.IsType<PaymentWebhook>(verified).Uuid);
     }
 
     [Fact]
@@ -105,7 +104,7 @@ public class WebhookHardeningTests
 
         var verified = WebhookVerifier.Verify(Body, Headers(signature: provided), Options());
 
-        Assert.Equal("u1", verified.Uuid);
+        Assert.Equal("u1", Assert.IsType<PaymentWebhook>(verified).Uuid);
     }
 
     [Fact]
@@ -121,7 +120,7 @@ public class WebhookHardeningTests
     }
 
     [Fact]
-    public void AnAuthenticDeliveryWithAnUnreadableSequenceIsNotDropped()
+    public void AnAuthenticDeliveryWithAnUnreadableSequenceIsABadPayloadNotABadSignature()
     {
         var body = Encoding.UTF8.GetBytes(
             """{"type":"payment","uuid":"u1","status":"paid","sequence":"not-a-number","is_final":true}""");
@@ -131,11 +130,11 @@ public class WebhookHardeningTests
             [WebhookVerifier.HeaderSignature] = RequestSigner.SignWebhook(Secret, Ts, body),
         };
 
-        var verified = WebhookVerifier.Verify(body, headers, Options());
+        // The signature proved the delivery authentic: a receiver that answers 401 to signature failures
+        // must not answer 401 to a body it merely failed to read.
+        var error = Assert.Throws<WebhookPayloadException>(() => WebhookVerifier.Verify(body, headers, Options()));
 
-        Assert.Null(verified.Sequence);
-        Assert.False(WebhookVerifier.IsStale(verified, 99));
-        Assert.False(WebhookVerifier.IsStale(verified, null));
+        Assert.Equal(SdkErrorCodes.WebhookBadPayload, error.Code);
     }
 
     [Fact]
@@ -160,7 +159,7 @@ public class WebhookHardeningTests
     [Fact]
     public void ABodyThatVerifiedButCannotBeReadIsAContractFailureNotASignatureFailure()
     {
-        var body = Encoding.UTF8.GetBytes("""{"type":"payment"}""");
+        var body = Encoding.UTF8.GetBytes("""{"type":"payment","uuid":"u1","amount":{"not":"money"}}""");
         var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             [WebhookVerifier.HeaderTimestamp] = Ts.ToString(),
@@ -184,10 +183,10 @@ public class WebhookHardeningTests
             [WebhookVerifier.HeaderSignature] = RequestSigner.SignWebhook("whsec_0", Ts, Body),
         };
 
-        Assert.Equal("u1", WebhookVerifier.Verify(Body, headers, options).Uuid);
+        Assert.Equal("u1", Assert.IsType<PaymentWebhook>(WebhookVerifier.Verify(Body, headers, options)).Uuid);
 
         headers[WebhookVerifier.HeaderSignature] = "0".PadLeft(64, '0');
         headers[WebhookVerifier.HeaderSignaturePrev] = RequestSigner.SignWebhook("whsec_0", Ts, Body);
-        Assert.Equal("u1", WebhookVerifier.Verify(Body, headers, options).Uuid);
+        Assert.Equal("u1", Assert.IsType<PaymentWebhook>(WebhookVerifier.Verify(Body, headers, options)).Uuid);
     }
 }
