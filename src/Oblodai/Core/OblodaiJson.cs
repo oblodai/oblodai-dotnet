@@ -99,13 +99,21 @@ public static class OblodaiJson
     /// <param name="element">The <c>result</c> element.</param>
     /// <param name="httpStatus">Status of the response the element came from (for error reporting).</param>
     public static T Deserialize<T>(JsonElement element, int httpStatus = 200)
+        => (T)Deserialize(element, typeof(T), httpStatus);
+
+    /// <summary>Deserialize a decoded payload into a model given as a <see cref="Type"/>.</summary>
+    /// <param name="element">The payload.</param>
+    /// <param name="type">Model type.</param>
+    /// <param name="httpStatus">Status of the response the element came from (for error reporting).</param>
+    public static object Deserialize(JsonElement element, Type type, int httpStatus = 200)
     {
+        ArgumentNullException.ThrowIfNull(type);
         try
         {
-            var value = element.Deserialize<T>(Options);
+            var value = element.Deserialize(type, Options);
             if (value is null)
             {
-                throw new ContractException($"the result payload decoded to null as {typeof(T).Name}", httpStatus);
+                throw new ContractException($"the result payload decoded to null as {type.Name}", httpStatus);
             }
 
             return value;
@@ -113,7 +121,7 @@ public static class OblodaiJson
         catch (JsonException ex)
         {
             throw new ContractException(
-                $"the result payload does not decode as {typeof(T).Name}: {ex.Message}", httpStatus, element.ToString());
+                $"the result payload does not decode as {type.Name}: {ex.Message}", httpStatus, element.ToString());
         }
     }
 }

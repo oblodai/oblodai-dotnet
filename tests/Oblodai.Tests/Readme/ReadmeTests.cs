@@ -183,6 +183,32 @@ public class ReadmeTests
         Assert.Equal(properties.OrderBy(p => p, StringComparer.Ordinal), rows.OrderBy(p => p, StringComparer.Ordinal));
     }
 
+    /// <summary>
+    /// The method table between the <c>sdkgen:methods</c> markers is the generator's and names every
+    /// method of the client — every <c>names.lock</c> entry as <c>Resource</c> and <c>MethodAsync</c>.
+    /// </summary>
+    [Theory]
+    [InlineData(EnglishReadme)]
+    [InlineData(RussianReadme)]
+    public void TheMethodTableNamesEveryLockedMethod(string file)
+    {
+        var text = File.ReadAllText(Path.Combine(Repo.Root, file));
+        var start = text.IndexOf("<!-- sdkgen:methods -->", StringComparison.Ordinal);
+        var end = text.IndexOf("<!-- /sdkgen:methods -->", StringComparison.Ordinal);
+        Assert.True(start >= 0 && end > start, $"{file}: no sdkgen:methods section");
+        var rows = text[start..end].Split('\n').Where(l => l.StartsWith("| `", StringComparison.Ordinal))
+            .ToDictionary(l => l.Split('`')[1], l => l);
+        foreach (var locked in File.ReadAllLines(Path.Combine(Repo.Root, "names.lock")).Where(l => l.Length > 0))
+        {
+            var (resource, method) = (Pascal(locked.Split('.')[0]), Pascal(locked.Split('.')[1]) + "Async");
+            Assert.True(rows.TryGetValue(resource, out var row), $"{file}: no row for {resource}");
+            Assert.Contains($"`{method}`", row);
+        }
+    }
+
+    private static string Pascal(string snake)
+        => string.Concat(snake.Split('_').Select(w => char.ToUpperInvariant(w[0]) + w[1..]));
+
     [Theory]
     [InlineData(EnglishReadme)]
     [InlineData(RussianReadme)]
@@ -193,12 +219,18 @@ public class ReadmeTests
         Assert.DoesNotContain("1.3.0", text);
     }
 
-    /// <summary>MIGRATION-2.0.md names every locked method, so nobody has to guess where a call went.</summary>
+    /// <summary>
+    /// MIGRATION-2.0.md names every method of 2.0.0, so nobody has to guess where a call went. The list is
+    /// the frozen <c>names.2.0.txt</c>, not the living <c>names.lock</c>: a method added later belongs to
+    /// the CHANGELOG, not to the 1.x → 2.0 guide.
+    /// </summary>
     [Fact]
     public void TheMigrationGuideNamesEveryMethod()
     {
         var guide = File.ReadAllText(Path.Combine(Repo.Root, "MIGRATION-2.0.md"));
-        foreach (var locked in File.ReadAllLines(Path.Combine(Repo.Root, "names.lock")).Where(l => l.Length > 0))
+        var frozen = File.ReadAllLines(Path.Combine(Repo.Root, "names.2.0.txt")).Where(l => l.Length > 0 && !l.StartsWith('#')).ToList();
+        Assert.NotEmpty(frozen);
+        foreach (var locked in frozen)
         {
             var parts = locked.Split('.').Select(p => string.Concat(p.Split('_').Select(w => char.ToUpperInvariant(w[0]) + w[1..])));
             var name = string.Join(".", parts) + "Async";

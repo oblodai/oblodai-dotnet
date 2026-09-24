@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Oblodai.Contract;
 
 namespace Oblodai;
 
@@ -305,14 +306,9 @@ public static class WebhookVerifier
 
         try
         {
-            return type.GetString() switch
-            {
-                "payment" => OblodaiJson.Deserialize<PaymentWebhook>(body),
-                "payout" => OblodaiJson.Deserialize<PayoutWebhook>(body),
-                "wallet" => OblodaiJson.Deserialize<WalletWebhook>(body),
-                "conversion" => OblodaiJson.Deserialize<ConversionWebhook>(body),
-                _ => OblodaiJson.Deserialize<UnknownWebhookEvent>(body),
-            };
+            return ApiFacts.WebhookModels.TryGetValue(type.GetString()!, out var model)
+                ? (IWebhookEvent)OblodaiJson.Deserialize(body, model)
+                : OblodaiJson.Deserialize<UnknownWebhookEvent>(body);
         }
         catch (ContractException error)
         {
@@ -321,9 +317,8 @@ public static class WebhookVerifier
     }
 
     /// <summary>
-    /// True when the event is one of the families this snapshot models
-    /// (<see cref="PaymentWebhook"/>, <see cref="PayoutWebhook"/>, <see cref="WalletWebhook"/>,
-    /// <see cref="ConversionWebhook"/>) rather than an
+    /// True when the event is one of the kinds this snapshot models (a <c>type</c> of
+    /// <see cref="ApiFacts.WebhookKinds"/>, parsed into its generated model) rather than an
     /// <see cref="UnknownWebhookEvent"/> the gateway added later. Guard a <c>switch</c> with it before
     /// treating an event as money.
     /// </summary>

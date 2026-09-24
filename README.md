@@ -143,27 +143,33 @@ Console.WriteLine($"{deposit.Txid} {deposit.Confirmations}");
 
 ## Method overview
 
-16 resources, 120 operations — the whole merchant surface of the contract. The names are pinned in
-[`names.lock`](names.lock): a regeneration that would rename or drop one fails as a breaking change.
+The whole merchant surface of the contract. The table below is written by the generator; the names are
+pinned in [`names.lock`](names.lock): a regeneration that would rename or drop one fails as a breaking
+change, a new one is added to the lock by the generator. Long-running operations also get `WaitAsync`
+(and `DownloadAsync` when the job has a file) — see below.
 
-| Resource | Methods (`…Async`) | Operations |
-| --- | --- | --- |
-| `Payments` | Cancel · Create · GetAmlLinks · GetCheckoutConfig · GetInfo · GetQr · ListHistory · ListServices · Resolve · SendEmail · SetCheckoutConfig | 11 |
-| `PaymentLinks` | Create · Get · List · Toggle | 4 |
-| `Refunds` | BlockedWallet · Payment | 2 |
-| `Payouts` | Approve · Calculate · Cancel · Create · CreateMass · CreateTransferBatch · GetInfo · ListHistory · ListServices · TransferToPersonal · TransferToUser · Validate | 12 |
-| `PayoutLinks` | Cancel · ClaimPayout · Create · CreateBatch · Get · GetPayoutClaim · List | 7 |
-| `Batches` | CreatePayment · CreatePayout · CreateRefund · GetInfo · Wait | 4 |
-| `Splits` | CreateRule · DeleteRule · GetConfig · GetRecipientOptIn · ListRules · SetConfig · SetRecipientOptIn | 7 |
-| `Wallets` | Block · Create · GetQr | 3 |
-| `Account` | GetBalance · GetSummary · ListExchangeRates | 3 |
-| `Webhooks` | ListDeliveries · Register · RequeueDelivery · ResendPayment · RotateSecret · SendLegacyTest · SendTestConversion · SendTestPayment · SendTestPayout · SendTestWallet · SetActive | 11 |
-| `Settings` | ConfigureVrcs · DeleteAutoWithdrawRule · GetAccuracy · GetAutoConvert · GetAutoRefund · GetPaymentFeeConfig · GetPayoutFeeConfig · GetRefundFeeConfig · ListAcceptedCurrencies · ListApiLog · ListAutoWithdrawRules · ListDiscounts · SetAcceptedCurrencies · SetAccuracy · SetAutoConvert · SetAutoRefund · SetAutoWithdrawRule · SetDiscount · SetPaymentFeeConfig · SetPayoutFeeConfig · SetRefundFeeConfig | 21 |
-| `ApiAllowlist` | AddEntry · List · RemoveEntry · SetEnabled | 4 |
-| `Referrals` | GetInfo | 1 |
-| `Documents` | CreateJob · DownloadJobFile · GetBalance · GetBatch · GetFees · GetJob · GetLedger · GetPaymentLink · GetPayoutLinkCheque · GetReferrals · GetSigned · GetSplit · GetStatement · GetWalletStatement · Wait · Download | 14 |
-| `Checkout` | Get · GetOnramp · GetPublicPaymentLink · GetQr · GetSourceOfFundsForm · ListCurrencies · PaymentLink · SelectMethod · StartOnramp · SubmitSourceOfFunds | 10 |
-| `Sandbox` | Faucet · ListWebhooks · OnboardStore · ReplayWebhook · Reset · SimulateDeposit | 6 |
+<!-- sdkgen:methods -->
+16 resources, 120 methods.
+
+| Resource | Methods |
+| --- | --- |
+| `Payments` | `CreateAsync` · `GetInfoAsync` · `GetQrAsync` · `ListHistoryAsync` · `ListServicesAsync` · `CancelAsync` · `SendEmailAsync` · `SetCheckoutConfigAsync` · `GetCheckoutConfigAsync` · `GetAmlLinksAsync` · `ResolveAsync` |
+| `PaymentLinks` | `CreateAsync` · `ListAsync` · `GetAsync` · `ToggleAsync` |
+| `Refunds` | `PaymentAsync` · `BlockedWalletAsync` |
+| `Payouts` | `CreateAsync` · `CreateMassAsync` · `GetInfoAsync` · `ListHistoryAsync` · `CalculateAsync` · `ValidateAsync` · `CancelAsync` · `ApproveAsync` · `ListServicesAsync` · `TransferToPersonalAsync` · `TransferToUserAsync` · `CreateTransferBatchAsync` |
+| `PayoutLinks` | `CreateAsync` · `CreateBatchAsync` · `ListAsync` · `GetAsync` · `CancelAsync` · `GetPayoutClaimAsync` · `ClaimPayoutAsync` |
+| `Batches` | `CreatePaymentAsync` · `CreateRefundAsync` · `CreatePayoutAsync` · `GetInfoAsync` |
+| `Splits` | `CreateRuleAsync` · `ListRulesAsync` · `DeleteRuleAsync` · `SetConfigAsync` · `GetConfigAsync` · `SetRecipientOptInAsync` · `GetRecipientOptInAsync` |
+| `Wallets` | `CreateAsync` · `BlockAsync` · `GetQrAsync` |
+| `Account` | `GetBalanceAsync` · `GetSummaryAsync` · `ListExchangeRatesAsync` |
+| `Webhooks` | `ResendPaymentAsync` · `RegisterAsync` · `ListDeliveriesAsync` · `RequeueDeliveryAsync` · `SendLegacyTestAsync` · `SendTestPaymentAsync` · `SendTestWalletAsync` · `SendTestPayoutAsync` · `SendTestConversionAsync` · `RotateSecretAsync` · `SetActiveAsync` |
+| `Settings` | `SetAccuracyAsync` · `GetAccuracyAsync` · `SetAutoRefundAsync` · `GetAutoRefundAsync` · `SetDiscountAsync` · `ListDiscountsAsync` · `ListApiLogAsync` · `GetAutoConvertAsync` · `SetAutoConvertAsync` · `SetAcceptedCurrenciesAsync` · `ListAcceptedCurrenciesAsync` · `SetPayoutFeeConfigAsync` · `GetPayoutFeeConfigAsync` · `SetRefundFeeConfigAsync` · `GetRefundFeeConfigAsync` · `SetPaymentFeeConfigAsync` · `GetPaymentFeeConfigAsync` · `SetAutoWithdrawRuleAsync` · `ListAutoWithdrawRulesAsync` · `DeleteAutoWithdrawRuleAsync` · `ConfigureVrcsAsync` |
+| `ApiAllowlist` | `ListAsync` · `AddEntryAsync` · `RemoveEntryAsync` · `SetEnabledAsync` |
+| `Referrals` | `GetInfoAsync` |
+| `Documents` | `GetSignedAsync` · `GetBalanceAsync` · `GetFeesAsync` · `GetLedgerAsync` · `GetSplitAsync` · `GetPayoutLinkChequeAsync` · `GetStatementAsync` · `GetBatchAsync` · `GetPaymentLinkAsync` · `GetWalletStatementAsync` · `GetReferralsAsync` · `CreateJobAsync` · `GetJobAsync` · `DownloadJobFileAsync` |
+| `Checkout` | `GetSourceOfFundsFormAsync` · `SubmitSourceOfFundsAsync` · `GetPublicPaymentLinkAsync` · `PaymentLinkAsync` · `ListCurrenciesAsync` · `GetAsync` · `SelectMethodAsync` · `StartOnrampAsync` · `GetOnrampAsync` · `GetQrAsync` |
+| `Sandbox` | `OnboardStoreAsync` · `FaucetAsync` · `SimulateDepositAsync` · `ResetAsync` · `ListWebhooksAsync` · `ReplayWebhookAsync` |
+<!-- /sdkgen:methods -->
 
 `Checkout` is the payer-facing side (no credentials). Document routes answer outside the JSON
 envelope and return `FileResult { Bytes, ContentType, Filename }` with `WriteToAsync(path)`.

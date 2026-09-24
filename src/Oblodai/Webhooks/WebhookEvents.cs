@@ -5,10 +5,9 @@ namespace Oblodai;
 
 /// <summary>
 /// What every delivered event carries. <see cref="WebhookVerifier.Parse(ReadOnlySpan{byte})"/> returns
-/// the generated model of the event's family — <see cref="PaymentWebhook"/> (<c>type: payment</c>),
-/// <see cref="PayoutWebhook"/> (<c>payout</c>), <see cref="WalletWebhook"/> (<c>wallet</c>),
-/// <see cref="ConversionWebhook"/> (<c>conversion</c>) — or <see cref="UnknownWebhookEvent"/> for a
-/// family this SDK version does not know. Switch on the type:
+/// the generated model of the event's kind — the contract's webhook bodies, keyed by their
+/// <c>type</c> in <see cref="Contract.ApiFacts.WebhookModels"/> (<see cref="PaymentWebhook"/> for
+/// <c>payment</c>, …; each implements this interface in <c>Generated/Webhooks.g.cs</c>) — or <see cref="UnknownWebhookEvent"/> for a kind this SDK version does not know. Switch on the type:
 /// <code>
 /// switch (evt)
 /// {
@@ -19,7 +18,7 @@ namespace Oblodai;
 /// </summary>
 public interface IWebhookEvent
 {
-    /// <summary>Event family: <c>payment</c>, <c>payout</c>, <c>wallet</c>, <c>conversion</c>, or one added later.</summary>
+    /// <summary>Event kind: one of <see cref="Contract.ApiFacts.WebhookKinds"/>, or one added later.</summary>
     string Type { get; }
 
     /// <summary>When the state change committed (RFC 3339); order events by it or by <see cref="EventSequence"/>.</summary>
@@ -35,36 +34,8 @@ public interface IWebhookEvent
     bool? Test { get; }
 }
 
-/// <summary>An invoice changed state (<c>invoice.&lt;status&gt;</c>).</summary>
-public sealed partial record PaymentWebhook : IWebhookEvent
-{
-    /// <inheritdoc />
-    long? IWebhookEvent.EventSequence => Sequence;
-}
-
-/// <summary>A payout (or refund) changed state (<c>payout.&lt;status&gt;</c>).</summary>
-public sealed partial record PayoutWebhook : IWebhookEvent
-{
-    /// <inheritdoc />
-    long? IWebhookEvent.EventSequence => Sequence;
-}
-
-/// <summary>A deposit landed on a static wallet (<c>wallet.paid</c>).</summary>
-public sealed partial record WalletWebhook : IWebhookEvent
-{
-    /// <inheritdoc />
-    long? IWebhookEvent.EventSequence => Sequence;
-}
-
-/// <summary>A conversion finished (<c>conversion.completed</c> / <c>conversion.refunded</c>).</summary>
-public sealed partial record ConversionWebhook : IWebhookEvent
-{
-    /// <inheritdoc />
-    long? IWebhookEvent.EventSequence => Sequence;
-}
-
 /// <summary>
-/// An event whose <c>type</c> this SDK version does not know. The gateway may add event families at any
+/// An event whose <c>type</c> this SDK version does not know. The gateway may add event kinds at any
 /// time, and a receiver that throws on one it has not been taught about would reject an authentic,
 /// signed delivery. The raw type stays in <see cref="Type"/> and the whole body in
 /// <see cref="Model.Extra"/>.

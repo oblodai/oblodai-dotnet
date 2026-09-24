@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using Oblodai.Resources;
 
 namespace Oblodai;
 
@@ -10,9 +9,11 @@ namespace Oblodai;
 /// var invoice = await oblodai.Payments.CreateAsync(amount: 25m, currency: "USDT", orderId: "order-1");
 /// </code>
 /// Every method takes its request as named arguments (or as the request model), then
-/// <see cref="RequestOptions"/> and a <see cref="CancellationToken"/>.
+/// <see cref="RequestOptions"/> and a <see cref="CancellationToken"/>. The resource properties
+/// (<c>Payments</c>, <c>Payouts</c>, …) are generated, one per resource of the contract
+/// (<c>Generated/Client.g.cs</c>).
 /// </summary>
-public sealed class OblodaiClient : IDisposable
+public sealed partial class OblodaiClient : IDisposable
 {
     /// <summary>Version of this SDK.</summary>
     public const string SdkVersion = "2.0.0";
@@ -53,71 +54,8 @@ public sealed class OblodaiClient : IDisposable
             },
             httpClient);
 
-        Payments = new Payments(Transport);
-        PaymentLinks = new PaymentLinks(Transport);
-        Refunds = new Refunds(Transport);
-        Payouts = new Payouts(Transport);
-        PayoutLinks = new PayoutLinks(Transport);
-        Batches = new Batches(Transport);
-        Splits = new Splits(Transport);
-        Wallets = new Wallets(Transport);
-        Account = new Account(Transport);
-        Webhooks = new Webhooks(Transport);
-        Settings = new Settings(Transport);
-        ApiAllowlist = new ApiAllowlist(Transport);
-        Referrals = new Referrals(Transport);
-        Documents = new Documents(Transport);
-        Checkout = new Checkout(Transport);
-        Sandbox = new Sandbox(Transport);
+        CreateResources(Transport);
     }
-
-    /// <summary>Invoices: create, look up, cancel, list, send by e-mail.</summary>
-    public Payments Payments { get; }
-
-    /// <summary>Reusable payment links (tip jars, price tags).</summary>
-    public PaymentLinks PaymentLinks { get; }
-
-    /// <summary>Refunds of payments and of blocked wallets.</summary>
-    public Refunds Refunds { get; }
-
-    /// <summary>Outgoing transfers to external addresses and between platform balances.</summary>
-    public Payouts Payouts { get; }
-
-    /// <summary>Payout links (cheques): funds reserved now, claimed later by whoever holds the token.</summary>
-    public PayoutLinks PayoutLinks { get; }
-
-    /// <summary>Asynchronous batches; <see cref="Batches.WaitAsync(BatchSubmitResponse, TimeSpan?, TimeSpan?, CancellationToken)"/> follows one to the end.</summary>
-    public Batches Batches { get; }
-
-    /// <summary>Revenue splits.</summary>
-    public Splits Splits { get; }
-
-    /// <summary>Static deposit wallets.</summary>
-    public Wallets Wallets { get; }
-
-    /// <summary>Balances, summary and exchange rates.</summary>
-    public Account Account { get; }
-
-    /// <summary>Webhook endpoint management, test deliveries and the delivery log.</summary>
-    public Webhooks Webhooks { get; }
-
-    /// <summary>Merchant-level configuration exposed over the API.</summary>
-    public Settings Settings { get; }
-
-    /// <summary>The IP allow-list of the API key.</summary>
-    public ApiAllowlist ApiAllowlist { get; }
-
-    /// <summary>The referral programme.</summary>
-    public Referrals Referrals { get; }
-
-    /// <summary>Generated PDF/CSV documents and document jobs.</summary>
-    public Documents Documents { get; }
-
-    /// <summary>Payer-facing checkout endpoints — no credentials needed.</summary>
-    public Checkout Checkout { get; }
-
-    /// <summary>Developer sandbox: fake money, simulated deposits, webhook inspector.</summary>
-    public Sandbox Sandbox { get; }
 
     /// <summary>The transport, exposed for advanced use (custom routes, tests).</summary>
     public OblodaiTransport Transport { get; }

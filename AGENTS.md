@@ -1,8 +1,10 @@
 # Oblodai .NET SDK — guide for coding agents
 
-Package `Oblodai` (2.0, `net8.0` + `net10.0`). The resources, models, vocabularies and route table in
+Package `Oblodai` (2.0, `net8.0` + `net10.0`). The resources, the client's resource properties,
+models, vocabularies, route table and the API facts the runtime acts on (`ApiFacts`: long-running
+operations, webhook kinds, non-money numbers; status classes on the vocabularies) in
 `src/Oblodai/Generated/` are generated from the gateway's OpenAPI contract (`openapi.json`) — never
-edit them; the runtime around them is hand-written.
+edit them; the runtime around them is hand-written and keeps no copy of those facts.
 
 ## Non-negotiables
 
@@ -54,7 +56,10 @@ response arrived (or a wait ran out, `sdk.wait_timeout`); `ConfigException` befo
 - `client.WithOptions(o => o with { Timeout = … })` → a client with other options, same pool.
 - `OblodaiOptions.Hooks = new Hooks { OnRequest = …, OnResponse = … }` — every attempt.
 - `Batches.WaitAsync(submitted)`, `Documents.WaitAsync(job)`, `Documents.DownloadAsync(done)` — poll a
-  long-running operation to its terminal status (`LongRunning.Operations`).
+  long-running operation to its terminal status; generated from the contract's `x-sdk-poll`
+  (`ApiFacts.Polls`).
+- `PaymentStatus.IsFinal` / `IsSuccess` (and `Final`, `Success`; also on `PayoutStatus`, `BatchStatus`,
+  `DocumentJobStatus`) — the contract's status classes; `Statuses.IsPaymentPaid(…)` and friends wrap them.
 
 ## Webhooks
 
@@ -69,7 +74,8 @@ money. Deduplicate on `info.EventId` (`X-Webhook-Event-Id`); drop out-of-order e
 
 ## Machine-readable surface
 
-`Oblodai.Resources.Routes.All` (120 routes by `operationId`: method, path, auth, idempotent, safe,
-bare, list), `names.lock`, the generated records, `ErrorCode.Known`, `PaymentStatus.Known`, … Checks:
-`make ci` (drift against the backend's generator, build, format, tests, the shared conformance
+`Oblodai.Resources.Routes.All` (every route by `operationId`: method, path, auth, idempotent, safe,
+bare, list), `Oblodai.Contract.ApiFacts` (`Polls`, `WebhookModels`, `WebhookKinds`, `WebhookEvents`,
+`NonMoneyNumbers`), `names.lock`, the generated records, `ErrorCode.Known`, `PaymentStatus.Known`, … Checks:
+`make ci` (drift of the generated code and README method tables against the backend's generator, build, format, tests, the shared conformance
 suite, packaging).
