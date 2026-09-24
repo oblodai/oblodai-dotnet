@@ -228,7 +228,7 @@ public class ReadmeTests
     public void TheMigrationGuideNamesEveryMethod()
     {
         var guide = File.ReadAllText(Path.Combine(Repo.Root, "MIGRATION-2.0.md"));
-        var frozen = File.ReadAllLines(Path.Combine(Repo.Root, "names.2.0.txt")).Where(l => l.Length > 0 && !l.StartsWith('#')).ToList();
+        var frozen = File.ReadAllLines(Path.Combine(Repo.Root, "names.2.0.txt")).Where(l => l.Length > 0).ToList();
         Assert.NotEmpty(frozen);
         foreach (var locked in frozen)
         {

@@ -1,5 +1,3 @@
-# Public method names of SDK 2.0.0 (resource.method), frozen when 2.0.0 was cut; MIGRATION-2.0.md
-# names every one. Not regenerated: names.lock is the living list, this one is history.
 account.get_balance
 account.get_summary
 account.list_exchange_rates
