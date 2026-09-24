@@ -1,7 +1,9 @@
 # Examples
 
-Four runnable programs. Get a **sandbox key** in the dashboard (or provision one against a local
-gateway with `Merchants.CreateAsync` + `CreateSandboxAsync`) and put it in the environment:
+Four runnable programs. Each is a thin `Program.cs` around an `Example.cs` that the SDK's test suite
+compiles and executes against a scripted gateway, so what you read here runs. Get a **sandbox key**
+in the dashboard (or provision one against a local gateway with `Sandbox.OnboardStoreAsync`) and put
+it in the environment:
 
 ```bash
 export OBLODAI_PUBLIC_ID=test_…
@@ -14,7 +16,7 @@ export OBLODAI_BASE_URL=http://127.0.0.1:8095
 | ------------------------------------------------ | --------------------------------------------------------------------------------- |
 | `dotnet run --project examples/AcceptPayment`     | Create an invoice, show the payer the address, poll until the invoice is final     |
 | `dotnet run --project examples/Payout`            | Validate a payout, then create it with your own idempotency key; handle refusals   |
-| `dotnet run --project examples/WebhookReceiver`   | Verify deliveries over the raw bytes, deduplicate by id, drop out-of-order events  |
+| `dotnet run --project examples/WebhookReceiver`   | Verify over the raw bytes, deduplicate by event id, drop out-of-order events       |
 | `dotnet run --project examples/Sandbox`           | Faucet → invoice → simulated deposit → paid, and the sandbox webhook log           |
 
 All four read the one key above — a merchant has a single API key, and it signs payouts as well as

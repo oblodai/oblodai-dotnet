@@ -3,6 +3,45 @@
 All notable changes to the Oblodai .NET SDK. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
+## 2.0.0 — 2026-09-25
+
+Generated from the gateway's OpenAPI contract. Breaking: see [MIGRATION-2.0.md](MIGRATION-2.0.md).
+
+### Changed
+
+- The resources, request and response models, vocabularies and the route table are generated from
+  `services/core/api/openapi.json` by the backend's `tools/sdkgen` into `src/Oblodai/Generated/`;
+  `contract/`, `tools/Codegen` and the hand-written models are gone. 120 operations in 16 resources,
+  named `client.Resource.MethodAsync` by one rule and pinned in `names.lock`.
+- Requests are named arguments (or the request record, or `Model.From<T>` with wire names); money is
+  `decimal`, sent as a string with its scale; a `double` amount does not compile, and in a dictionary
+  it is `sdk.float_amount` before sending.
+- `RequestOptions` is `IdempotencyKey`, `Timeout` (`TimeSpan`), `MaxRetries`, `ExtraHeaders`,
+  `RequestId`; client `Timeout`/`Deadline` are `TimeSpan`s.
+- `OblodaiException.Message` is `[code] text (request_id=…)`; the text alone is `Description`.
+- Webhook events are the generated `PaymentWebhook`/`PayoutWebhook`/`WalletWebhook`/`ConversionWebhook`
+  behind `IWebhookEvent`; `WebhookDeliveryInfo.EventId` is the state id to deduplicate on.
+- Targets `net8.0` and `net10.0`.
+
+### Added
+
+- `X-Request-ID` on every call (generated, or `RequestOptions.RequestId`), the same on all attempts.
+- `client.WithRawResponseAsync` (status, headers, request id), `client.WithOptions`, `Hooks`
+  (`OnRequest`/`OnResponse` per attempt), `TimeProvider` for pauses and deadlines.
+- `PagePromise<T>.ByPageAsync()`.
+- Waiters for long-running operations: `Batches.WaitAsync`, `Documents.WaitAsync`,
+  `Documents.DownloadAsync` (table in `LongRunning`).
+- Models keep unknown fields in `Extra`, keep unknown vocabulary values, tolerate a missing field and
+  print short, with secrets redacted.
+- The shared conformance suite of the backend (`tools/sdkgen/conformance`) runs in the tests; the
+  README snippets and the examples are executed against a scripted gateway; `make ci` checks the
+  generated code for drift.
+
+### Removed
+
+- `Merchants.CreateAsync`, `OblodaiJson.SerializeWithSecrets`, `ContractVersion`, the lookup and
+  query helper records (`PaymentLookup`, `PageParams`, `FormatQuery`, …).
+
 ## 1.3.0 — 2026-08-26
 
 First release of the .NET client, generated from the gateway's own contract snapshot and verified
