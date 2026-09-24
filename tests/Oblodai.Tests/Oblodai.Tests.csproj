@@ -15,7 +15,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Only so the README's IHttpClientFactory snippet is compiled by this suite like every other one. -->
+    <!-- Only so the README's IHttpClientFactory snippet is compiled and run by this suite like every other one. -->
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="xunit" Version="2.9.2" />
@@ -24,6 +24,11 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/Oblodai/Oblodai.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The examples' logic is compiled into the suite and executed against a scripted gateway. -->
+    <Compile Include="../../examples/*/Example.cs" Link="Examples/%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

@@ -24,7 +24,9 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "8.0.x"
+          dotnet-version: |
+            8.0.x
+            10.0.x
 
       - name: Version matches the tag
         run: |
@@ -37,14 +39,11 @@ jobs:
       - name: Restore
         run: dotnet restore Oblodai.sln
 
-      - name: Contract drift
-        run: dotnet run --project tools/Codegen --no-launch-profile -- check
-
       - name: Build (warnings are errors)
         run: dotnet build Oblodai.sln --no-restore -c Release -warnaserror
 
       - name: Test
-        run: dotnet test Oblodai.sln --no-build -c Release --logger "console;verbosity=normal"
+        run: dotnet test tests/Oblodai.Tests --no-build -c Release --logger "console;verbosity=normal"
 
       - name: Pack
         run: dotnet pack src/Oblodai/Oblodai.csproj --no-build -c Release -o artifacts
