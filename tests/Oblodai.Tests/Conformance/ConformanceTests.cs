@@ -59,6 +59,8 @@ public class ConformanceTests
 
     public static TheoryData<string, int> WebhookCases() => Cases("webhook");
 
+    public static TheoryData<string, int> WebhookDeliveryCases() => Cases("webhook_delivery");
+
     public static TheoryData<string> CallScenarios()
     {
         var data = new TheoryData<string>();
@@ -183,6 +185,61 @@ public class ConformanceTests
 
         var error = Assert.Throws<SignatureException>(() => WebhookVerifier.Verify(raw, headers, options));
         Assert.Equal("webhook." + expect, error.Code);
+    }
+
+    [ConformanceFact]
+    public void EveryEventOfThisReleaseHasADelivery()
+    {
+        var (_, deliveries, _) = Source("webhook_delivery", Suite("webhook_delivery").GetProperty("checks")[0].GetProperty("name").GetString()!);
+        Assert.Equal(
+            ApiFacts.WebhookEvents.Keys.OrderBy(k => k, StringComparer.Ordinal),
+            deliveries.Select(d => d.GetProperty("event").GetString()!).OrderBy(k => k, StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// A real delivery of every event of the contract verifies (with the current secret and, as a receiver
+    /// that has not swapped yet, the previous one), parses into its kind's model and exposes every delivery
+    /// header of the spec.
+    /// </summary>
+    [ConformanceTheory]
+    [MemberData(nameof(WebhookDeliveryCases))]
+    public void WebhookDelivery(string check, int vectorIndex)
+    {
+        var (_, deliveries, checkElement) = Source("webhook_delivery", check);
+        var d = deliveries[vectorIndex];
+        Assert.Equal("webhook_delivery", checkElement.GetProperty("kind").GetString());
+        var secret = checkElement.GetProperty("key").GetString() switch
+        {
+            "current" => d.GetProperty("secret").GetString()!,
+            "previous" => d.GetProperty("previous_secret").GetString()!,
+            var other => throw new InvalidOperationException($"key {other}"),
+        };
+        var headers = d.GetProperty("headers").EnumerateObject().ToDictionary(p => p.Name, p => p.Value.GetString()!);
+        var ts = d.GetProperty("ts").GetInt64();
+        var delivery = WebhookVerifier.VerifyDelivery(
+            Encoding.UTF8.GetBytes(d.GetProperty("payload").GetString()!),
+            headers,
+            new WebhookVerifyOptions { Secret = secret, Now = () => ts });
+
+        var kind = d.GetProperty("kind").GetString()!;
+        Assert.True(WebhookVerifier.IsKnownEvent(delivery.Event), kind);
+        Assert.Equal(kind, delivery.Event.Type);
+        Assert.IsType(ApiFacts.WebhookModels[kind], delivery.Event);
+        foreach (var field in Suite("webhook_delivery").GetProperty("headers").EnumerateObject())
+        {
+            var want = headers[field.Name];
+            string? got = field.Value.GetString() switch
+            {
+                "" => want,
+                "id" => delivery.Id,
+                "event_id" => delivery.EventId,
+                "event_type" => delivery.EventType,
+                "event_time" => delivery.EventTime?.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                "sent_at" => delivery.SentAt.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                var other => throw new InvalidOperationException($"the delivery info has no field {other} for {field.Name}"),
+            };
+            Assert.True(want == got, $"{field.Value.GetString()} = {got}, {field.Name} = {want}");
+        }
     }
 
     [ConformanceTheory]
