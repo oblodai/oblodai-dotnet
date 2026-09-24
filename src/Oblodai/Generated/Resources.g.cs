@@ -13,11 +13,14 @@ using System.Threading.Tasks;
 
 // --- runtime references: the only names taken from the hand-written runtime; adjust here ---
 //   Oblodai:           Model (base record: Extra, ToString), RequestOptions, FileResult,
-//                      PagePromise<T>, OblodaiTransport
+//                      PagePromise<T>, OblodaiTransport, IWebhookEvent (Type, EventAt,
+//                      EventSequence, Test), OblodaiClient (partial; calls CreateResources),
+//                      ConfigException(code, message, field), SdkErrorCodes.JobNotDone
 //   Oblodai.Contract:  RouteSpec(OperationId, Method, Path, Auth, Idempotent, Safe, Bare, List),
 //                      RouteAuth, ListKind, IStringValue<T>, StringValueJsonConverter<T>
 //   Oblodai.Resources: Resource — RequestAsync<T>, RequestPaged<T>, RequestFileAsync
-//                      (route, body, options, cancellationToken, pathParams, query)
+//                      (route, body, options, cancellationToken, pathParams, query),
+//                      PollUntilAsync<T>(poll, status, terminal, pollInterval, timeout, cancellationToken)
 using Oblodai.Contract;
 using Oblodai.Resources;
 
@@ -2075,6 +2078,45 @@ public sealed partial class Batches : Resource
             },
             options,
             cancellationToken);
+
+    /// <summary>
+    /// Poll <c>getBatchInfo</c> until the job is <c>completed</c> or <c>stopped</c>, and return the last answer — a
+    /// terminal failure is returned, not thrown.
+    /// </summary>
+    /// <param name="accepted">What <c>createTransferBatch</c>, <c>createPaymentBatch</c>, <c>createRefundBatch</c> or <c>createPayoutBatch</c> answered.</param>
+    /// <param name="pollInterval">Pause between polls (2 s by default).</param>
+    /// <param name="timeout">Longest wait (10 min by default); past it <c>sdk.wait_timeout</c> is thrown.</param>
+    /// <param name="cancellationToken">Cancels the wait.</param>
+    public Task<BatchInfoResponse> WaitAsync(
+        BatchSubmitResponse accepted,
+        TimeSpan? pollInterval = null,
+        TimeSpan? timeout = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(accepted);
+        return WaitAsync(accepted.BatchId, pollInterval, timeout, cancellationToken);
+    }
+
+    /// <summary>Poll <c>getBatchInfo</c> by <c>batch_id</c> until the job is <c>completed</c> or <c>stopped</c>, and return the last answer.</summary>
+    /// <param name="batchId">The job's <c>batch_id</c>.</param>
+    /// <param name="pollInterval">Pause between polls (2 s by default).</param>
+    /// <param name="timeout">Longest wait (10 min by default); past it <c>sdk.wait_timeout</c> is thrown.</param>
+    /// <param name="cancellationToken">Cancels the wait.</param>
+    public Task<BatchInfoResponse> WaitAsync(
+        string batchId,
+        TimeSpan? pollInterval = null,
+        TimeSpan? timeout = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(batchId);
+        return PollUntilAsync(
+            token => GetInfoAsync(batchId: batchId, cancellationToken: token),
+            answer => answer.Status.Value,
+            ApiFacts.Polls["createTransferBatch"].Terminal,
+            pollInterval,
+            timeout,
+            cancellationToken);
+    }
 }
 
 /// <summary>Автоматическое разделение поступлений между получателями.</summary>
@@ -4556,6 +4598,65 @@ public sealed partial class Documents : Resource
             [
                 new("job_id", jobId),
             ]);
+
+    /// <summary>
+    /// Poll <c>getDocumentJob</c> until the job is <c>done</c>, <c>failed</c> or <c>expired</c>, and return the last answer — a
+    /// terminal failure is returned, not thrown.
+    /// </summary>
+    /// <param name="accepted">What <c>createDocumentJob</c> answered.</param>
+    /// <param name="pollInterval">Pause between polls (2 s by default).</param>
+    /// <param name="timeout">Longest wait (10 min by default); past it <c>sdk.wait_timeout</c> is thrown.</param>
+    /// <param name="cancellationToken">Cancels the wait.</param>
+    public Task<DocumentJobView> WaitAsync(
+        DocumentJobAccepted accepted,
+        TimeSpan? pollInterval = null,
+        TimeSpan? timeout = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(accepted);
+        return WaitAsync(accepted.JobId, pollInterval, timeout, cancellationToken);
+    }
+
+    /// <summary>Poll <c>getDocumentJob</c> by <c>job_id</c> until the job is <c>done</c>, <c>failed</c> or <c>expired</c>, and return the last answer.</summary>
+    /// <param name="jobId">The job's <c>job_id</c>.</param>
+    /// <param name="pollInterval">Pause between polls (2 s by default).</param>
+    /// <param name="timeout">Longest wait (10 min by default); past it <c>sdk.wait_timeout</c> is thrown.</param>
+    /// <param name="cancellationToken">Cancels the wait.</param>
+    public Task<DocumentJobView> WaitAsync(
+        string jobId,
+        TimeSpan? pollInterval = null,
+        TimeSpan? timeout = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(jobId);
+        return PollUntilAsync(
+            token => GetJobAsync(jobId: jobId, cancellationToken: token),
+            answer => answer.Status.Value,
+            ApiFacts.Polls["createDocumentJob"].Terminal,
+            pollInterval,
+            timeout,
+            cancellationToken);
+    }
+
+    /// <summary>Download the file of a finished job (<c>downloadDocumentJobFile</c>).</summary>
+    /// <param name="job">The job as <c>WaitAsync</c> returned it.</param>
+    /// <param name="options">Per-call options.</param>
+    /// <param name="cancellationToken">Cancels the download.</param>
+    /// <exception cref="ConfigException"><c>sdk.job_not_done</c>: the job is not <c>done</c> and has no file.</exception>
+    public Task<FileResult> DownloadAsync(
+        DocumentJobView job,
+        RequestOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(job);
+        if (!job.Status.IsSuccess)
+        {
+            throw new ConfigException(
+                SdkErrorCodes.JobNotDone, $"job {job.JobId} is {job.Status}, not done; it has no file", "job");
+        }
+
+        return DownloadJobFileAsync(jobId: job.JobId, options: options, cancellationToken: cancellationToken);
+    }
 }
 
 /// <summary>Эндпоинты для страницы оплаты — работают без секрета.</summary>

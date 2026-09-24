@@ -13,11 +13,14 @@ using System.Threading.Tasks;
 
 // --- runtime references: the only names taken from the hand-written runtime; adjust here ---
 //   Oblodai:           Model (base record: Extra, ToString), RequestOptions, FileResult,
-//                      PagePromise<T>, OblodaiTransport
+//                      PagePromise<T>, OblodaiTransport, IWebhookEvent (Type, EventAt,
+//                      EventSequence, Test), OblodaiClient (partial; calls CreateResources),
+//                      ConfigException(code, message, field), SdkErrorCodes.JobNotDone
 //   Oblodai.Contract:  RouteSpec(OperationId, Method, Path, Auth, Idempotent, Safe, Bare, List),
 //                      RouteAuth, ListKind, IStringValue<T>, StringValueJsonConverter<T>
 //   Oblodai.Resources: Resource — RequestAsync<T>, RequestPaged<T>, RequestFileAsync
-//                      (route, body, options, cancellationToken, pathParams, query)
+//                      (route, body, options, cancellationToken, pathParams, query),
+//                      PollUntilAsync<T>(poll, status, terminal, pollInterval, timeout, cancellationToken)
 using Oblodai.Contract;
 using Oblodai.Resources;
 
@@ -296,6 +299,22 @@ public readonly record struct BatchStatus(string Value) : IStringValue<BatchStat
         _ => false,
     };
 
+    /// <summary>Values after which nothing else can happen (<c>x-status-classes.final</c>).</summary>
+    public static IReadOnlyList<BatchStatus> Final { get; } = [Completed, Stopped];
+
+    /// <summary>Final values that mean success (<c>x-status-classes.success</c>).</summary>
+    public static IReadOnlyList<BatchStatus> Success { get; } = [];
+
+    /// <summary>Whether the value is final; a value this SDK version does not know is not.</summary>
+    public bool IsFinal => Value switch
+    {
+        "completed" or "stopped" => true,
+        _ => false,
+    };
+
+    /// <summary>Whether the value is a final success; a value this SDK version does not know is not.</summary>
+    public bool IsSuccess => false;
+
     /// <summary>Wrap a wire value, known or not.</summary>
     /// <param name="value">The wire value.</param>
     public static BatchStatus FromValue(string value) => new(value);
@@ -404,6 +423,26 @@ public readonly record struct DocumentJobStatus(string Value) : IStringValue<Doc
     public bool IsKnown => Value switch
     {
         "queued" or "processing" or "done" or "failed" or "expired" => true,
+        _ => false,
+    };
+
+    /// <summary>Values after which nothing else can happen (<c>x-status-classes.final</c>).</summary>
+    public static IReadOnlyList<DocumentJobStatus> Final { get; } = [Done, Failed, Expired];
+
+    /// <summary>Final values that mean success (<c>x-status-classes.success</c>).</summary>
+    public static IReadOnlyList<DocumentJobStatus> Success { get; } = [Done];
+
+    /// <summary>Whether the value is final; a value this SDK version does not know is not.</summary>
+    public bool IsFinal => Value switch
+    {
+        "done" or "failed" or "expired" => true,
+        _ => false,
+    };
+
+    /// <summary>Whether the value is a final success; a value this SDK version does not know is not.</summary>
+    public bool IsSuccess => Value switch
+    {
+        "done" => true,
         _ => false,
     };
 
@@ -1946,6 +1985,26 @@ public readonly record struct PaymentStatus(string Value) : IStringValue<Payment
         _ => false,
     };
 
+    /// <summary>Values after which nothing else can happen (<c>x-status-classes.final</c>).</summary>
+    public static IReadOnlyList<PaymentStatus> Final { get; } = [Paid, PaidOver, WrongAmount, Expired, Cancelled];
+
+    /// <summary>Final values that mean success (<c>x-status-classes.success</c>).</summary>
+    public static IReadOnlyList<PaymentStatus> Success { get; } = [Paid, PaidOver];
+
+    /// <summary>Whether the value is final; a value this SDK version does not know is not.</summary>
+    public bool IsFinal => Value switch
+    {
+        "paid" or "paid_over" or "wrong_amount" or "expired" or "cancelled" => true,
+        _ => false,
+    };
+
+    /// <summary>Whether the value is a final success; a value this SDK version does not know is not.</summary>
+    public bool IsSuccess => Value switch
+    {
+        "paid" or "paid_over" => true,
+        _ => false,
+    };
+
     /// <summary>Wrap a wire value, known or not.</summary>
     /// <param name="value">The wire value.</param>
     public static PaymentStatus FromValue(string value) => new(value);
@@ -2171,6 +2230,26 @@ public readonly record struct PayoutStatus(string Value) : IStringValue<PayoutSt
     public bool IsKnown => Value switch
     {
         "approved" or "awaiting_cosign" or "broadcasting" or "cancelled" or "confirmed" or "failed" or "pending" or "sent" => true,
+        _ => false,
+    };
+
+    /// <summary>Values after which nothing else can happen (<c>x-status-classes.final</c>).</summary>
+    public static IReadOnlyList<PayoutStatus> Final { get; } = [Cancelled, Confirmed, Failed];
+
+    /// <summary>Final values that mean success (<c>x-status-classes.success</c>).</summary>
+    public static IReadOnlyList<PayoutStatus> Success { get; } = [Confirmed];
+
+    /// <summary>Whether the value is final; a value this SDK version does not know is not.</summary>
+    public bool IsFinal => Value switch
+    {
+        "cancelled" or "confirmed" or "failed" => true,
+        _ => false,
+    };
+
+    /// <summary>Whether the value is a final success; a value this SDK version does not know is not.</summary>
+    public bool IsSuccess => Value switch
+    {
+        "confirmed" => true,
         _ => false,
     };
 

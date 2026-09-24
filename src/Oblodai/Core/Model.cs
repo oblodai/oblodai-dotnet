@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using Oblodai.Contract;
 
 namespace Oblodai;
 
@@ -35,7 +36,9 @@ public abstract partial record Model
     /// same body a JSON request would carry. A <see cref="double"/> or <see cref="float"/> where the
     /// model has a money field (<see cref="decimal"/>) is refused with <c>sdk.float_amount</c> before
     /// anything is sent: binary floating point cannot hold amounts exactly. Pass a
-    /// <see cref="decimal"/> or a decimal string instead.
+    /// <see cref="decimal"/> or a decimal string instead. Where the model has no type for a value (a
+    /// field this SDK version does not know, an untyped field), binary floating point is allowed only
+    /// under the names the contract types as numbers (<see cref="Contract.ApiFacts.NonMoneyNumbers"/>).
     /// </summary>
     /// <typeparam name="T">The model to build.</typeparam>
     /// <param name="values">Field values by wire name; nested objects as dictionaries, lists as lists.</param>
@@ -119,19 +122,26 @@ public abstract partial record Model
         {
             if (!properties.TryGetValue(name, out var type))
             {
+                AssertUntyped(value, path + name, name);
                 continue;
             }
 
-            AssertValue(type, value, path + name);
+            AssertValue(type, value, path + name, name);
         }
     }
 
-    private static void AssertValue(Type type, object? value, string path)
+    private static void AssertValue(Type type, object? value, string path, string name)
     {
         type = Nullable.GetUnderlyingType(type) ?? type;
+        if (type == typeof(object) || type == typeof(JsonElement))
+        {
+            AssertUntyped(value, path, name);
+            return;
+        }
+
         switch (value)
         {
-            case double or float when type == typeof(decimal):
+            case double or float or Half when type == typeof(decimal):
                 throw new ConfigException(
                     SdkErrorCodes.FloatAmount,
                     $"{path} is a {value.GetType().Name}; money must be a decimal or a decimal string "
@@ -139,6 +149,13 @@ public abstract partial record Model
                     path);
             case IReadOnlyDictionary<string, object?> nested when typeof(Model).IsAssignableFrom(type):
                 AssertNoFloatMoney(type, nested, path + ".");
+                break;
+            case IReadOnlyDictionary<string, object?> map when MapValueType(type) is { } valueType:
+                foreach (var (key, item) in map)
+                {
+                    AssertValue(valueType, item, $"{path}.{key}", name);
+                }
+
                 break;
             case IEnumerable list and not string:
                 var element = ElementType(type);
@@ -150,7 +167,36 @@ public abstract partial record Model
                 var i = 0;
                 foreach (var item in list)
                 {
-                    AssertValue(element, item, $"{path}[{i++}]");
+                    AssertValue(element, item, $"{path}[{i++}]", name);
+                }
+
+                break;
+        }
+    }
+
+    /// <summary>A value the model does not type: floating point only under a non-money name, at any depth.</summary>
+    private static void AssertUntyped(object? value, string path, string name)
+    {
+        switch (value)
+        {
+            case double or float or Half when !ApiFacts.NonMoneyNumbers.Contains(name):
+                throw new ConfigException(
+                    SdkErrorCodes.FloatAmount,
+                    $"{path} is a {value.GetType().Name} and the contract has no number field {name}; money must be a "
+                    + "decimal or a decimal string (25.10m or \"25.10\"), never binary floating point",
+                    path);
+            case IReadOnlyDictionary<string, object?> nested:
+                foreach (var (key, item) in nested)
+                {
+                    AssertUntyped(item, $"{path}.{key}", key);
+                }
+
+                break;
+            case IEnumerable list and not string:
+                var i = 0;
+                foreach (var item in list)
+                {
+                    AssertUntyped(item, $"{path}[{i++}]", name);
                 }
 
                 break;
@@ -159,6 +205,9 @@ public abstract partial record Model
 
     private static Type? ElementType(Type type)
         => type.IsGenericType && type.GetGenericArguments() is { Length: 1 } args ? args[0] : null;
+
+    private static Type? MapValueType(Type type)
+        => type.IsGenericType && type.GetGenericArguments() is [var key, var value] && key == typeof(string) ? value : null;
 
     [GeneratedRegex("secret|token|passcode|signature|password|claim_url|authorization", RegexOptions.IgnoreCase)]
     private static partial Regex SensitiveName();

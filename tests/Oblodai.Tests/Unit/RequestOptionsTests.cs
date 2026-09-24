@@ -121,6 +121,26 @@ public class RequestOptionsTests
     }
 
     [Fact]
+    public void AFaucetKeyGivenBothInTheRequestAndInOptionsFailsBeforeTheNetwork()
+    {
+        // The same rule in every SDK: two keys for one field is a programming error (here an
+        // ArgumentException, Python's TypeError), raised before anything is sent.
+        var handler = new FakeHttpHandler(ScriptedResponse.Ok());
+        using var client = Client(handler);
+
+        // Thrown by the call itself, not by the task it would return.
+        var error = Assert.Throws<ArgumentException>(() =>
+        {
+            _ = client.Sandbox.FaucetAsync(
+                new FaucetRequest { Amount = 100m, Asset = "USDT", IdempotencyKey = "in-body" },
+                new RequestOptions { IdempotencyKey = "in-options" });
+        });
+
+        Assert.Equal("options", error.ParamName);
+        Assert.Empty(handler.Calls);
+    }
+
+    [Fact]
     public async Task ExtraHeadersAreMergedOverTheClientsOwn()
     {
         var handler = new FakeHttpHandler(ScriptedResponse.Ok());

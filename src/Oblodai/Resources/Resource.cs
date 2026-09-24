@@ -19,6 +19,27 @@ public abstract class Resource
     /// <summary>The transport every call goes through.</summary>
     protected OblodaiTransport Transport { get; }
 
+    /// <summary>
+    /// Poll until the status is in <paramref name="terminal"/> — the body of the generated
+    /// <c>WaitAsync</c> of long-running operations (<see cref="LongRunning.PollAsync{T}(Func{CancellationToken, Task{T}}, Func{T, string}, IReadOnlySet{string}, TimeProvider, TimeSpan?, TimeSpan?, CancellationToken)"/>
+    /// on the client's time source).
+    /// </summary>
+    /// <typeparam name="T">The poll answer.</typeparam>
+    /// <param name="poll">One poll.</param>
+    /// <param name="status">The status of an answer.</param>
+    /// <param name="terminal">The statuses that end the wait.</param>
+    /// <param name="pollInterval">Pause between polls (2 s by default).</param>
+    /// <param name="timeout">Longest wait (10 min by default).</param>
+    /// <param name="cancellationToken">Cancels the wait.</param>
+    protected Task<T> PollUntilAsync<T>(
+        Func<CancellationToken, Task<T>> poll,
+        Func<T, string> status,
+        IReadOnlySet<string> terminal,
+        TimeSpan? pollInterval,
+        TimeSpan? timeout,
+        CancellationToken cancellationToken)
+        => LongRunning.PollAsync(poll, status, terminal, Transport.Options.TimeProvider, pollInterval, timeout, cancellationToken);
+
     /// <summary>Call an envelope route and decode its <c>result</c> — the entry point of generated methods.</summary>
     /// <typeparam name="T">Model of the result payload.</typeparam>
     /// <param name="route">Route to call.</param>

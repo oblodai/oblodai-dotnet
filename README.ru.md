@@ -140,28 +140,33 @@ Console.WriteLine($"{deposit.Txid} {deposit.Confirmations}");
 
 ## Обзор методов
 
-16 ресурсов, 120 операций — вся мерчантская поверхность контракта. Имена зафиксированы в
+Вся мерчантская поверхность контракта. Таблицу ниже пишет генератор; имена зафиксированы в
 [`names.lock`](names.lock): перегенерация, которая переименует или уберёт метод, падает как ломающее
-изменение.
+изменение, новый метод генератор дописывает в lock сам. У долгих операций есть ещё `WaitAsync` (и
+`DownloadAsync`, если у задачи есть файл) — см. ниже.
 
-| Ресурс | Методы (`…Async`) | Операций |
-| --- | --- | --- |
-| `Payments` | Cancel · Create · GetAmlLinks · GetCheckoutConfig · GetInfo · GetQr · ListHistory · ListServices · Resolve · SendEmail · SetCheckoutConfig | 11 |
-| `PaymentLinks` | Create · Get · List · Toggle | 4 |
-| `Refunds` | BlockedWallet · Payment | 2 |
-| `Payouts` | Approve · Calculate · Cancel · Create · CreateMass · CreateTransferBatch · GetInfo · ListHistory · ListServices · TransferToPersonal · TransferToUser · Validate | 12 |
-| `PayoutLinks` | Cancel · ClaimPayout · Create · CreateBatch · Get · GetPayoutClaim · List | 7 |
-| `Batches` | CreatePayment · CreatePayout · CreateRefund · GetInfo · Wait | 4 |
-| `Splits` | CreateRule · DeleteRule · GetConfig · GetRecipientOptIn · ListRules · SetConfig · SetRecipientOptIn | 7 |
-| `Wallets` | Block · Create · GetQr | 3 |
-| `Account` | GetBalance · GetSummary · ListExchangeRates | 3 |
-| `Webhooks` | ListDeliveries · Register · RequeueDelivery · ResendPayment · RotateSecret · SendLegacyTest · SendTestConversion · SendTestPayment · SendTestPayout · SendTestWallet · SetActive | 11 |
-| `Settings` | ConfigureVrcs · DeleteAutoWithdrawRule · GetAccuracy · GetAutoConvert · GetAutoRefund · GetPaymentFeeConfig · GetPayoutFeeConfig · GetRefundFeeConfig · ListAcceptedCurrencies · ListApiLog · ListAutoWithdrawRules · ListDiscounts · SetAcceptedCurrencies · SetAccuracy · SetAutoConvert · SetAutoRefund · SetAutoWithdrawRule · SetDiscount · SetPaymentFeeConfig · SetPayoutFeeConfig · SetRefundFeeConfig | 21 |
-| `ApiAllowlist` | AddEntry · List · RemoveEntry · SetEnabled | 4 |
-| `Referrals` | GetInfo | 1 |
-| `Documents` | CreateJob · DownloadJobFile · GetBalance · GetBatch · GetFees · GetJob · GetLedger · GetPaymentLink · GetPayoutLinkCheque · GetReferrals · GetSigned · GetSplit · GetStatement · GetWalletStatement · Wait · Download | 14 |
-| `Checkout` | Get · GetOnramp · GetPublicPaymentLink · GetQr · GetSourceOfFundsForm · ListCurrencies · PaymentLink · SelectMethod · StartOnramp · SubmitSourceOfFunds | 10 |
-| `Sandbox` | Faucet · ListWebhooks · OnboardStore · ReplayWebhook · Reset · SimulateDeposit | 6 |
+<!-- sdkgen:methods -->
+16 ресурсов, 120 методов.
+
+| Ресурс | Методы |
+| --- | --- |
+| `Payments` | `CreateAsync` · `GetInfoAsync` · `GetQrAsync` · `ListHistoryAsync` · `ListServicesAsync` · `CancelAsync` · `SendEmailAsync` · `SetCheckoutConfigAsync` · `GetCheckoutConfigAsync` · `GetAmlLinksAsync` · `ResolveAsync` |
+| `PaymentLinks` | `CreateAsync` · `ListAsync` · `GetAsync` · `ToggleAsync` |
+| `Refunds` | `PaymentAsync` · `BlockedWalletAsync` |
+| `Payouts` | `CreateAsync` · `CreateMassAsync` · `GetInfoAsync` · `ListHistoryAsync` · `CalculateAsync` · `ValidateAsync` · `CancelAsync` · `ApproveAsync` · `ListServicesAsync` · `TransferToPersonalAsync` · `TransferToUserAsync` · `CreateTransferBatchAsync` |
+| `PayoutLinks` | `CreateAsync` · `CreateBatchAsync` · `ListAsync` · `GetAsync` · `CancelAsync` · `GetPayoutClaimAsync` · `ClaimPayoutAsync` |
+| `Batches` | `CreatePaymentAsync` · `CreateRefundAsync` · `CreatePayoutAsync` · `GetInfoAsync` |
+| `Splits` | `CreateRuleAsync` · `ListRulesAsync` · `DeleteRuleAsync` · `SetConfigAsync` · `GetConfigAsync` · `SetRecipientOptInAsync` · `GetRecipientOptInAsync` |
+| `Wallets` | `CreateAsync` · `BlockAsync` · `GetQrAsync` |
+| `Account` | `GetBalanceAsync` · `GetSummaryAsync` · `ListExchangeRatesAsync` |
+| `Webhooks` | `ResendPaymentAsync` · `RegisterAsync` · `ListDeliveriesAsync` · `RequeueDeliveryAsync` · `SendLegacyTestAsync` · `SendTestPaymentAsync` · `SendTestWalletAsync` · `SendTestPayoutAsync` · `SendTestConversionAsync` · `RotateSecretAsync` · `SetActiveAsync` |
+| `Settings` | `SetAccuracyAsync` · `GetAccuracyAsync` · `SetAutoRefundAsync` · `GetAutoRefundAsync` · `SetDiscountAsync` · `ListDiscountsAsync` · `ListApiLogAsync` · `GetAutoConvertAsync` · `SetAutoConvertAsync` · `SetAcceptedCurrenciesAsync` · `ListAcceptedCurrenciesAsync` · `SetPayoutFeeConfigAsync` · `GetPayoutFeeConfigAsync` · `SetRefundFeeConfigAsync` · `GetRefundFeeConfigAsync` · `SetPaymentFeeConfigAsync` · `GetPaymentFeeConfigAsync` · `SetAutoWithdrawRuleAsync` · `ListAutoWithdrawRulesAsync` · `DeleteAutoWithdrawRuleAsync` · `ConfigureVrcsAsync` |
+| `ApiAllowlist` | `ListAsync` · `AddEntryAsync` · `RemoveEntryAsync` · `SetEnabledAsync` |
+| `Referrals` | `GetInfoAsync` |
+| `Documents` | `GetSignedAsync` · `GetBalanceAsync` · `GetFeesAsync` · `GetLedgerAsync` · `GetSplitAsync` · `GetPayoutLinkChequeAsync` · `GetStatementAsync` · `GetBatchAsync` · `GetPaymentLinkAsync` · `GetWalletStatementAsync` · `GetReferralsAsync` · `CreateJobAsync` · `GetJobAsync` · `DownloadJobFileAsync` |
+| `Checkout` | `GetSourceOfFundsFormAsync` · `SubmitSourceOfFundsAsync` · `GetPublicPaymentLinkAsync` · `PaymentLinkAsync` · `ListCurrenciesAsync` · `GetAsync` · `SelectMethodAsync` · `StartOnrampAsync` · `GetOnrampAsync` · `GetQrAsync` |
+| `Sandbox` | `OnboardStoreAsync` · `FaucetAsync` · `SimulateDepositAsync` · `ResetAsync` · `ListWebhooksAsync` · `ReplayWebhookAsync` |
+<!-- /sdkgen:methods -->
 
 `Checkout` — сторона плательщика (без ключа). Маршруты документов отвечают вне JSON-конверта и
 возвращают `FileResult { Bytes, ContentType, Filename }` с `WriteToAsync(path)`. Отмена

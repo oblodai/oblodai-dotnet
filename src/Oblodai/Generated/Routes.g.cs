@@ -13,11 +13,14 @@ using System.Threading.Tasks;
 
 // --- runtime references: the only names taken from the hand-written runtime; adjust here ---
 //   Oblodai:           Model (base record: Extra, ToString), RequestOptions, FileResult,
-//                      PagePromise<T>, OblodaiTransport
+//                      PagePromise<T>, OblodaiTransport, IWebhookEvent (Type, EventAt,
+//                      EventSequence, Test), OblodaiClient (partial; calls CreateResources),
+//                      ConfigException(code, message, field), SdkErrorCodes.JobNotDone
 //   Oblodai.Contract:  RouteSpec(OperationId, Method, Path, Auth, Idempotent, Safe, Bare, List),
 //                      RouteAuth, ListKind, IStringValue<T>, StringValueJsonConverter<T>
 //   Oblodai.Resources: Resource — RequestAsync<T>, RequestPaged<T>, RequestFileAsync
-//                      (route, body, options, cancellationToken, pathParams, query)
+//                      (route, body, options, cancellationToken, pathParams, query),
+//                      PollUntilAsync<T>(poll, status, terminal, pollInterval, timeout, cancellationToken)
 using Oblodai.Contract;
 using Oblodai.Resources;
 
