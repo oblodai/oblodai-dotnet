@@ -143,6 +143,13 @@ public sealed partial class OblodaiTransport
             synthetic: true);
     }
 
+    /// <summary>
+    /// Largest declared <c>Content-Length</c> of a response the buffer is sized for up front; a larger
+    /// one grows as it is read. An allocation heuristic for responses — not
+    /// <c>x-oblodai-signing.max_body</c>, the core's limit on request bodies, although both are 1 MiB today.
+    /// </summary>
+    private const int MaxPreallocatedBytes = 1 << 20;
+
     /// <summary>Reads at most <paramref name="cap"/> bytes, then refuses instead of growing the buffer.</summary>
     private static async Task<byte[]> ReadCappedAsync(HttpResponseMessage response, long cap, CancellationToken cancellationToken)
     {
@@ -153,7 +160,7 @@ public sealed partial class OblodaiTransport
         }
 
         using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-        using var buffer = new MemoryStream(declared is > 0 and <= 1 << 20 ? (int)declared.Value : 0);
+        using var buffer = new MemoryStream(declared is > 0 and <= MaxPreallocatedBytes ? (int)declared.Value : 0);
         var chunk = new byte[81_920];
         while (true)
         {
