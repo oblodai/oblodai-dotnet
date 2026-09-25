@@ -14,7 +14,8 @@ using System.Threading.Tasks;
 // --- runtime references: the only names taken from the hand-written runtime; adjust here ---
 //   Oblodai:           Model (base record: Extra, ToString), RequestOptions, FileResult,
 //                      PagePromise<T>, OblodaiTransport, IWebhookEvent (Type, EventAt,
-//                      EventSequence, Test), OblodaiClient (partial; calls CreateResources),
+//                      EventSequence, Test, ObjectId), OblodaiClient (partial; calls
+//                      CreateResources),
 //                      ConfigException(code, message, field), SdkErrorCodes.JobNotDone,
 //                      SdkErrorCodes.BadConfig
 //   Oblodai.Contract:  RouteSpec(OperationId, Method, Path, Auth, Idempotent, Safe, Bare, List),
@@ -41,6 +42,9 @@ public sealed partial record ConversionWebhook : IWebhookEvent
 
     /// <inheritdoc />
     bool? IWebhookEvent.Test => Test;
+
+    /// <inheritdoc />
+    string? IWebhookEvent.ObjectId => Id;
 }
 
 /// <summary>The body of a <c>payment</c> webhook event.</summary>
@@ -57,6 +61,9 @@ public sealed partial record PaymentWebhook : IWebhookEvent
 
     /// <inheritdoc />
     bool? IWebhookEvent.Test => Test;
+
+    /// <inheritdoc />
+    string? IWebhookEvent.ObjectId => Uuid;
 }
 
 /// <summary>The body of a <c>payout</c> webhook event.</summary>
@@ -73,6 +80,9 @@ public sealed partial record PayoutWebhook : IWebhookEvent
 
     /// <inheritdoc />
     bool? IWebhookEvent.Test => Test;
+
+    /// <inheritdoc />
+    string? IWebhookEvent.ObjectId => Uuid;
 }
 
 /// <summary>The body of a <c>wallet</c> webhook event.</summary>
@@ -89,4 +99,7 @@ public sealed partial record WalletWebhook : IWebhookEvent
 
     /// <inheritdoc />
     bool? IWebhookEvent.Test => Test;
+
+    /// <inheritdoc />
+    string? IWebhookEvent.ObjectId => Uuid;
 }

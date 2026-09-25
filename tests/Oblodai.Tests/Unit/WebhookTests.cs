@@ -81,7 +81,7 @@ public class WebhookTests
         });
 
         var body = sample.GetProperty("body");
-        Assert.Equal(body.GetProperty("uuid").GetString(), UuidOf(delivery.Event));
+        Assert.Equal(body.GetProperty("uuid").GetString(), delivery.Event.ObjectId);
         Assert.Equal(body.GetProperty("type").GetString(), delivery.Event.Type);
         Assert.Equal(headers[WebhookVerifier.HeaderId], delivery.Id);
         Assert.Equal(headers[WebhookVerifier.HeaderEvent], delivery.EventType);
@@ -166,7 +166,7 @@ public class WebhookTests
             Now = () => ts + 600,
             ToleranceSeconds = 0,
         });
-        Assert.Equal("u1", UuidOf(verified));
+        Assert.Equal("u1", verified.ObjectId);
     }
 
     [Fact]
@@ -182,18 +182,18 @@ public class WebhookTests
         };
 
         // Not swapped yet: the stored secret is the old one, the Prev header carries its signature.
-        Assert.Equal("u1", UuidOf(WebhookVerifier.Verify(body, headers, new WebhookVerifyOptions { Secret = "old", Now = () => ts })));
+        Assert.Equal("u1", WebhookVerifier.Verify(body, headers, new WebhookVerifyOptions { Secret = "old", Now = () => ts }).ObjectId);
 
         // Already swapped: the main header verifies with the new secret.
-        Assert.Equal("u1", UuidOf(WebhookVerifier.Verify(body, headers, new WebhookVerifyOptions { Secret = "new", Now = () => ts })));
+        Assert.Equal("u1", WebhookVerifier.Verify(body, headers, new WebhookVerifyOptions { Secret = "new", Now = () => ts }).ObjectId);
 
         // Kept the old copy alongside an unrelated new one.
-        Assert.Equal("u1", UuidOf(WebhookVerifier.Verify(body, headers, new WebhookVerifyOptions
+        Assert.Equal("u1", WebhookVerifier.Verify(body, headers, new WebhookVerifyOptions
         {
             Secret = "unrelated",
             PreviousSecret = "old",
             Now = () => ts,
-        })));
+        }).ObjectId);
     }
 
     [Fact]
@@ -227,6 +227,8 @@ public class WebhookTests
         var alien = Assert.IsType<UnknownWebhookEvent>(WebhookVerifier.Parse("""{"type":"alien","uuid":"x"}"""));
         Assert.Equal("alien", alien.Type);
         Assert.Equal("x", alien.Extra!["uuid"].GetString());
+        // Its id field is not guessed: the contract names one per known kind only.
+        Assert.Null(((IWebhookEvent)alien).ObjectId);
         Assert.False(WebhookVerifier.IsStale(alien, 99));
         Assert.False(WebhookVerifier.IsTestEvent(alien));
         Assert.False(WebhookVerifier.IsKnownEvent(alien));
@@ -264,12 +266,4 @@ public class WebhookTests
 
         return headers;
     }
-
-    private static string UuidOf(IWebhookEvent webhookEvent) => webhookEvent switch
-    {
-        PaymentWebhook payment => payment.Uuid,
-        PayoutWebhook payout => payout.Uuid,
-        WalletWebhook wallet => wallet.Uuid,
-        _ => throw new InvalidOperationException($"no uuid on {webhookEvent.GetType().Name}"),
-    };
 }

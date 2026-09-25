@@ -32,6 +32,13 @@ public interface IWebhookEvent
 
     /// <summary>True on rehearsal deliveries (<c>webhooks.send_test_*</c>, sandbox) — no money moved.</summary>
     bool? Test { get; }
+
+    /// <summary>
+    /// The id of the object the event is about: the id field the contract declares for the event's kind
+    /// (generated per model). Null for a kind without one and for an <see cref="UnknownWebhookEvent"/> —
+    /// its id field is not guessed; read <see cref="Model.Extra"/> there.
+    /// </summary>
+    string? ObjectId { get; }
 }
 
 /// <summary>
@@ -61,4 +68,7 @@ public sealed record UnknownWebhookEvent : Model, IWebhookEvent
     /// <inheritdoc />
     long? IWebhookEvent.EventSequence
         => Sequence is { ValueKind: JsonValueKind.Number } n && n.TryGetInt64(out var value) ? value : null;
+
+    /// <inheritdoc />
+    string? IWebhookEvent.ObjectId => null;
 }

@@ -50,10 +50,12 @@ public class ApiFactsTests
         Assert.Equal("conversion", ApiFacts.WebhookEvents["conversion.completed"]);
         Assert.Equal("conversion", ApiFacts.WebhookEvents["conversion.refunded"]);
 
-        var parsed = WebhookVerifier.Parse("""{"type":"conversion","event_at":"2026-09-25T00:00:00Z","sequence":9}""");
+        var parsed = WebhookVerifier.Parse("""{"type":"conversion","id":"c-1","event_at":"2026-09-25T00:00:00Z","sequence":9}""");
 
         Assert.IsType<ConversionWebhook>(parsed);
         Assert.True(WebhookVerifier.IsKnownEvent(parsed));
+        // Its object id is the field the contract declares for the kind — `id` here, not `uuid`.
+        Assert.Equal("c-1", parsed.ObjectId);
     }
 
     [Fact]
