@@ -340,11 +340,19 @@ public class ConformanceTests
             var other => throw new InvalidOperationException($"key {other}"),
         };
         var headers = d.GetProperty("headers").EnumerateObject().ToDictionary(p => p.Name, p => p.Value.GetString()!);
+        var rehearsal = checkElement.TryGetProperty("test", out var test) && test.GetBoolean();
+        var sent = new Dictionary<string, string>(headers);
+        if (rehearsal)
+        {
+            sent[TestHeader("webhook_delivery")] = "true";
+        }
+
         var ts = d.GetProperty("ts").GetInt64();
         var delivery = WebhookVerifier.VerifyDelivery(
             Encoding.UTF8.GetBytes(d.GetProperty("payload").GetString()!),
-            headers,
+            sent,
             new WebhookVerifyOptions { Secret = secret, Now = () => ts });
+        Assert.True(rehearsal == delivery.IsTest, $"IsTest = {delivery.IsTest}, rehearsal = {rehearsal}");
 
         var kind = d.GetProperty("kind").GetString()!;
         Assert.True(WebhookVerifier.IsKnownEvent(delivery.Event), kind);
@@ -595,6 +603,19 @@ public class ConformanceTests
         var roles = headerNames.GetProperty("roles").EnumerateArray().Select(r => r.GetString()!).ToList();
         Assert.Equal(roles.Count, list.Count);
         return roles.Zip(list).ToDictionary(p => p.First, p => p.Second);
+    }
+
+    /// <summary>
+    /// The rehearsal header name the spec gives (<c>header_names.test_pointer</c>) — again the spec's name,
+    /// not this SDK's constant.
+    /// </summary>
+    private static string TestHeader(string suiteName)
+    {
+        var suite = Suite(suiteName);
+        var pointer = suite.GetProperty("header_names").GetProperty("test_pointer").GetString()!;
+        var name = Pointer(Spec(suite), pointer).GetString();
+        Assert.False(string.IsNullOrEmpty(name), $"no rehearsal header name at {pointer}");
+        return name!;
     }
 
     private static JsonElement Spec(JsonElement suite)
