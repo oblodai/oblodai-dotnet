@@ -227,7 +227,7 @@ public static class ApiExceptionFactory
         var init = new ApiErrorInit(code, message, httpStatus, retryable, retryAfter, detail.RequestId, detail.Field,
             synthetic, raw);
 
-        if (code == "idempotency.key_reused")
+        if (code == ErrorCode.IdempotencyKeyReused.Value)
         {
             return new IdempotencyConflictException(init);
         }
