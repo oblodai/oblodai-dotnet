@@ -90,7 +90,7 @@ public static class ApiFacts
     /// <summary>Every webhook <c>type</c> of the contract, sorted.</summary>
     public static IReadOnlyList<string> WebhookKinds { get; } = ["conversion", "payment", "payout", "wallet"];
 
-    /// <summary>Webhook event name (<c>X-Webhook-Event</c>) → its <c>type</c>, sorted by name.</summary>
+    /// <summary>Webhook event name (the value of <see cref="SigningProtocol.HeaderWebhookEvent"/>) → its <c>type</c>, sorted by name.</summary>
     public static IReadOnlyDictionary<string, string> WebhookEvents { get; } = new Dictionary<string, string>
     {
         ["conversion.completed"] = "conversion",
