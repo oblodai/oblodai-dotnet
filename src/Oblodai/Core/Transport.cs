@@ -22,8 +22,12 @@ public sealed partial class OblodaiTransport : IDisposable
     /// <summary>How much of a bare (PDF/CSV) answer the SDK will buffer.</summary>
     public const long MaxBareResponseBytes = 64L * 1024 * 1024;
 
-    /// <summary>Error codes that mean the gateway rejected the signature because of the timestamp or MAC.</summary>
-    private static readonly HashSet<string> SignatureFailureCodes = ["merchant.bad_signature", "auth.bad_timestamp"];
+    /// <summary>
+    /// Error codes that mean the gateway rejected the signature because of the timestamp or MAC: the
+    /// generated <see cref="ErrorCode"/> values, so a code renamed in the contract fails to compile.
+    /// </summary>
+    private static readonly HashSet<string> SignatureFailureCodes =
+        [ErrorCode.MerchantBadSignature.Value, ErrorCode.AuthBadTimestamp.Value];
 
     private static readonly IReadOnlyDictionary<string, string> EmptyHeaders =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
