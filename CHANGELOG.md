@@ -14,6 +14,8 @@ Generated from the gateway's OpenAPI contract by the backend's `tools/sdkgen`. B
 - `client.WithRawResponseAsync` (status, headers, request id), `client.WithOptions`, `Hooks`
   (`OnRequest`/`OnResponse` per attempt), `TimeProvider` for pauses and deadlines.
 - `PagePromise<T>.ByPageAsync()`.
+- `IWebhookEvent.ObjectId`: the id of the object an event is about, from the id field the contract
+  declares for its kind (generated per model); null on an `UnknownWebhookEvent` — not guessed.
 - Waiters for long-running operations, generated from the contract's `x-sdk-poll`:
   `Batches.WaitAsync`, `Documents.WaitAsync`, `Documents.DownloadAsync`; each waits for its own
   terminal statuses.

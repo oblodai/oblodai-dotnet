@@ -14,7 +14,8 @@ using System.Threading.Tasks;
 // --- runtime references: the only names taken from the hand-written runtime; adjust here ---
 //   Oblodai:           Model (base record: Extra, ToString), RequestOptions, FileResult,
 //                      PagePromise<T>, OblodaiTransport, IWebhookEvent (Type, EventAt,
-//                      EventSequence, Test), OblodaiClient (partial; calls CreateResources),
+//                      EventSequence, Test, ObjectId), OblodaiClient (partial; calls
+//                      CreateResources),
 //                      ConfigException(code, message, field), SdkErrorCodes.JobNotDone,
 //                      SdkErrorCodes.BadConfig
 //   Oblodai.Contract:  RouteSpec(OperationId, Method, Path, Auth, Idempotent, Safe, Bare, List),
