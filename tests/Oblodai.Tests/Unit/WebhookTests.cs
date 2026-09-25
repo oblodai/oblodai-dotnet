@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using Oblodai.Contract;
 using Oblodai.Tests.Support;
 using Xunit;
 
@@ -157,13 +158,13 @@ public class WebhookTests
         var headers = SignedHeaders("whsec", ts, body);
 
         var error = Assert.Throws<SignatureException>(() => WebhookVerifier.Verify(
-            body, headers, new WebhookVerifyOptions { Secret = "whsec", Now = () => ts + 600 }));
+            body, headers, new WebhookVerifyOptions { Secret = "whsec", Now = () => ts + 2 * SigningProtocol.SkewSeconds }));
         Assert.Equal(SdkErrorCodes.WebhookStaleTimestamp, error.Code);
 
         var verified = WebhookVerifier.Verify(body, headers, new WebhookVerifyOptions
         {
             Secret = "whsec",
-            Now = () => ts + 600,
+            Now = () => ts + 2 * SigningProtocol.SkewSeconds,
             ToleranceSeconds = 0,
         });
         Assert.Equal("u1", verified.ObjectId);
