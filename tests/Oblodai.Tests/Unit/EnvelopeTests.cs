@@ -211,7 +211,7 @@ public class EnvelopeTests
             Ts = 1,
             UserAgent = "test",
             Body = "{}",
-            ExtraHeaders = new Dictionary<string, string> { ["X-Signature"] = "zz", ["X-Trace"] = "t1" },
+            ExtraHeaders = new Dictionary<string, string> { [SigningProtocol.HeaderSignature] = "zz", ["X-Trace"] = "t1" },
         });
 
         Assert.Matches("^[0-9a-f]{64}$", request.Headers[RequestSigner.HeaderSignature]);

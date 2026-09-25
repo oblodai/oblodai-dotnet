@@ -36,60 +36,61 @@ namespace Oblodai.Contract;
 public static class SigningProtocol
 {
     /// <summary>The MAC over a canonical string: HMAC-SHA256, lowercase hex.</summary>
-    public const string Algorithm = "HMAC-SHA256, lowercase hex";
+    public const string SignatureAlgorithm = "HMAC-SHA256, lowercase hex";
 
-    /// <summary>A signed request: its headers by role and its canonical string.</summary>
-    public static class Request
-    {
-        /// <summary>Header of the role <c>public_id</c>.</summary>
-        public const string PublicId = "X-Public-Id";
+    // --- signed request ---
 
-        /// <summary>Header of the role <c>signature</c>.</summary>
-        public const string Signature = "X-Signature";
+    /// <summary>Request header of the role <c>public_id</c>.</summary>
+    public const string HeaderPublicId = "X-Public-Id";
 
-        /// <summary>Header of the role <c>timestamp</c>.</summary>
-        public const string Timestamp = "X-Timestamp";
+    /// <summary>Request header of the role <c>signature</c>.</summary>
+    public const string HeaderSignature = "X-Signature";
 
-        /// <summary>Header of the role <c>idempotency_key</c>.</summary>
-        public const string IdempotencyKey = "Idempotency-Key";
+    /// <summary>Request header of the role <c>timestamp</c>.</summary>
+    public const string HeaderTimestamp = "X-Timestamp";
 
-        /// <summary>Parts of the canonical string, in order, joined by <see cref="Separator"/>.</summary>
-        public static IReadOnlyList<string> CanonicalParts { get; } = ["ts", "METHOD", "request_uri", "idempotency_key", "body"];
+    /// <summary>Request header of the role <c>idempotency_key</c>.</summary>
+    public const string HeaderIdempotencyKey = "Idempotency-Key";
 
-        /// <summary>What joins the parts of the canonical string.</summary>
-        public const string Separator = "\n";
-    }
+    /// <summary>Parts of the request canonical string, in order, joined by <see cref="RequestCanonicalSeparator"/>.</summary>
+    public static IReadOnlyList<string> RequestCanonicalOrder { get; } = ["ts", "METHOD", "request_uri", "idempotency_key", "body"];
 
-    /// <summary>A webhook delivery: its headers by role and its canonical string.</summary>
-    public static class Webhook
-    {
-        /// <summary>Header of the role <c>timestamp</c>.</summary>
-        public const string Timestamp = "X-Webhook-Timestamp";
+    /// <summary>What joins the parts of the request canonical string.</summary>
+    public const string RequestCanonicalSeparator = "\n";
 
-        /// <summary>Header of the role <c>signature</c>.</summary>
-        public const string Signature = "X-Webhook-Signature";
+    // --- webhook delivery ---
 
-        /// <summary>Header of the role <c>signature_prev</c>.</summary>
-        public const string SignaturePrev = "X-Webhook-Signature-Prev";
+    /// <summary>Webhook delivery header of the role <c>timestamp</c>.</summary>
+    public const string HeaderWebhookTimestamp = "X-Webhook-Timestamp";
 
-        /// <summary>Header of the role <c>event</c>.</summary>
-        public const string Event = "X-Webhook-Event";
+    /// <summary>Webhook delivery header of the role <c>signature</c>.</summary>
+    public const string HeaderWebhookSignature = "X-Webhook-Signature";
 
-        /// <summary>Header of the role <c>id</c>.</summary>
-        public const string Id = "X-Webhook-Id";
+    /// <summary>Webhook delivery header of the role <c>signature_prev</c>.</summary>
+    public const string HeaderWebhookSignaturePrev = "X-Webhook-Signature-Prev";
 
-        /// <summary>Header of the role <c>event_id</c>.</summary>
-        public const string EventId = "X-Webhook-Event-Id";
+    /// <summary>Webhook delivery header of the role <c>event</c>.</summary>
+    public const string HeaderWebhookEvent = "X-Webhook-Event";
 
-        /// <summary>Header of the role <c>event_time</c>.</summary>
-        public const string EventTime = "X-Webhook-Event-Time";
+    /// <summary>Webhook delivery header of the role <c>id</c>.</summary>
+    public const string HeaderWebhookId = "X-Webhook-Id";
 
-        /// <summary>Parts of the canonical string, in order, joined by <see cref="Separator"/>.</summary>
-        public static IReadOnlyList<string> CanonicalParts { get; } = ["ts", "payload"];
+    /// <summary>Webhook delivery header of the role <c>event_id</c>.</summary>
+    public const string HeaderWebhookEventId = "X-Webhook-Event-Id";
 
-        /// <summary>What joins the parts of the canonical string.</summary>
-        public const string Separator = ".";
-    }
+    /// <summary>Webhook delivery header of the role <c>event_time</c>.</summary>
+    public const string HeaderWebhookEventTime = "X-Webhook-Event-Time";
+
+    /// <summary>Rehearsal header (role <c>test</c>): <c>"true"</c> on a test delivery, absent from a live one.</summary>
+    public const string HeaderWebhookTest = "X-Webhook-Test";
+
+    /// <summary>Parts of the webhook canonical string, in order, joined by <see cref="WebhookCanonicalSeparator"/>.</summary>
+    public static IReadOnlyList<string> WebhookCanonicalOrder { get; } = ["ts", "payload"];
+
+    /// <summary>What joins the parts of the webhook canonical string.</summary>
+    public const string WebhookCanonicalSeparator = ".";
+
+    // --- limits ---
 
     /// <summary>
     /// Clock skew the core accepts on a request timestamp, seconds; also the default window a receiver

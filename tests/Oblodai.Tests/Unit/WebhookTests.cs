@@ -143,7 +143,7 @@ public class WebhookTests
     public void RejectsMissingHeaders()
     {
         var error = Assert.Throws<SignatureException>(() => WebhookVerifier.Verify(
-            "{}"u8, new Dictionary<string, string> { ["X-Webhook-Signature"] = "aa" },
+            "{}"u8, new Dictionary<string, string> { [WebhookVerifier.HeaderSignature] = "aa" },
             new WebhookVerifyOptions { Secret = "whsec" }));
 
         Assert.Equal(SdkErrorCodes.WebhookMissingHeader, error.Code);
@@ -203,8 +203,8 @@ public class WebhookTests
         var body = Body();
         var lower = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["x-webhook-timestamp"] = ts.ToString(),
-            ["x-webhook-signature"] = RequestSigner.SignWebhook("whsec", ts, body),
+            [WebhookVerifier.HeaderTimestamp.ToLowerInvariant()] = ts.ToString(),
+            [WebhookVerifier.HeaderSignature.ToLowerInvariant()] = RequestSigner.SignWebhook("whsec", ts, body),
         };
 
         var verified = WebhookVerifier.Verify(body, lower, new WebhookVerifyOptions { Secret = "whsec", Now = () => ts });
@@ -256,14 +256,5 @@ public class WebhookTests
             [WebhookVerifier.HeaderSignature] = RequestSigner.SignWebhook(secret, ts, body),
         };
 
-    private static Dictionary<string, string> Headers(JsonElement sample)
-    {
-        var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var header in sample.GetProperty("headers").EnumerateObject())
-        {
-            headers[header.Name] = header.Value.GetString()!;
-        }
-
-        return headers;
-    }
+    private static Dictionary<string, string> Headers(JsonElement sample) => Repo.WebhookSampleHeaders(sample);
 }

@@ -166,7 +166,7 @@ public abstract class Resource
     }
 
     /// <summary>
-    /// A list route is read-only, so the gateway never deduplicates it by idempotency key (<see cref="SigningProtocol.Request.IdempotencyKey"/>). Dropping
+    /// A list route is read-only, so the gateway never deduplicates it by idempotency key (<see cref="SigningProtocol.HeaderIdempotencyKey"/>). Dropping
     /// the caller's key quietly would leave them believing a lost page request is safe to repeat under
     /// the same key; the same refusal the transport raises on any other non-deduplicated route is raised
     /// here instead, at the call site rather than on the first page fetch.
@@ -183,7 +183,7 @@ public abstract class Resource
 
         throw new ConfigException(
             SdkErrorCodes.IdempotencyUnsupported,
-            $"{route.Method} {route.Path} does not deduplicate by {SigningProtocol.Request.IdempotencyKey}; drop IdempotencyKey from this call",
+            $"{route.Method} {route.Path} does not deduplicate by {SigningProtocol.HeaderIdempotencyKey}; drop IdempotencyKey from this call",
             "IdempotencyKey");
     }
 

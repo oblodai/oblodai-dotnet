@@ -124,14 +124,17 @@ public class ConformanceTests
 
         Assert.Equal(
             signing.GetProperty("canonical").GetString(),
-            string.Join("\\n", SigningProtocol.Request.CanonicalParts));
-        Assert.Equal("\n", SigningProtocol.Request.Separator);
+            string.Join("\\n", SigningProtocol.RequestCanonicalOrder));
+        Assert.Equal("\n", SigningProtocol.RequestCanonicalSeparator);
         Assert.Equal(SigningProtocol.SkewSeconds, signing.GetProperty("skew_seconds").GetInt32());
         Assert.Equal(SigningProtocol.MaxBody, signing.GetProperty("max_body").GetInt32());
         Assert.Equal(SigningProtocol.MaxIdempotencyKeyLength, signing.GetProperty("max_idempotency_key_length").GetInt32());
         Assert.Equal(SigningProtocol.SkewSeconds, RequestSigner.SignatureSkewSeconds);
         Assert.Equal(SigningProtocol.SkewSeconds, new WebhookVerifyOptions { Secret = "s" }.ToleranceSeconds);
         Assert.Equal(SigningProtocol.MaxIdempotencyKeyLength, Idempotency.MaxKeyLength);
+        Assert.Equal(SigningProtocol.SignatureAlgorithm, signing.GetProperty("algorithm").GetString());
+        Assert.Equal(SigningProtocol.HeaderWebhookTest, signing.GetProperty("webhook").GetProperty("test_header").GetString());
+        Assert.Equal(SigningProtocol.HeaderWebhookTest, WebhookVerifier.HeaderTest);
 
         var request = HeaderNames("signing");
         Assert.Equal(RequestSigner.HeaderPublicId, request["public_id"]);
@@ -218,7 +221,11 @@ public class ConformanceTests
             IdempotencyKey = key == "" ? null : key,
         });
 
+        // The request that left is the vector's own — method, path + raw query, body bytes — so a matching
+        // signature proves the SDK signed what it sent.
         var sent = Assert.Single(http.Calls);
+        Assert.Equal(method, sent.Method);
+        Assert.Equal(uri, new Uri(sent.Url).PathAndQuery);
         Assert.Equal(body, sent.Body ?? string.Empty);
         var names = HeaderNames("signing");
         Assert.Equal(publicId, sent.Header(names["public_id"]));

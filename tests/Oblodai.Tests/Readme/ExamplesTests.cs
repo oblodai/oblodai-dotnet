@@ -77,11 +77,11 @@ public class ExamplesTests
     {
         var sample = Repo.WebhookSamples.EnumerateArray()
             .First(s => s.GetProperty("body").GetProperty("type").GetString() == "payment"
-                        && !s.GetProperty("headers").TryGetProperty("X-Webhook-Test", out _));
-        var headers = sample.GetProperty("headers").EnumerateObject().ToDictionary(p => p.Name, p => p.Value.GetString()!);
-        headers.TryAdd("X-Webhook-Event-Id", "state-1");
+                        && !Repo.WebhookSampleHeaders(s).ContainsKey(WebhookVerifier.HeaderTest));
+        var headers = Repo.WebhookSampleHeaders(sample);
+        headers.TryAdd(WebhookVerifier.HeaderEventId, "state-1");
         var raw = Encoding.UTF8.GetBytes(sample.GetProperty("raw").GetString()!);
-        var ts = long.Parse(headers["X-Webhook-Timestamp"]);
+        var ts = long.Parse(headers[WebhookVerifier.HeaderTimestamp]);
         var output = new StringWriter();
         var receiver = new WebhookReceiverExample(Repo.WebhookSamplesSecret, null, output, () => ts);
         string? Header(string name) => headers.TryGetValue(name, out var v) ? v : null;

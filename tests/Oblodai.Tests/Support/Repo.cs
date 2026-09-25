@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Oblodai.Contract;
 
 namespace Oblodai.Tests.Support;
 
@@ -29,6 +30,35 @@ public static class Repo
     /// <see cref="WebhookSamplesSecret"/>: <c>[{ headers, body }]</c>.
     /// </summary>
     public static JsonElement WebhookSamples => WebhookSamplesLazy.Value.RootElement;
+
+    /// <summary>
+    /// The samples keep the header names they were recorded under; each maps to its role's current name
+    /// from the contract, so a header the core renames reaches the samples by regeneration alone.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, string> RecordedWebhookHeaders = new Dictionary<string, string>
+    {
+        ["X-Webhook-Timestamp"] = SigningProtocol.HeaderWebhookTimestamp,
+        ["X-Webhook-Signature"] = SigningProtocol.HeaderWebhookSignature,
+        ["X-Webhook-Signature-Prev"] = SigningProtocol.HeaderWebhookSignaturePrev,
+        ["X-Webhook-Event"] = SigningProtocol.HeaderWebhookEvent,
+        ["X-Webhook-Id"] = SigningProtocol.HeaderWebhookId,
+        ["X-Webhook-Event-Id"] = SigningProtocol.HeaderWebhookEventId,
+        ["X-Webhook-Event-Time"] = SigningProtocol.HeaderWebhookEventTime,
+        ["X-Webhook-Test"] = SigningProtocol.HeaderWebhookTest,
+    };
+
+    /// <summary>A recorded delivery's headers under the contract's current names, looked up case-insensitively.</summary>
+    public static Dictionary<string, string> WebhookSampleHeaders(JsonElement sample)
+    {
+        var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var header in sample.GetProperty("headers").EnumerateObject())
+        {
+            headers[RecordedWebhookHeaders.TryGetValue(header.Name, out var current) ? current : header.Name] =
+                header.Value.GetString()!;
+        }
+
+        return headers;
+    }
 
     /// <summary>The endpoint secret in force when <see cref="WebhookSamples"/> were delivered.</summary>
     public const string WebhookSamplesSecret = "70200ecc6784c713e4fcda1c7b4d3e520713bb109edeacc541c3a90fa8cfd91f";
