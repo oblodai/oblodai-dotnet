@@ -3,7 +3,7 @@
 All notable changes to the Oblodai .NET SDK. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
-## [2.0.0] — Unreleased
+## [2.0.0] — 2026-09-25
 
 Generated from the gateway's OpenAPI contract by the backend's `tools/sdkgen`. Breaking: see
 [MIGRATION-2.0.md](MIGRATION-2.0.md).
