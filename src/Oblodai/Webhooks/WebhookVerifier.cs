@@ -58,7 +58,7 @@ public sealed record WebhookVerifyOptions
 /// <param name="EventTime">The <see cref="WebhookVerifier.HeaderEventTime"/> header — unix seconds when the state change committed.</param>
 /// <param name="SentAt">The <see cref="WebhookVerifier.HeaderTimestamp"/> header — unix seconds when this attempt was sent.</param>
 /// <param name="IsTest">
-/// A rehearsal delivery (<c>X-Webhook-Test: true</c> / body <c>test: true</c>): signed like a live one,
+/// A rehearsal delivery (<see cref="WebhookVerifier.HeaderTest"/> <c>true</c> / body <c>test: true</c>): signed like a live one,
 /// but no money moved — never act on it as if it did.
 /// </param>
 public sealed record WebhookDeliveryInfo(
@@ -72,12 +72,12 @@ public sealed record WebhookDeliveryInfo(
 
 /// <summary>
 /// Webhook verification — usable on its own, with no client and no API key. A delivery carries these
-/// headers, their names taken from the contract (<see cref="SigningProtocol.Webhook"/>):
+/// headers, their names taken from the contract (<see cref="SigningProtocol"/>, <c>HeaderWebhook*</c>):
 /// <list type="bullet">
 /// <item><description><see cref="HeaderTimestamp"/>: unix seconds this attempt was sent.</description></item>
 /// <item><description><see cref="HeaderSignature"/>: <c>hex(HMAC-SHA256(secret, canonical))</c> over the parts of
-/// <see cref="SigningProtocol.Webhook.CanonicalParts"/> — the timestamp and the raw body — joined by
-/// <see cref="SigningProtocol.Webhook.Separator"/> (see <see cref="RequestSigner.SignWebhook(string, long, ReadOnlySpan{byte})"/>).</description></item>
+/// <see cref="SigningProtocol.WebhookCanonicalOrder"/> — the timestamp and the raw body — joined by
+/// <see cref="SigningProtocol.WebhookCanonicalSeparator"/> (see <see cref="RequestSigner.SignWebhook(string, long, ReadOnlySpan{byte})"/>).</description></item>
 /// <item><description><see cref="HeaderSignaturePrev"/>: the same with the previous secret — only during a rotation overlap.</description></item>
 /// <item><description><see cref="HeaderEvent"/>: <c>invoice.&lt;status&gt;</c> | <c>payout.&lt;status&gt;</c> | <c>wallet.paid</c>.</description></item>
 /// <item><description><see cref="HeaderId"/>: stable per delivery (identical across retries of THAT delivery).</description></item>
@@ -89,32 +89,35 @@ public sealed record WebhookDeliveryInfo(
 /// </summary>
 public static class WebhookVerifier
 {
-    /// <summary>Header of the delivery timestamp: <see cref="SigningProtocol.Webhook.Timestamp"/>.</summary>
-    public const string HeaderTimestamp = SigningProtocol.Webhook.Timestamp;
+    /// <summary>Header of the delivery timestamp: <see cref="SigningProtocol.HeaderWebhookTimestamp"/>.</summary>
+    public const string HeaderTimestamp = SigningProtocol.HeaderWebhookTimestamp;
 
-    /// <summary>Header of the signature: <see cref="SigningProtocol.Webhook.Signature"/>.</summary>
-    public const string HeaderSignature = SigningProtocol.Webhook.Signature;
+    /// <summary>Header of the signature: <see cref="SigningProtocol.HeaderWebhookSignature"/>.</summary>
+    public const string HeaderSignature = SigningProtocol.HeaderWebhookSignature;
 
     /// <summary>
     /// Header of the signature with the previous secret, sent during a rotation overlap:
-    /// <see cref="SigningProtocol.Webhook.SignaturePrev"/>.
+    /// <see cref="SigningProtocol.HeaderWebhookSignaturePrev"/>.
     /// </summary>
-    public const string HeaderSignaturePrev = SigningProtocol.Webhook.SignaturePrev;
+    public const string HeaderSignaturePrev = SigningProtocol.HeaderWebhookSignaturePrev;
 
-    /// <summary>Header of the event name: <see cref="SigningProtocol.Webhook.Event"/>.</summary>
-    public const string HeaderEvent = SigningProtocol.Webhook.Event;
+    /// <summary>Header of the event name: <see cref="SigningProtocol.HeaderWebhookEvent"/>.</summary>
+    public const string HeaderEvent = SigningProtocol.HeaderWebhookEvent;
 
-    /// <summary>Header of the delivery id: <see cref="SigningProtocol.Webhook.Id"/>.</summary>
-    public const string HeaderId = SigningProtocol.Webhook.Id;
+    /// <summary>Header of the delivery id: <see cref="SigningProtocol.HeaderWebhookId"/>.</summary>
+    public const string HeaderId = SigningProtocol.HeaderWebhookId;
 
-    /// <summary>Header of the state id: <see cref="SigningProtocol.Webhook.EventId"/>.</summary>
-    public const string HeaderEventId = SigningProtocol.Webhook.EventId;
+    /// <summary>Header of the state id: <see cref="SigningProtocol.HeaderWebhookEventId"/>.</summary>
+    public const string HeaderEventId = SigningProtocol.HeaderWebhookEventId;
 
-    /// <summary>Header of the state change time: <see cref="SigningProtocol.Webhook.EventTime"/>.</summary>
-    public const string HeaderEventTime = SigningProtocol.Webhook.EventTime;
+    /// <summary>Header of the state change time: <see cref="SigningProtocol.HeaderWebhookEventTime"/>.</summary>
+    public const string HeaderEventTime = SigningProtocol.HeaderWebhookEventTime;
 
-    /// <summary><c>X-Webhook-Test</c>, sent as <c>true</c> on rehearsal deliveries.</summary>
-    public const string HeaderTest = "X-Webhook-Test";
+    /// <summary>
+    /// Header sent as <c>true</c> on rehearsal deliveries: <see cref="SigningProtocol.HeaderWebhookTest"/>
+    /// (<c>x-oblodai-signing.webhook.test_header</c>).
+    /// </summary>
+    public const string HeaderTest = SigningProtocol.HeaderWebhookTest;
 
     /// <summary>Verify the signature and freshness, then parse. Never returns an unverified body.</summary>
     /// <param name="rawBody">The raw request bytes, exactly as received.</param>

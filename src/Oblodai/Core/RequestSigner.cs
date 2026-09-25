@@ -9,7 +9,7 @@ namespace Oblodai;
 /// Request signing — the exact recipe the gateway verifies, taken from the contract
 /// (<see cref="SigningProtocol"/>, generated from <c>x-oblodai-signing</c>):
 /// <code>
-/// canonical = the parts of SigningProtocol.Request.CanonicalParts joined by SigningProtocol.Request.Separator
+/// canonical = the parts of SigningProtocol.RequestCanonicalOrder joined by SigningProtocol.RequestCanonicalSeparator
 ///             (ts, METHOD, request_uri, idempotency_key, body)
 /// signature = hex(HMAC-SHA256(secret, canonical))
 /// </code>
@@ -23,17 +23,17 @@ namespace Oblodai;
 /// </summary>
 public static class RequestSigner
 {
-    /// <summary>Header of the public id: <see cref="SigningProtocol.Request.PublicId"/>.</summary>
-    public const string HeaderPublicId = SigningProtocol.Request.PublicId;
+    /// <summary>Header of the public id: <see cref="SigningProtocol.HeaderPublicId"/>.</summary>
+    public const string HeaderPublicId = SigningProtocol.HeaderPublicId;
 
-    /// <summary>Header of the signature: <see cref="SigningProtocol.Request.Signature"/>.</summary>
-    public const string HeaderSignature = SigningProtocol.Request.Signature;
+    /// <summary>Header of the signature: <see cref="SigningProtocol.HeaderSignature"/>.</summary>
+    public const string HeaderSignature = SigningProtocol.HeaderSignature;
 
-    /// <summary>Header of the timestamp (unix seconds): <see cref="SigningProtocol.Request.Timestamp"/>.</summary>
-    public const string HeaderTimestamp = SigningProtocol.Request.Timestamp;
+    /// <summary>Header of the timestamp (unix seconds): <see cref="SigningProtocol.HeaderTimestamp"/>.</summary>
+    public const string HeaderTimestamp = SigningProtocol.HeaderTimestamp;
 
-    /// <summary>Header of the idempotency key: <see cref="SigningProtocol.Request.IdempotencyKey"/>.</summary>
-    public const string HeaderIdempotencyKey = SigningProtocol.Request.IdempotencyKey;
+    /// <summary>Header of the idempotency key: <see cref="SigningProtocol.HeaderIdempotencyKey"/>.</summary>
+    public const string HeaderIdempotencyKey = SigningProtocol.HeaderIdempotencyKey;
 
     /// <summary><c>X-Admin-Token</c>, sent on merchant-provisioning routes only.</summary>
     public const string HeaderAdminToken = "X-Admin-Token";
@@ -72,8 +72,8 @@ public static class RequestSigner
 
     /// <summary>
     /// Webhook signature: <c>hex(HMAC-SHA256(secret, canonical))</c>, the canonical string being the parts of
-    /// <see cref="SigningProtocol.Webhook.CanonicalParts"/> (<c>ts</c>, <c>payload</c>) joined by
-    /// <see cref="SigningProtocol.Webhook.Separator"/>. The payload is signed verbatim, so verifiers must
+    /// <see cref="SigningProtocol.WebhookCanonicalOrder"/> (<c>ts</c>, <c>payload</c>) joined by
+    /// <see cref="SigningProtocol.WebhookCanonicalSeparator"/>. The payload is signed verbatim, so verifiers must
     /// use the raw request bytes, never a re-encoded parse of them.
     /// </summary>
     /// <param name="secret">Endpoint secret.</param>
@@ -82,15 +82,15 @@ public static class RequestSigner
     public static string SignWebhook(string secret, long ts, ReadOnlySpan<byte> payload)
     {
         using var canonical = new MemoryStream();
-        var separator = Encoding.UTF8.GetBytes(SigningProtocol.Webhook.Separator);
-        for (var i = 0; i < SigningProtocol.Webhook.CanonicalParts.Count; i++)
+        var separator = Encoding.UTF8.GetBytes(SigningProtocol.WebhookCanonicalSeparator);
+        for (var i = 0; i < SigningProtocol.WebhookCanonicalOrder.Count; i++)
         {
             if (i > 0)
             {
                 canonical.Write(separator);
             }
 
-            switch (SigningProtocol.Webhook.CanonicalParts[i])
+            switch (SigningProtocol.WebhookCanonicalOrder[i])
             {
                 case "ts":
                     canonical.Write(Encoding.UTF8.GetBytes(ts.ToString(CultureInfo.InvariantCulture)));
@@ -99,7 +99,7 @@ public static class RequestSigner
                     canonical.Write(payload);
                     break;
                 default:
-                    throw UnknownPart(SigningProtocol.Webhook.CanonicalParts[i]);
+                    throw UnknownPart(SigningProtocol.WebhookCanonicalOrder[i]);
             }
         }
 
@@ -117,15 +117,15 @@ public static class RequestSigner
     private static byte[] RequestCanonical(long ts, string method, string requestUri, string? idempotencyKey, ReadOnlySpan<byte> body)
     {
         using var canonical = new MemoryStream();
-        var separator = Encoding.UTF8.GetBytes(SigningProtocol.Request.Separator);
-        for (var i = 0; i < SigningProtocol.Request.CanonicalParts.Count; i++)
+        var separator = Encoding.UTF8.GetBytes(SigningProtocol.RequestCanonicalSeparator);
+        for (var i = 0; i < SigningProtocol.RequestCanonicalOrder.Count; i++)
         {
             if (i > 0)
             {
                 canonical.Write(separator);
             }
 
-            var part = SigningProtocol.Request.CanonicalParts[i];
+            var part = SigningProtocol.RequestCanonicalOrder[i];
             if (part == "body")
             {
                 canonical.Write(body);

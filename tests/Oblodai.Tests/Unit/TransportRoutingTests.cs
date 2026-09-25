@@ -76,7 +76,7 @@ public class TransportRoutingTests
         using var client = Client(handler, new OblodaiOptions
         {
             BaseUrl = "https://gw.corp/oblodai/",
-            Headers = new Dictionary<string, string> { ["X-Signature"] = "zz", ["X-Trace"] = "t1" },
+            Headers = new Dictionary<string, string> { [SigningProtocol.HeaderSignature] = "zz", ["X-Trace"] = "t1" },
         });
 
         await client.Account.GetBalanceAsync();

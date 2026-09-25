@@ -191,7 +191,7 @@ public sealed partial class OblodaiTransport : IDisposable
                 // deduplicated when it is not — the one belief that turns a lost response into a double spend.
                 throw new ConfigException(
                     SdkErrorCodes.IdempotencyUnsupported,
-                    $"{route.Method} {route.Path} does not deduplicate by {SigningProtocol.Request.IdempotencyKey}; drop IdempotencyKey from this call",
+                    $"{route.Method} {route.Path} does not deduplicate by {SigningProtocol.HeaderIdempotencyKey}; drop IdempotencyKey from this call",
                     "IdempotencyKey");
             }
         }

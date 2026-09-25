@@ -12,7 +12,7 @@ public sealed record OblodaiOptions
     /// <summary>The gateway used when nothing else is configured.</summary>
     public const string DefaultBaseUrl = "https://api.oblodai.com";
 
-    /// <summary>Public id of the API key (<see cref="Contract.SigningProtocol.Request.PublicId"/>). Falls back to <c>OBLODAI_PUBLIC_ID</c>.</summary>
+    /// <summary>Public id of the API key (<see cref="Contract.SigningProtocol.HeaderPublicId"/>). Falls back to <c>OBLODAI_PUBLIC_ID</c>.</summary>
     public string? PublicId { get; init; }
 
     /// <summary>
