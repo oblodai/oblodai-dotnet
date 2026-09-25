@@ -123,21 +123,36 @@ public class RequestOptionsTests
     [Fact]
     public void AFaucetKeyGivenBothInTheRequestAndInOptionsFailsBeforeTheNetwork()
     {
-        // The same rule in every SDK: two keys for one field is a programming error (here an
-        // ArgumentException, Python's TypeError), raised before anything is sent.
+        // The same rule in every SDK: two keys for one field is sdk.bad_config, raised before
+        // anything is sent, like every other refusal before the network.
         var handler = new FakeHttpHandler(ScriptedResponse.Ok());
         using var client = Client(handler);
 
         // Thrown by the call itself, not by the task it would return.
-        var error = Assert.Throws<ArgumentException>(() =>
+        var error = Assert.Throws<ConfigException>(() =>
         {
             _ = client.Sandbox.FaucetAsync(
                 new FaucetRequest { Amount = 100m, Asset = "USDT", IdempotencyKey = "in-body" },
                 new RequestOptions { IdempotencyKey = "in-options" });
         });
 
-        Assert.Equal("options", error.ParamName);
+        Assert.Equal(SdkErrorCodes.BadConfig, error.Code);
+        Assert.Equal("idempotency_key", error.Field);
         Assert.Empty(handler.Calls);
+    }
+
+    [Fact]
+    public async Task AnEmptyFaucetKeyInTheRequestIsNoKeyAndTheOptionFillsIt()
+    {
+        var handler = new FakeHttpHandler(ScriptedResponse.Ok());
+        using var client = Client(handler);
+
+        await client.Sandbox.FaucetAsync(
+            new FaucetRequest { Amount = 100m, Asset = "USDT", IdempotencyKey = "" },
+            new RequestOptions { IdempotencyKey = "in-options" });
+
+        var body = JsonDocument.Parse(handler.Calls[0].Body!).RootElement;
+        Assert.Equal("in-options", body.GetProperty("idempotency_key").GetString());
     }
 
     [Fact]

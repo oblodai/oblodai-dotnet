@@ -42,7 +42,8 @@ Generated from the gateway's OpenAPI contract by the backend's `tools/sdkgen`. B
   contract types that name as a number.
 - `RequestOptions` is `IdempotencyKey`, `Timeout` (`TimeSpan`), `MaxRetries`, `ExtraHeaders`,
   `RequestId`; client `Timeout`/`Deadline` are `TimeSpan`s. A faucet key given both in the request and
-  in `RequestOptions` is an `ArgumentException` before sending.
+  in `RequestOptions` is a `ConfigException` (`sdk.bad_config`, field `idempotency_key`) before sending,
+  as in every Oblodai SDK.
 - `OblodaiException.Message` is `[code] text (request_id=…)`; the text alone is `Description`.
 - Webhook events are the generated models of the contract's webhook bodies (`PaymentWebhook`,
   `PayoutWebhook`, `WalletWebhook`, `ConversionWebhook`) behind `IWebhookEvent`, parsed by the kind

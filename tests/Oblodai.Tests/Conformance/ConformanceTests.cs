@@ -81,6 +81,38 @@ public class ConformanceTests
         return data;
     }
 
+    public static TheoryData<string> WebhookBodies()
+    {
+        var data = new TheoryData<string>();
+        if (!Available)
+        {
+            data.Add("(skipped)");
+            return data;
+        }
+
+        foreach (var body in Suite("forward_compat").GetProperty("webhooks").EnumerateArray())
+        {
+            data.Add(body.GetProperty("name").GetString()!);
+        }
+
+        return data;
+    }
+
+    /// <summary>forward_compat webhooks: the body parses, keeps its raw type, and is known exactly as said.</summary>
+    [ConformanceTheory]
+    [MemberData(nameof(WebhookBodies))]
+    public void WebhookParse(string name)
+    {
+        var body = Suite("forward_compat").GetProperty("webhooks").EnumerateArray()
+            .Single(b => b.GetProperty("name").GetString() == name);
+        var expect = body.GetProperty("expect");
+
+        var parsed = WebhookVerifier.Parse(body.GetProperty("body").GetRawText());
+
+        Assert.Equal(expect.GetProperty("type").GetString(), parsed.Type);
+        Assert.Equal(expect.GetProperty("known").GetBoolean(), WebhookVerifier.IsKnownEvent(parsed));
+    }
+
     [ConformanceFact]
     public void TheContractDeclaresTheSigningRecipeThisSdkImplements()
     {
