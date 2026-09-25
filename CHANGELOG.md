@@ -22,6 +22,12 @@ Generated from the gateway's OpenAPI contract by the backend's `tools/sdkgen`. B
 - `ApiFacts` (`Oblodai.Contract`), generated: the long-running table (`Polls`), webhook kind → model
   (`WebhookModels`), known kinds (`WebhookKinds`), event name → kind (`WebhookEvents`) and the
   request numbers that are not money (`NonMoneyNumbers`).
+- `SigningProtocol` (`Oblodai.Contract`), generated from the contract's `x-oblodai-signing`: request
+  and webhook header names by role, the parts and separators of both canonical strings, the clock skew
+  and the limits. Signing, webhook verification and the idempotency key check use it;
+  `RequestSigner.Header*`, `RequestSigner.SignatureSkewSeconds`, `WebhookVerifier.Header*` (except
+  `HeaderTest`), `Idempotency.MaxKeyLength` and the default `WebhookVerifyOptions.ToleranceSeconds`
+  are now aliases of its values.
 - Status classes on the classified vocabularies (`PaymentStatus`, `PayoutStatus`, `BatchStatus`,
   `DocumentJobStatus`): `Final`, `Success`, `IsFinal`, `IsSuccess`, from the contract's
   `x-status-classes`.

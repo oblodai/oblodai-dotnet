@@ -26,8 +26,11 @@ public sealed record WebhookVerifyOptions
     [JsonIgnore]
     public string? PreviousSecret { get; init; }
 
-    /// <summary>Reject deliveries whose timestamp is further away than this, seconds. Default 300; 0 disables.</summary>
-    public int ToleranceSeconds { get; init; } = 300;
+    /// <summary>
+    /// Reject deliveries whose timestamp is further away than this, seconds. Default
+    /// <see cref="SigningProtocol.SkewSeconds"/> (the contract's window); 0 disables.
+    /// </summary>
+    public int ToleranceSeconds { get; init; } = SigningProtocol.SkewSeconds;
 
     /// <summary>Injectable clock (unix seconds) for tests.</summary>
     public Func<long>? Now { get; init; }
@@ -46,14 +49,14 @@ public sealed record WebhookVerifyOptions
 
 /// <summary>A verified delivery: the event plus the advisory headers worth keeping.</summary>
 /// <param name="Event">The parsed event.</param>
-/// <param name="Id"><c>X-Webhook-Id</c> — stable across retries of this one delivery only.</param>
+/// <param name="Id">The <see cref="WebhookVerifier.HeaderId"/> header — stable across retries of this one delivery only.</param>
 /// <param name="EventId">
-/// <c>X-Webhook-Event-Id</c> — the id of the STATE this delivery carries: the same for a resend of a
+/// The <see cref="WebhookVerifier.HeaderEventId"/> header — the id of the STATE this delivery carries: the same for a resend of a
 /// state you already handled, different as soon as the state differs. Deduplicate on this one.
 /// </param>
-/// <param name="EventType"><c>X-Webhook-Event</c> — <c>invoice.&lt;status&gt;</c>, <c>payout.&lt;status&gt;</c>, <c>wallet.paid</c>.</param>
-/// <param name="EventTime"><c>X-Webhook-Event-Time</c> — unix seconds when the state change committed.</param>
-/// <param name="SentAt"><c>X-Webhook-Timestamp</c> — unix seconds when this attempt was sent.</param>
+/// <param name="EventType">The <see cref="WebhookVerifier.HeaderEvent"/> header — <c>invoice.&lt;status&gt;</c>, <c>payout.&lt;status&gt;</c>, <c>wallet.paid</c>.</param>
+/// <param name="EventTime">The <see cref="WebhookVerifier.HeaderEventTime"/> header — unix seconds when the state change committed.</param>
+/// <param name="SentAt">The <see cref="WebhookVerifier.HeaderTimestamp"/> header — unix seconds when this attempt was sent.</param>
 /// <param name="IsTest">
 /// A rehearsal delivery (<c>X-Webhook-Test: true</c> / body <c>test: true</c>): signed like a live one,
 /// but no money moved — never act on it as if it did.
@@ -68,41 +71,47 @@ public sealed record WebhookDeliveryInfo(
     bool IsTest);
 
 /// <summary>
-/// Webhook verification — usable on its own, with no client and no API key. Deliveries are signed as:
-/// <code>
-/// X-Webhook-Timestamp: &lt;unix seconds&gt;
-/// X-Webhook-Signature: hex(HMAC-SHA256(secret, "&lt;ts&gt;." + rawBody))
-/// X-Webhook-Signature-Prev: same, with the previous secret — only during a rotation overlap
-/// X-Webhook-Event: invoice.&lt;status&gt; | payout.&lt;status&gt; | wallet.paid
-/// X-Webhook-Id: stable per delivery (identical across retries of THAT delivery)
-/// X-Webhook-Event-Id: stable per STATE — deduplicate on it
-/// X-Webhook-Event-Time: unix seconds when the state change committed (order events by it)
-/// X-Webhook-Test: true — a rehearsal delivery, mirrored by "test": true in the signed body
-/// </code>
+/// Webhook verification — usable on its own, with no client and no API key. A delivery carries these
+/// headers, their names taken from the contract (<see cref="SigningProtocol.Webhook"/>):
+/// <list type="bullet">
+/// <item><description><see cref="HeaderTimestamp"/>: unix seconds this attempt was sent.</description></item>
+/// <item><description><see cref="HeaderSignature"/>: <c>hex(HMAC-SHA256(secret, canonical))</c> over the parts of
+/// <see cref="SigningProtocol.Webhook.CanonicalParts"/> — the timestamp and the raw body — joined by
+/// <see cref="SigningProtocol.Webhook.Separator"/> (see <see cref="RequestSigner.SignWebhook(string, long, ReadOnlySpan{byte})"/>).</description></item>
+/// <item><description><see cref="HeaderSignaturePrev"/>: the same with the previous secret — only during a rotation overlap.</description></item>
+/// <item><description><see cref="HeaderEvent"/>: <c>invoice.&lt;status&gt;</c> | <c>payout.&lt;status&gt;</c> | <c>wallet.paid</c>.</description></item>
+/// <item><description><see cref="HeaderId"/>: stable per delivery (identical across retries of THAT delivery).</description></item>
+/// <item><description><see cref="HeaderEventId"/>: stable per STATE — deduplicate on it.</description></item>
+/// <item><description><see cref="HeaderEventTime"/>: unix seconds when the state change committed (order events by it).</description></item>
+/// <item><description><see cref="HeaderTest"/>: <c>true</c> — a rehearsal delivery, mirrored by <c>"test": true</c> in the signed body.</description></item>
+/// </list>
 /// Always verify over the raw request bytes; a re-serialized parse will not match.
 /// </summary>
 public static class WebhookVerifier
 {
-    /// <summary><c>X-Webhook-Timestamp</c>.</summary>
-    public const string HeaderTimestamp = "X-Webhook-Timestamp";
+    /// <summary>Header of the delivery timestamp: <see cref="SigningProtocol.Webhook.Timestamp"/>.</summary>
+    public const string HeaderTimestamp = SigningProtocol.Webhook.Timestamp;
 
-    /// <summary><c>X-Webhook-Signature</c>.</summary>
-    public const string HeaderSignature = "X-Webhook-Signature";
+    /// <summary>Header of the signature: <see cref="SigningProtocol.Webhook.Signature"/>.</summary>
+    public const string HeaderSignature = SigningProtocol.Webhook.Signature;
 
-    /// <summary><c>X-Webhook-Signature-Prev</c>, sent during a rotation overlap.</summary>
-    public const string HeaderSignaturePrev = "X-Webhook-Signature-Prev";
+    /// <summary>
+    /// Header of the signature with the previous secret, sent during a rotation overlap:
+    /// <see cref="SigningProtocol.Webhook.SignaturePrev"/>.
+    /// </summary>
+    public const string HeaderSignaturePrev = SigningProtocol.Webhook.SignaturePrev;
 
-    /// <summary><c>X-Webhook-Event</c>.</summary>
-    public const string HeaderEvent = "X-Webhook-Event";
+    /// <summary>Header of the event name: <see cref="SigningProtocol.Webhook.Event"/>.</summary>
+    public const string HeaderEvent = SigningProtocol.Webhook.Event;
 
-    /// <summary><c>X-Webhook-Id</c>.</summary>
-    public const string HeaderId = "X-Webhook-Id";
+    /// <summary>Header of the delivery id: <see cref="SigningProtocol.Webhook.Id"/>.</summary>
+    public const string HeaderId = SigningProtocol.Webhook.Id;
 
-    /// <summary><c>X-Webhook-Event-Id</c>.</summary>
-    public const string HeaderEventId = "X-Webhook-Event-Id";
+    /// <summary>Header of the state id: <see cref="SigningProtocol.Webhook.EventId"/>.</summary>
+    public const string HeaderEventId = SigningProtocol.Webhook.EventId;
 
-    /// <summary><c>X-Webhook-Event-Time</c>.</summary>
-    public const string HeaderEventTime = "X-Webhook-Event-Time";
+    /// <summary>Header of the state change time: <see cref="SigningProtocol.Webhook.EventTime"/>.</summary>
+    public const string HeaderEventTime = SigningProtocol.Webhook.EventTime;
 
     /// <summary><c>X-Webhook-Test</c>, sent as <c>true</c> on rehearsal deliveries.</summary>
     public const string HeaderTest = "X-Webhook-Test";

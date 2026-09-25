@@ -8,7 +8,7 @@ namespace Oblodai;
 /// An API key pair. <see cref="Secret"/> never reaches a log: the compiler-generated
 /// <c>ToString()</c> is overridden to print <c>[redacted]</c>, and the secret is not serialized.
 /// </summary>
-/// <param name="PublicId">Public id, sent as <c>X-Public-Id</c>.</param>
+/// <param name="PublicId">Public id, sent as <see cref="SigningProtocol.Request.PublicId"/>.</param>
 /// <param name="Secret">Secret used to sign; redacted in <c>ToString()</c> and never serialized.</param>
 public sealed record Credentials(string PublicId, [property: JsonIgnore] string Secret)
 {
@@ -61,7 +61,7 @@ public sealed record BuildInput
     /// <summary>Sent as <c>X-Request-ID</c>; not signed.</summary>
     public string? RequestId { get; init; }
 
-    /// <summary>Unix seconds; signed into <c>X-Timestamp</c>.</summary>
+    /// <summary>Unix seconds; signed and sent as <see cref="SigningProtocol.Request.Timestamp"/>.</summary>
     public required long Ts { get; init; }
 
     /// <summary>Value of the <c>User-Agent</c> header.</summary>

@@ -1,3 +1,5 @@
+using Oblodai.Contract;
+
 namespace Oblodai;
 
 /// <summary>
@@ -8,8 +10,8 @@ namespace Oblodai;
 /// </summary>
 public static class Idempotency
 {
-    /// <summary>Longest key the gateway accepts.</summary>
-    public const int MaxKeyLength = 255;
+    /// <summary>Longest key the gateway accepts: <see cref="SigningProtocol.MaxIdempotencyKeyLength"/>.</summary>
+    public const int MaxKeyLength = SigningProtocol.MaxIdempotencyKeyLength;
 
     /// <summary>A fresh v4 UUID key from the platform CSPRNG.</summary>
     public static string NewKey() => Guid.NewGuid().ToString();
