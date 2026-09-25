@@ -11,7 +11,8 @@ namespace Oblodai.Tests.Contract;
 /// <summary>
 /// The signing protocol has one source: the contract's <c>x-oblodai-signing</c>, generated into
 /// <c>SigningProtocol</c>. No hand-written source spells a header name of it — request, webhook
-/// delivery or rehearsal — so a header renamed in the contract reaches the SDK by regeneration alone.
+/// delivery or rehearsal — in the library or the examples, so a header renamed in the contract reaches
+/// the SDK by regeneration alone.
 /// </summary>
 public sealed class SigningSourceTests
 {
@@ -29,17 +30,9 @@ public sealed class SigningSourceTests
             .Select(n => n.ToLowerInvariant())
             .ToList();
 
-        var src = Path.Combine(Repo.Root, "src");
         var offenders = new List<string>();
-        foreach (var file in Directory.EnumerateFiles(src, "*.cs", SearchOption.AllDirectories).Order(StringComparer.Ordinal))
+        foreach (var (file, relative) in HandWritten())
         {
-            var relative = Path.GetRelativePath(src, file);
-            var parts = relative.Split(Path.DirectorySeparatorChar);
-            if (parts.Contains("Generated") || parts.Contains("obj") || parts.Contains("bin"))
-            {
-                continue;
-            }
-
             var text = File.ReadAllText(file).ToLowerInvariant();
             offenders.AddRange(names.Where(text.Contains).Select(n => $"{relative}: {n}"));
         }
@@ -71,17 +64,9 @@ public sealed class SigningSourceTests
             patterns.Add(new Regex($@"\b1[lLuU]*\s*<<\s*{BitOperations.TrailingZeroCount(SigningProtocol.MaxBody)}\b"));
         }
 
-        var src = Path.Combine(Repo.Root, "src");
         var offenders = new List<string>();
-        foreach (var file in Directory.EnumerateFiles(src, "*.cs", SearchOption.AllDirectories).Order(StringComparer.Ordinal))
+        foreach (var (file, relative) in HandWritten())
         {
-            var relative = Path.GetRelativePath(src, file);
-            var parts = relative.Split(Path.DirectorySeparatorChar);
-            if (parts.Contains("Generated") || parts.Contains("obj") || parts.Contains("bin"))
-            {
-                continue;
-            }
-
             var lines = File.ReadAllLines(file);
             for (var i = 0; i < lines.Length; i++)
             {
@@ -96,5 +81,26 @@ public sealed class SigningSourceTests
         }
 
         Assert.Empty(offenders);
+    }
+
+    /// <summary>
+    /// Every hand-written C# source that ships or is run: <c>src</c> outside <c>Generated</c>, and the
+    /// examples (the README tests build them); build output (<c>bin</c>, <c>obj</c>) is skipped. Paths are
+    /// relative to the repository root.
+    /// </summary>
+    private static List<(string File, string Relative)> HandWritten()
+    {
+        var files = new[] { "src", "examples" }
+            .SelectMany(dir => Directory.EnumerateFiles(Path.Combine(Repo.Root, dir), "*.cs", SearchOption.AllDirectories))
+            .Select(file => (File: file, Relative: Path.GetRelativePath(Repo.Root, file)))
+            .Where(f =>
+            {
+                var parts = f.Relative.Split(Path.DirectorySeparatorChar);
+                return !parts.Contains("Generated") && !parts.Contains("obj") && !parts.Contains("bin");
+            })
+            .OrderBy(f => f.Relative, StringComparer.Ordinal)
+            .ToList();
+        Assert.Contains(files, f => f.Relative.StartsWith("examples", StringComparison.Ordinal));
+        return files;
     }
 }
