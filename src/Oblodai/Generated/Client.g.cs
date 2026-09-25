@@ -15,7 +15,8 @@ using System.Threading.Tasks;
 //   Oblodai:           Model (base record: Extra, ToString), RequestOptions, FileResult,
 //                      PagePromise<T>, OblodaiTransport, IWebhookEvent (Type, EventAt,
 //                      EventSequence, Test), OblodaiClient (partial; calls CreateResources),
-//                      ConfigException(code, message, field), SdkErrorCodes.JobNotDone
+//                      ConfigException(code, message, field), SdkErrorCodes.JobNotDone,
+//                      SdkErrorCodes.BadConfig
 //   Oblodai.Contract:  RouteSpec(OperationId, Method, Path, Auth, Idempotent, Safe, Bare, List),
 //                      RouteAuth, ListKind, IStringValue<T>, StringValueJsonConverter<T>
 //   Oblodai.Resources: Resource — RequestAsync<T>, RequestPaged<T>, RequestFileAsync

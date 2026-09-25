@@ -15,7 +15,8 @@ using System.Threading.Tasks;
 //   Oblodai:           Model (base record: Extra, ToString), RequestOptions, FileResult,
 //                      PagePromise<T>, OblodaiTransport, IWebhookEvent (Type, EventAt,
 //                      EventSequence, Test), OblodaiClient (partial; calls CreateResources),
-//                      ConfigException(code, message, field), SdkErrorCodes.JobNotDone
+//                      ConfigException(code, message, field), SdkErrorCodes.JobNotDone,
+//                      SdkErrorCodes.BadConfig
 //   Oblodai.Contract:  RouteSpec(OperationId, Method, Path, Auth, Idempotent, Safe, Bare, List),
 //                      RouteAuth, ListKind, IStringValue<T>, StringValueJsonConverter<T>
 //   Oblodai.Resources: Resource — RequestAsync<T>, RequestPaged<T>, RequestFileAsync
@@ -5045,9 +5046,14 @@ public sealed partial class Sandbox : Resource
         ArgumentNullException.ThrowIfNull(request);
         if (options?.IdempotencyKey is { } key)
         {
-            if (request.IdempotencyKey is not null)
+            // Two keys for one call: which one was meant is a guess, and a wrong guess re-credits or
+            // refuses a retry. Refused before anything is sent, as in every SDK.
+            if (!string.IsNullOrEmpty(request.IdempotencyKey))
             {
-                throw new ArgumentException("idempotency_key is given both in the request and in options", nameof(options));
+                throw new ConfigException(
+                    SdkErrorCodes.BadConfig,
+                    "idempotency_key is given both in the request and in options; keep one",
+                    "idempotency_key");
             }
 
             request = request with { IdempotencyKey = key };
