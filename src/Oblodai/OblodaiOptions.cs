@@ -12,7 +12,7 @@ public sealed record OblodaiOptions
     /// <summary>The gateway used when nothing else is configured.</summary>
     public const string DefaultBaseUrl = "https://api.oblodai.com";
 
-    /// <summary>Public id of the API key (<c>X-Public-Id</c>). Falls back to <c>OBLODAI_PUBLIC_ID</c>.</summary>
+    /// <summary>Public id of the API key (<see cref="Contract.SigningProtocol.Request.PublicId"/>). Falls back to <c>OBLODAI_PUBLIC_ID</c>.</summary>
     public string? PublicId { get; init; }
 
     /// <summary>
@@ -242,7 +242,7 @@ public sealed record RequestOptions
 
     /// <summary>
     /// Extra headers for this call alone, merged over the client's own. Names the SDK owns (the
-    /// signature headers, <c>Idempotency-Key</c>, <c>X-Request-ID</c>, <c>Accept</c>,
+    /// signature headers, the idempotency key, <c>X-Request-ID</c>, <c>Accept</c>,
     /// <c>Content-Type</c>, <c>User-Agent</c>, <c>X-Admin-Token</c>) are ignored, and a value with a
     /// CR, LF or non-ASCII character is refused with <c>sdk.bad_header</c> before anything is signed.
     /// </summary>

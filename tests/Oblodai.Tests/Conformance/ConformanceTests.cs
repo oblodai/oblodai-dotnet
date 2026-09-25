@@ -113,22 +113,44 @@ public class ConformanceTests
         Assert.Equal(expect.GetProperty("known").GetBoolean(), WebhookVerifier.IsKnownEvent(parsed));
     }
 
+    /// <summary>
+    /// The generated protocol (<see cref="SigningProtocol"/>) is the spec's, and the public 1.x/2.0 names
+    /// are aliases of it — no hand-written copy that a rename in the core would leave behind.
+    /// </summary>
     [ConformanceFact]
-    public void TheContractDeclaresTheSigningRecipeThisSdkImplements()
+    public void TheSdkSignsWithTheContractsProtocol()
     {
         var (signing, _, _) = Source("signing", Suite("signing").GetProperty("checks")[0].GetProperty("name").GetString()!);
 
-        Assert.Equal("ts\\nMETHOD\\nrequest_uri\\nidempotency_key\\nbody", signing.GetProperty("canonical").GetString());
-        Assert.Equal(RequestSigner.SignatureSkewSeconds, signing.GetProperty("skew_seconds").GetInt32());
-        Assert.Equal(Idempotency.MaxKeyLength, signing.GetProperty("max_idempotency_key_length").GetInt32());
         Assert.Equal(
-            new[] { RequestSigner.HeaderPublicId, RequestSigner.HeaderSignature, RequestSigner.HeaderTimestamp, RequestSigner.HeaderIdempotencyKey },
-            signing.GetProperty("headers").EnumerateArray().Select(h => h.GetString()));
+            signing.GetProperty("canonical").GetString(),
+            string.Join("\\n", SigningProtocol.Request.CanonicalParts));
+        Assert.Equal("\n", SigningProtocol.Request.Separator);
+        Assert.Equal(SigningProtocol.SkewSeconds, signing.GetProperty("skew_seconds").GetInt32());
+        Assert.Equal(SigningProtocol.MaxBody, signing.GetProperty("max_body").GetInt32());
+        Assert.Equal(SigningProtocol.MaxIdempotencyKeyLength, signing.GetProperty("max_idempotency_key_length").GetInt32());
+        Assert.Equal(SigningProtocol.SkewSeconds, RequestSigner.SignatureSkewSeconds);
+        Assert.Equal(SigningProtocol.SkewSeconds, new WebhookVerifyOptions { Secret = "s" }.ToleranceSeconds);
+        Assert.Equal(SigningProtocol.MaxIdempotencyKeyLength, Idempotency.MaxKeyLength);
+
+        var request = HeaderNames("signing");
+        Assert.Equal(RequestSigner.HeaderPublicId, request["public_id"]);
+        Assert.Equal(RequestSigner.HeaderSignature, request["signature"]);
+        Assert.Equal(RequestSigner.HeaderTimestamp, request["timestamp"]);
+        Assert.Equal(RequestSigner.HeaderIdempotencyKey, request["idempotency_key"]);
+        var webhook = HeaderNames("webhook");
+        Assert.Equal(WebhookVerifier.HeaderTimestamp, webhook["timestamp"]);
+        Assert.Equal(WebhookVerifier.HeaderSignature, webhook["signature"]);
+        Assert.Equal(WebhookVerifier.HeaderSignaturePrev, webhook["signature_prev"]);
+        Assert.Equal(WebhookVerifier.HeaderEvent, webhook["event"]);
+        Assert.Equal(WebhookVerifier.HeaderId, webhook["id"]);
+        Assert.Equal(WebhookVerifier.HeaderEventId, webhook["event_id"]);
+        Assert.Equal(WebhookVerifier.HeaderEventTime, webhook["event_time"]);
     }
 
     [ConformanceTheory]
     [MemberData(nameof(SigningCases))]
-    public void RequestSigning(string check, int vectorIndex)
+    public async Task RequestSigning(string check, int vectorIndex)
     {
         var (_, vectors, checkElement) = Source("signing", check);
         var vector = vectors[vectorIndex];
@@ -148,10 +170,73 @@ public class ConformanceTests
                     vector.GetProperty("signature").GetString(),
                     RequestSigner.Sign(vector.GetProperty("secret").GetString()!, ts, method, uri, key, body));
                 break;
+            case "request_headers":
+                await RequestHeaders(checkElement, vector);
+                break;
             default:
                 Assert.Fail($"unknown check kind in {check}");
                 break;
         }
+    }
+
+    /// <summary>
+    /// request_headers: the vector's request goes through the signing transport the client's methods use
+    /// (keys <c>public_id</c> + the vector's secret, clock at the vector's <c>ts</c>), and the request that
+    /// leaves carries, under the names the SPEC gives each role (not this SDK's constants), the public id,
+    /// the vector's signature, its timestamp and its idempotency key — or no key header without one.
+    /// </summary>
+    private static async Task RequestHeaders(JsonElement check, JsonElement vector)
+    {
+        var publicId = check.GetProperty("public_id").GetString()!;
+        var method = vector.GetProperty("method").GetString()!;
+        var uri = vector.GetProperty("request_uri").GetString()!;
+        var key = vector.GetProperty("idempotency_key").GetString()!;
+        var body = vector.GetProperty("body").GetString()!;
+        var question = uri.IndexOf('?');
+        var path = question < 0 ? uri : uri[..question];
+        var query = question < 0
+            ? []
+            : uri[(question + 1)..].Split('&').Select(pair => pair.Split('=', 2))
+                .Select(kv => new KeyValuePair<string, string?>(Uri.UnescapeDataString(kv[0]), Uri.UnescapeDataString(kv[1])))
+                .ToList();
+
+        var http = new FakeHttpHandler(ScriptedResponse.Ok());
+        using var transport = new OblodaiTransport(
+            new TransportOptions
+            {
+                BaseUrl = "https://api.test",
+                UserAgent = "conformance",
+                Credentials = new Credentials(publicId, vector.GetProperty("secret").GetString()!),
+                Clock = new SkewCorrectingClock(new FixedClock(vector.GetProperty("ts").GetInt64())),
+            },
+            http.Client());
+        var route = new RouteSpec("conformanceRequestHeaders", method, path, RouteAuth.Key, key != "", false, false, ListKind.None);
+        await transport.CallElementAsync(route, new CallOptions
+        {
+            Body = method == "GET" ? null : JsonDocument.Parse(body).RootElement,
+            Query = query,
+            IdempotencyKey = key == "" ? null : key,
+        });
+
+        var sent = Assert.Single(http.Calls);
+        Assert.Equal(body, sent.Body ?? string.Empty);
+        var names = HeaderNames("signing");
+        Assert.Equal(publicId, sent.Header(names["public_id"]));
+        Assert.Equal(vector.GetProperty("signature").GetString(), sent.Header(names["signature"]));
+        Assert.Equal(vector.GetProperty("ts").GetInt64().ToString(System.Globalization.CultureInfo.InvariantCulture), sent.Header(names["timestamp"]));
+        if (key == "")
+        {
+            Assert.False(sent.HasHeader(names["idempotency_key"]), names["idempotency_key"]);
+        }
+        else
+        {
+            Assert.Equal(key, sent.Header(names["idempotency_key"]));
+        }
+    }
+
+    private sealed class FixedClock(long now) : IClock
+    {
+        public long NowUnixSeconds() => now;
     }
 
     [ConformanceTheory]
@@ -192,10 +277,11 @@ public class ConformanceTests
                 break;
         }
 
+        var names = HeaderNames("webhook");
         var headers = new Dictionary<string, string>
         {
-            [WebhookVerifier.HeaderTimestamp] = ts.ToString(),
-            [WebhookVerifier.HeaderSignature] = signature,
+            [names["timestamp"]] = ts.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            [names["signature"]] = signature,
         };
         var options = new WebhookVerifyOptions { Secret = secret, ToleranceSeconds = skew, Now = () => ts + offset };
         var expect = checkElement.GetProperty("expect").GetString();
@@ -257,9 +343,11 @@ public class ConformanceTests
         Assert.True(WebhookVerifier.IsKnownEvent(delivery.Event), kind);
         Assert.Equal(kind, delivery.Event.Type);
         Assert.IsType(ApiFacts.WebhookModels[kind], delivery.Event);
-        foreach (var field in Suite("webhook_delivery").GetProperty("headers").EnumerateObject())
+        var names = HeaderNames("webhook_delivery");
+        foreach (var field in Suite("webhook_delivery").GetProperty("fields").EnumerateObject())
         {
-            var want = headers[field.Name];
+            var header = names[field.Name];
+            var want = headers[header];
             string? got = field.Value.GetString() switch
             {
                 "" => want,
@@ -268,9 +356,9 @@ public class ConformanceTests
                 "event_type" => delivery.EventType,
                 "event_time" => delivery.EventTime?.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 "sent_at" => delivery.SentAt.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                var other => throw new InvalidOperationException($"the delivery info has no field {other} for {field.Name}"),
+                var other => throw new InvalidOperationException($"the delivery info has no field {other} for {header}"),
             };
-            Assert.True(want == got, $"{field.Value.GetString()} = {got}, {field.Name} = {want}");
+            Assert.True(want == got, $"{field.Value.GetString()} = {got}, {header} (role {field.Name}) = {want}");
         }
     }
 
@@ -301,7 +389,8 @@ public class ConformanceTests
 
         var expect = scenario.GetProperty("expect");
         Assert.Equal(expect.GetProperty("requests").GetInt32(), script.Requests.Count);
-        var keys = script.Requests.Select(r => r.Headers.TryGetValues("Idempotency-Key", out var v) ? v.Single() : null).ToList();
+        var keyHeader = HeaderNames("signing")["idempotency_key"];
+        var keys = script.Requests.Select(r => r.Headers.TryGetValues(keyHeader, out var v) ? v.Single() : null).ToList();
         if (expect.TryGetProperty("idempotency_key", out var keyRule))
         {
             if (keyRule.GetString() == "absent")
@@ -486,16 +575,40 @@ public class ConformanceTests
         return data;
     }
 
-    private static (JsonElement Signing, IReadOnlyList<JsonElement> Vectors, JsonElement Check) Source(string suiteName, string check)
+    /// <summary>
+    /// Header names of a suite by role (<c>header_names</c>): read from the spec, never from this SDK's
+    /// constants, so a rename in the core that did not reach the SDK fails the suite.
+    /// </summary>
+    private static IReadOnlyDictionary<string, string> HeaderNames(string suiteName)
     {
         var suite = Suite(suiteName);
-        var source = suite.GetProperty("source");
-        var spec = JsonDocument.Parse(File.ReadAllText(Path.Combine(Directory, source.GetProperty("spec").GetString()!))).RootElement;
-        var cursor = spec;
-        foreach (var part in source.GetProperty("pointer").GetString()!.TrimStart('/').Split('/'))
+        var spec = Spec(suite);
+        var headerNames = suite.GetProperty("header_names");
+        var list = Pointer(spec, headerNames.GetProperty("pointer").GetString()!).EnumerateArray().Select(n => n.GetString()!).ToList();
+        var roles = headerNames.GetProperty("roles").EnumerateArray().Select(r => r.GetString()!).ToList();
+        Assert.Equal(roles.Count, list.Count);
+        return roles.Zip(list).ToDictionary(p => p.First, p => p.Second);
+    }
+
+    private static JsonElement Spec(JsonElement suite)
+        => JsonDocument.Parse(File.ReadAllText(Path.Combine(Directory, suite.GetProperty("source").GetProperty("spec").GetString()!))).RootElement;
+
+    private static JsonElement Pointer(JsonElement document, string pointer)
+    {
+        var cursor = document;
+        foreach (var part in pointer.TrimStart('/').Split('/'))
         {
             cursor = cursor.GetProperty(part.Replace("~1", "/").Replace("~0", "~"));
         }
+
+        return cursor;
+    }
+
+    private static (JsonElement Signing, IReadOnlyList<JsonElement> Vectors, JsonElement Check) Source(string suiteName, string check)
+    {
+        var suite = Suite(suiteName);
+        var spec = Spec(suite);
+        var cursor = Pointer(spec, suite.GetProperty("source").GetProperty("pointer").GetString()!);
 
         var checkElement = suite.GetProperty("checks").EnumerateArray().Single(c => c.GetProperty("name").GetString() == check);
         return (spec.GetProperty("x-oblodai-signing"), cursor.EnumerateArray().ToList(), checkElement);

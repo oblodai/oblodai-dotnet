@@ -9,7 +9,7 @@ namespace Oblodai;
 /// </description></item>
 /// <item><description>
 /// Is repeating safe? — only for read-only routes and for writes the gateway deduplicates by
-/// Idempotency-Key. A write the gateway does not deduplicate is never re-sent once it MAY have
+/// idempotency key. A write the gateway does not deduplicate is never re-sent once it MAY have
 /// reached the gateway: a transport error or a proxy 503 after the request left the socket could
 /// mean the payout already happened.
 /// </description></item>

@@ -114,7 +114,7 @@ public sealed partial class OblodaiTransport : IDisposable
             throw decoded.Error!; // unreachable: ExecuteAsync already threw for error statuses
         }
 
-        // The gateway replays a cached response by Idempotency-Key; when the original was too large to
+        // The gateway replays a cached response by idempotency key; when the original was too large to
         // cache it answers { ok, idempotent_replay: true, detail } instead of the object — surface that.
         if (decoded.Result.ValueKind == JsonValueKind.Object
             && decoded.Result.TryGetProperty("idempotent_replay", out var replay)
@@ -191,7 +191,7 @@ public sealed partial class OblodaiTransport : IDisposable
                 // deduplicated when it is not — the one belief that turns a lost response into a double spend.
                 throw new ConfigException(
                     SdkErrorCodes.IdempotencyUnsupported,
-                    $"{route.Method} {route.Path} does not deduplicate by Idempotency-Key; drop IdempotencyKey from this call",
+                    $"{route.Method} {route.Path} does not deduplicate by {SigningProtocol.Request.IdempotencyKey}; drop IdempotencyKey from this call",
                     "IdempotencyKey");
             }
         }

@@ -20,8 +20,8 @@ public sealed class SystemClock : IClock
 }
 
 /// <summary>
-/// Signing clock with skew correction. The gateway rejects timestamps more than ±300 s from its own
-/// time; a host with a drifting clock would get <c>merchant.bad_signature</c> on every call. The
+/// Signing clock with skew correction. The gateway rejects timestamps more than
+/// <see cref="Contract.SigningProtocol.SkewSeconds"/> away from its own time; a host with a drifting clock would get <c>merchant.bad_signature</c> on every call. The
 /// transport learns the server's time from the <c>Date</c> header of a signature-failure response,
 /// re-signs once, and keeps the offset only if that re-signed attempt got past authentication.
 /// </summary>
