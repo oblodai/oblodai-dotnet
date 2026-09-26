@@ -168,8 +168,8 @@ public sealed partial class Payments : Resource
     /// <para>Requires role: Viewer when called with a CLI key.</para>
     /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>payout.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="orderId">Your order reference.</param>
-    /// <param name="uuid">The invoice id in Oblodai. Either uuid or order_id is required; uuid takes precedence.</param>
+    /// <param name="orderId">Your order_id of the object: the payment's for /v1/payment/info, the payout's for /v1/payout/info.</param>
+    /// <param name="uuid">The Oblodai id of the object being looked up: the invoice (payment) for /v1/payment/info, the payout or refund for /v1/payout/info. Either uuid or order_id is required; uuid takes precedence.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<PaymentInfoResult> GetInfoAsync(
@@ -215,8 +215,8 @@ public sealed partial class Payments : Resource
     /// <para>Requires role: Viewer when called with a CLI key.</para>
     /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="orderId">Your order reference.</param>
-    /// <param name="uuid">The invoice id in Oblodai. Either uuid or order_id is required; uuid takes precedence.</param>
+    /// <param name="orderId">Your order_id of the object: the payment's for /v1/payment/info, the payout's for /v1/payout/info.</param>
+    /// <param name="uuid">The Oblodai id of the object being looked up: the invoice (payment) for /v1/payment/info, the payout or refund for /v1/payout/info. Either uuid or order_id is required; uuid takes precedence.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<PaymentQRResult> GetQrAsync(
@@ -243,7 +243,7 @@ public sealed partial class Payments : Resource
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public PagePromise<PaymentView> ListHistoryAsync(
-        HistoryRequest request,
+        PaymentHistoryRequest request,
         RequestOptions? options = null,
         CancellationToken cancellationToken = default)
     {
@@ -262,26 +262,20 @@ public sealed partial class Payments : Resource
     /// <para>Requires role: Viewer when called with a CLI key.</para>
     /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppressed_in</c>, <c>payment.bad_status</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="includeRefunds">Only for /v1/payout/history: true — return refunds together with payouts (the former behavior of the feed without kind). Default false: refunds are separate, kind=refund.</param>
-    /// <param name="kind">Only for /v1/payout/history: payout — regular payouts, refund — refunds; empty — regular payouts (with include_refunds=true — everything together).</param>
     /// <param name="limit">Page size, 1–100; out of range — 25.</param>
     /// <param name="offset">Offset from the start of the list (newest first).</param>
-    /// <param name="status">Filter by status (an exact value from the status vocabulary); empty — all.</param>
+    /// <param name="status">Filter by payment status (an exact value from the payment status vocabulary: select, created, confirm_check, paid, paid_over, wrong_amount, expired, cancelled); empty — all.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public PagePromise<PaymentView> ListHistoryAsync(
-        bool? includeRefunds = null,
-        PayoutKind? kind = null,
         long? limit = null,
         long? offset = null,
         string? status = null,
         RequestOptions? options = null,
         CancellationToken cancellationToken = default)
         => ListHistoryAsync(
-            new HistoryRequest
+            new PaymentHistoryRequest
             {
-                IncludeRefunds = includeRefunds,
-                Kind = kind,
                 Limit = limit,
                 Offset = offset,
                 Status = status,
@@ -365,8 +359,8 @@ public sealed partial class Payments : Resource
     /// <para>Requires role: Finance when called with a CLI key.</para>
     /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>invoice.already_paid</c>, <c>invoice.corrupt_pay_asset</c>, <c>invoice.deposit_pending</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="orderId">Your order reference.</param>
-    /// <param name="uuid">The invoice id in Oblodai. Either uuid or order_id is required; uuid takes precedence.</param>
+    /// <param name="orderId">Your order_id of the object: the payment's for /v1/payment/info, the payout's for /v1/payout/info.</param>
+    /// <param name="uuid">The Oblodai id of the object being looked up: the invoice (payment) for /v1/payment/info, the payout or refund for /v1/payout/info. Either uuid or order_id is required; uuid takes precedence.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<PaymentView> CancelAsync(
@@ -885,7 +879,7 @@ public sealed partial class Refunds : Resource
     /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.approver_is_creator</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.cap_unpriceable</c>, <c>payout.convert_bad_amount</c>, <c>payout.convert_frozen</c>, <c>payout.convert_idempotency_conflict</c>, <c>payout.convert_insufficient</c>, <c>payout.convert_no_rate</c>, <c>payout.convert_same_asset</c>, <c>payout.convert_unsupported</c>, <c>payout.daily_cap</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.illegal_transition</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.not_pending</c>, <c>payout.reference_collision</c>, <c>postgres.lock_pool_busy</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>refund.bad_amount</c>, <c>refund.chain_ambiguous</c>, <c>refund.destination_internal</c>, <c>refund.dust</c>, <c>refund.exceeds_excess</c>, <c>refund.exceeds_refundable</c>, <c>refund.fence_check</c>, <c>refund.from_currency_personal_account</c>, <c>refund.from_currency_unsupported</c>, <c>refund.network_required</c>, <c>refund.no_address</c>, <c>refund.nothing_to_refund</c>, <c>refund.omnibus_destination</c>, <c>refund.paid_internally</c>, <c>refund.reference_collision</c>, <c>refund.unsupported_network</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>sandbox.convert_not_available</c>, <c>treasury.no_ccy_map</c>, <c>wallet.static_not_found</c>.</para>
     /// </remarks>
     /// <param name="address">Refund destination address. Defaults to the payment's payer_address; required only for Bitcoin/UTXO.</param>
-    /// <param name="amount">A partial amount. Defaults to the full received amount.</param>
+    /// <param name="amount">The amount to refund, in the payment coin; overrides the default. Without it the refund is the amount paid minus the payer's network surcharge and — when the store's refund fee setting (getRefundFeeConfig) puts the commission on the customer — minus the Oblodai commission too, never more than was credited to your balance for this payment.</param>
     /// <param name="fromCurrency">Fund the refund by converting balance: USDT → the payment currency only. Needed when the payment coin has already been converted by auto-exchange.</param>
     /// <param name="network">Network.</param>
     /// <param name="orderId">Your order reference of the payment. Either uuid or order_id is required.</param>
@@ -1133,8 +1127,8 @@ public sealed partial class Payouts : Resource
     /// <para>Requires role: Viewer when called with a CLI key.</para>
     /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.bad_uuid</c>, <c>payout.no_lookup</c>, <c>payout.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="orderId">Your order reference.</param>
-    /// <param name="uuid">The invoice id in Oblodai. Either uuid or order_id is required; uuid takes precedence.</param>
+    /// <param name="orderId">Your order_id of the object: the payment's for /v1/payment/info, the payout's for /v1/payout/info.</param>
+    /// <param name="uuid">The Oblodai id of the object being looked up: the invoice (payment) for /v1/payment/info, the payout or refund for /v1/payout/info. Either uuid or order_id is required; uuid takes precedence.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<PayoutInfoResult> GetInfoAsync(
@@ -1180,11 +1174,11 @@ public sealed partial class Payouts : Resource
     /// <para>Requires role: Viewer when called with a CLI key.</para>
     /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.bad_kind</c>, <c>payout.bad_status</c>, <c>payout.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="includeRefunds">Only for /v1/payout/history: true — return refunds together with payouts (the former behavior of the feed without kind). Default false: refunds are separate, kind=refund.</param>
-    /// <param name="kind">Only for /v1/payout/history: payout — regular payouts, refund — refunds; empty — regular payouts (with include_refunds=true — everything together).</param>
+    /// <param name="includeRefunds">true — return refunds together with payouts (the former behavior of the feed without kind). Default false: refunds are separate, kind=refund.</param>
+    /// <param name="kind">payout — regular payouts, refund — refunds; empty — regular payouts (with include_refunds=true — everything together).</param>
     /// <param name="limit">Page size, 1–100; out of range — 25.</param>
     /// <param name="offset">Offset from the start of the list (newest first).</param>
-    /// <param name="status">Filter by status (an exact value from the status vocabulary); empty — all.</param>
+    /// <param name="status">Filter by payout status (an exact value from the payout status vocabulary: pending, approved, awaiting_cosign, broadcasting, sent, confirmed, failed, cancelled); empty — all.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public PagePromise<PayoutView> ListHistoryAsync(
@@ -2812,8 +2806,8 @@ public sealed partial class Webhooks : Resource
     /// <para>Requires role: Finance when called with a CLI key.</para>
     /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.no_endpoint</c>.</para>
     /// </remarks>
-    /// <param name="orderId">Your order reference.</param>
-    /// <param name="uuid">The invoice id in Oblodai. Either uuid or order_id is required; uuid takes precedence.</param>
+    /// <param name="orderId">Your order_id of the object: the payment's for /v1/payment/info, the payout's for /v1/payout/info.</param>
+    /// <param name="uuid">The Oblodai id of the object being looked up: the invoice (payment) for /v1/payment/info, the payout or refund for /v1/payout/info. Either uuid or order_id is required; uuid takes precedence.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<WebhookResendResult> ResendPaymentAsync(
