@@ -1373,9 +1373,9 @@ public static class Routes
         Bare: false,
         List: ListKind.None);
 
-    /// <summary><c>POST /v1/cli/logout</c> (<c>logoutCli</c>).</summary>
-    public static readonly RouteSpec LogoutCli = new(
-        OperationId: "logoutCli",
+    /// <summary><c>POST /v1/cli/logout</c> (<c>logoutCliLogin</c>).</summary>
+    public static readonly RouteSpec LogoutCliLogin = new(
+        OperationId: "logoutCliLogin",
         Method: "POST",
         Path: "/v1/cli/logout",
         Auth: RouteAuth.Key,
@@ -1509,6 +1509,6 @@ public static class Routes
         ["sandboxReplayWebhook"] = SandboxReplayWebhook,
         ["startCliLogin"] = StartCliLogin,
         ["pollCliLogin"] = PollCliLogin,
-        ["logoutCli"] = LogoutCli,
+        ["logoutCliLogin"] = LogoutCliLogin,
     };
 }

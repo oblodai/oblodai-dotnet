@@ -169,7 +169,7 @@ change, a new one is added to the lock by the generator. Long-running operations
 | `Documents` | `GetSignedAsync` · `GetBalanceAsync` · `GetFeesAsync` · `GetLedgerAsync` · `GetSplitAsync` · `GetPayoutLinkChequeAsync` · `GetStatementAsync` · `GetBatchAsync` · `GetPaymentLinkAsync` · `GetWalletStatementAsync` · `GetReferralsAsync` · `CreateJobAsync` · `GetJobAsync` · `DownloadJobFileAsync` |
 | `Checkout` | `GetSourceOfFundsFormAsync` · `SubmitSourceOfFundsAsync` · `GetPublicPaymentLinkAsync` · `PaymentLinkAsync` · `ListCurrenciesAsync` · `GetAsync` · `SelectMethodAsync` · `StartOnrampAsync` · `GetOnrampAsync` · `GetQrAsync` |
 | `Sandbox` | `OnboardStoreAsync` · `FaucetAsync` · `SimulateDepositAsync` · `ResetAsync` · `ListWebhooksAsync` · `ReplayWebhookAsync` |
-| `CliLogin` | `StartAsync` · `PollAsync` · `LogoutCliAsync` |
+| `CliLogin` | `StartAsync` · `PollAsync` · `LogoutAsync` |
 <!-- /sdkgen:methods -->
 
 `Checkout` is the payer-facing side (no credentials). Document routes answer outside the JSON
