@@ -4397,7 +4397,7 @@ public sealed partial record RefundBatchItem : Model
     [JsonPropertyName("address")]
     public string? Address { get; init; }
 
-    /// <summary>The amount to refund, in the payment coin. Without it the refund is what is still refundable: the amount paid minus the payer's network surcharge and — when the store's refund fee setting (getRefundFeeConfig) puts the commission on the customer — minus the Oblodai commission too, never more than was credited to your balance for this payment, less the refunds already made. All refunds of a payment together cannot exceed that refundable amount (refund.exceeds_refundable); POST /v1/payment/refund/calculate shows it.</summary>
+    /// <summary>The amount to refund, in the payment coin. Without it the refund is what is still refundable: the refundable amount less the refunds already made. The refundable amount is the most that all refunds of this payment together can send (refund.exceeds_refundable), and it follows the store's refund fee setting (getRefundFeeConfig). The payer's network surcharge is never refunded. When the customer bears the Oblodai commission, it is the amount paid minus the surcharge and the commission — what was credited to your balance for this payment. When you bear it, it is the amount paid minus the surcharge: the commission is paid from your balance, so the refunds debit more than the payment credited, and a balance too small for that fails with payout.insufficient_funds. POST /v1/payment/refund/calculate shows these numbers.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
@@ -4462,12 +4462,12 @@ public sealed partial record RefundCalculation : Model
     [JsonPropertyName("amount_paid")]
     public required decimal AmountPaid { get; init; }
 
-    /// <summary>The Oblodai commission withheld from the refund: the payment's commission when commission_bearer is customer, 0 when it is merchant.</summary>
+    /// <summary>The Oblodai commission withheld from the refund: the payment's commission when commission_bearer is customer, 0 when it is merchant (you then pay it from your balance).</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("commission")]
     public required decimal Commission { get; init; }
 
-    /// <summary>Who bears the Oblodai commission on this refund (the store's refund fee setting, getRefundFeeConfig): customer — it is deducted from the refund; merchant — it is not.</summary>
+    /// <summary>Who bears the Oblodai commission on this refund — the store's refund fee setting (getRefundFeeConfig): customer — it is deducted from the refund, and the refunds return at most what the payment credited you; merchant — it is not deducted, and you pay it from your balance, so the refunds debit more than the payment credited.</summary>
     [JsonPropertyName("commission_bearer")]
     public required RefundCommissionBearer CommissionBearer { get; init; }
 
@@ -4507,7 +4507,7 @@ public sealed partial record RefundCalculation : Model
     [JsonPropertyName("rate")]
     public decimal? Rate { get; init; }
 
-    /// <summary>The most that all refunds of this payment together may send: amount_paid minus surcharge (minus commission when commission_bearer is customer), never more than credited.</summary>
+    /// <summary>The most that all refunds of this payment together may send; the surcharge is never refunded. commission_bearer customer: amount_paid minus surcharge minus commission, never more than credited. commission_bearer merchant: amount_paid minus surcharge (the surcharge counted per deposit), more than credited by the commission you pay from your balance.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("refundable")]
     public required decimal Refundable { get; init; }
@@ -4539,7 +4539,7 @@ public sealed partial record RefundFeeResult : Model
     [JsonPropertyName("configured")]
     public required bool Configured { get; init; }
 
-    /// <summary>The effective value: the project setting, or the gateway default if there is none.</summary>
+    /// <summary>The effective value for your refunds: the project setting, or the gateway default if there is none (automatic refunds then deduct the commission).</summary>
     [JsonPropertyName("fee_on_customer")]
     public required bool FeeOnCustomer { get; init; }
 }
@@ -4552,7 +4552,7 @@ public sealed partial record RefundRequest : Model
     [JsonPropertyName("address")]
     public string? Address { get; init; }
 
-    /// <summary>The amount to refund, in the payment coin. Without it the refund is what is still refundable: the amount paid minus the payer's network surcharge and — when the store's refund fee setting (getRefundFeeConfig) puts the commission on the customer — minus the Oblodai commission too, never more than was credited to your balance for this payment, less the refunds already made. All refunds of a payment together cannot exceed that refundable amount (refund.exceeds_refundable); POST /v1/payment/refund/calculate shows it.</summary>
+    /// <summary>The amount to refund, in the payment coin. Without it the refund is what is still refundable: the refundable amount less the refunds already made. The refundable amount is the most that all refunds of this payment together can send (refund.exceeds_refundable), and it follows the store's refund fee setting (getRefundFeeConfig). The payer's network surcharge is never refunded. When the customer bears the Oblodai commission, it is the amount paid minus the surcharge and the commission — what was credited to your balance for this payment. When you bear it, it is the amount paid minus the surcharge: the commission is paid from your balance, so the refunds debit more than the payment credited, and a balance too small for that fails with payout.insufficient_funds. POST /v1/payment/refund/calculate shows these numbers.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
@@ -5045,7 +5045,7 @@ public sealed partial record SetPayoutFeeRequest : Model
 /// <summary><c>SetRefundFeeRequest</c> model.</summary>
 public sealed partial record SetRefundFeeRequest : Model
 {
-    /// <summary>true — the customer receives net (the customer pays the fee); false — the merchant pays the fee, the customer receives gross</summary>
+    /// <summary>Who bears the Oblodai commission on refunds. true — the customer: it is deducted from the refund, which returns at most what the payment credited to your balance. false — you: it is not deducted and is paid from your balance, on top of what the payment credited. The payer's network surcharge is never refunded either way.</summary>
     [JsonPropertyName("fee_on_customer")]
     public required bool FeeOnCustomer { get; init; }
 }
