@@ -149,13 +149,13 @@ change, a new one is added to the lock by the generator. Long-running operations
 (and `DownloadAsync` when the job has a file) — see below.
 
 <!-- sdkgen:methods -->
-17 resources, 123 methods.
+17 resources, 124 methods.
 
 | Resource | Methods |
 | --- | --- |
 | `Payments` | `CreateAsync` · `GetInfoAsync` · `GetQrAsync` · `ListHistoryAsync` · `ListServicesAsync` · `CancelAsync` · `SendEmailAsync` · `SetCheckoutConfigAsync` · `GetCheckoutConfigAsync` · `GetAmlLinksAsync` · `ResolveAsync` |
 | `PaymentLinks` | `CreateAsync` · `ListAsync` · `GetAsync` · `ToggleAsync` |
-| `Refunds` | `PaymentAsync` · `BlockedWalletAsync` |
+| `Refunds` | `PaymentAsync` · `CalculateAsync` · `BlockedWalletAsync` |
 | `Payouts` | `CreateAsync` · `CreateMassAsync` · `GetInfoAsync` · `ListHistoryAsync` · `CalculateAsync` · `ValidateAsync` · `CancelAsync` · `ApproveAsync` · `ListServicesAsync` · `TransferToPersonalAsync` · `TransferToUserAsync` · `CreateTransferBatchAsync` |
 | `PayoutLinks` | `CreateAsync` · `CreateBatchAsync` · `ListAsync` · `GetAsync` · `CancelAsync` · `GetPayoutClaimAsync` · `ClaimPayoutAsync` |
 | `Batches` | `CreatePaymentAsync` · `CreateRefundAsync` · `CreatePayoutAsync` · `GetInfoAsync` |

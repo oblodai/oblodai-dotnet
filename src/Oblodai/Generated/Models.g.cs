@@ -1412,12 +1412,12 @@ public sealed partial record LinkCheckoutRequest : Model
 /// <summary><c>LookupRequest</c> model.</summary>
 public sealed partial record LookupRequest : Model
 {
-    /// <summary>Your order_id of the object: the payment's for /v1/payment/info, the payout's for /v1/payout/info.</summary>
+    /// <summary>Your order_id of that object: the payment's in payment operations, the payout's in payout operations. Used only when uuid is empty.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
 
-    /// <summary>The Oblodai id of the object being looked up: the invoice (payment) for /v1/payment/info, the payout or refund for /v1/payout/info. Either uuid or order_id is required; uuid takes precedence.</summary>
+    /// <summary>Our id (a UUID) of the object the operation acts on: the payment (invoice) in payment operations, the payout or refund in payout operations. Either uuid or order_id is required; when both are passed, uuid is used and order_id is ignored.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("uuid")]
     public string? Uuid { get; init; }
@@ -1722,7 +1722,7 @@ public sealed partial record PaymentBatchItem : Model
     [JsonPropertyName("additional_data")]
     public string? AdditionalData { get; init; }
 
-    /// <summary>The amount to pay in currency.</summary>
+    /// <summary>The price in currency — what you are paid for the order. The payer can be asked for more: the invoice's payer_amount adds the network surcharge (the cost of accepting the deposit on the chosen network, see network_surcharge) and any per-method discount or surcharge; your credit is amount minus the commission.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
@@ -2499,7 +2499,7 @@ public sealed partial record PaymentRequest : Model
     [JsonPropertyName("additional_data")]
     public string? AdditionalData { get; init; }
 
-    /// <summary>The amount to pay in currency.</summary>
+    /// <summary>The price in currency — what you are paid for the order. The payer can be asked for more: the invoice's payer_amount adds the network surcharge (the cost of accepting the deposit on the chosen network, see network_surcharge) and any per-method discount or surcharge; your credit is amount minus the commission.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
@@ -2908,13 +2908,13 @@ public sealed partial record PayoutCalculateRequest : Model
 /// <summary><c>PayoutCalculation</c> model.</summary>
 public sealed partial record PayoutCalculation : Model
 {
-    /// <summary>How much will be debited from the balance; null — unknown (the fee cannot be estimated).</summary>
+    /// <summary>How much will be debited from YOUR balance, in currency (the fee included when you bear it); null — cannot be estimated right now (the fee is unknown and you bear it).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public decimal? Amount { get; init; }
 
-    /// <summary>Network fee; null — cannot be estimated right now.</summary>
+    /// <summary>The network fee of the payout, in currency; who bears it is fee_bearer. null — cannot be estimated right now (the fee oracle or the rate is unavailable), not zero: retry later.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("commission")]
@@ -2924,7 +2924,7 @@ public sealed partial record PayoutCalculation : Model
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Who pays the fee: gateway, merchant or recipient.</summary>
+    /// <summary>Who pays the network fee: gateway (Oblodai absorbs it, commission is 0), merchant (added to amount, the recipient gets the full sum) or recipient (deducted from payer_amount).</summary>
     [JsonPropertyName("fee_bearer")]
     public required PayoutFeeBearer FeeBearer { get; init; }
 
@@ -2936,7 +2936,7 @@ public sealed partial record PayoutCalculation : Model
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>How much the address will receive; null — unknown.</summary>
+    /// <summary>How much the RECIPIENT receives at the address, in currency (not what you pay — that is amount). null — cannot be estimated right now (the fee is unknown and the recipient bears it).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("payer_amount")]
@@ -3696,7 +3696,7 @@ public sealed partial record PayoutRequest : Model
     [JsonPropertyName("is_subtract")]
     public bool? IsSubtract { get; init; }
 
-    /// <summary>Destination tag/memo (TON Jetton). At most 120 characters.</summary>
+    /// <summary>Destination tag / memo / comment, by network: XRP — the destination tag, a uint32 (required unless the X-address carries one; 0 for a wallet without a tag); Stellar — the memo id, a uint64 (required unless the muxed M… address carries one); TON — a comment of at most 64 bytes (it must fit the transfer's message cell); other networks — at most 120 bytes. Omit it where the network has none.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("memo")]
     public string? Memo { get; init; }
@@ -3747,7 +3747,7 @@ public sealed partial record PayoutValidateRequest : Model
     [JsonPropertyName("is_subtract")]
     public bool? IsSubtract { get; init; }
 
-    /// <summary>Destination tag/memo (TON Jetton). At most 120 characters.</summary>
+    /// <summary>Destination tag / memo / comment, by network: XRP — the destination tag, a uint32 (required unless the X-address carries one; 0 for a wallet without a tag); Stellar — the memo id, a uint64 (required unless the muxed M… address carries one); TON — a comment of at most 64 bytes (it must fit the transfer's message cell); other networks — at most 120 bytes. Omit it where the network has none.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("memo")]
     public string? Memo { get; init; }
@@ -3776,12 +3776,16 @@ public sealed partial record PayoutValidateRequest : Model
 /// <summary><c>PayoutValidateResult</c> model.</summary>
 public sealed partial record PayoutValidateResult : Model
 {
-    /// <summary>How much will be debited from the balance.</summary>
+    /// <summary>The destination address the payout will be sent to.</summary>
+    [JsonPropertyName("address")]
+    public required string Address { get; init; }
+
+    /// <summary>How much will be debited from the balance, in currency (for a from_currency payout the currency balance is first funded with it by the conversion, see from_amount).</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Network fee.</summary>
+    /// <summary>Network fee, in currency; who bears it is fee_bearer.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("commission")]
     public required decimal Commission { get; init; }
@@ -3793,6 +3797,12 @@ public sealed partial record PayoutValidateResult : Model
     /// <summary>Who pays the network fee.</summary>
     [JsonPropertyName("fee_bearer")]
     public required PayoutFeeBearer FeeBearer { get; init; }
+
+    /// <summary>How much funded_by (USDT) the conversion will debit to fund amount, at the current rate plus the conversion spread; the conversion re-prices at execution, so the final figure can differ slightly. Present only on a from_currency payout.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
+    [JsonPropertyName("from_amount")]
+    public decimal? FromAmount { get; init; }
 
     /// <summary>The currency whose conversion funds the payout (from_currency); present only on such a payout.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -3807,10 +3817,16 @@ public sealed partial record PayoutValidateResult : Model
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>How much will reach the recipient.</summary>
+    /// <summary>How much the recipient will receive at address, in currency.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("payer_amount")]
     public required decimal PayerAmount { get; init; }
+
+    /// <summary>The rate the from_amount estimate used: USDT per 1 unit of currency. Present only on a from_currency payout.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
+    [JsonPropertyName("rate")]
+    public decimal? Rate { get; init; }
 
     /// <summary>Always true: a failed check responds with an error carrying the reason code.</summary>
     [JsonPropertyName("valid")]
@@ -4381,7 +4397,7 @@ public sealed partial record RefundBatchItem : Model
     [JsonPropertyName("address")]
     public string? Address { get; init; }
 
-    /// <summary>The amount to refund, in the payment coin; overrides the default. Without it the refund is the amount paid minus the payer's network surcharge and — when the store's refund fee setting (getRefundFeeConfig) puts the commission on the customer — minus the Oblodai commission too, never more than was credited to your balance for this payment.</summary>
+    /// <summary>The amount to refund, in the payment coin. Without it the refund is what is still refundable: the amount paid minus the payer's network surcharge and — when the store's refund fee setting (getRefundFeeConfig) puts the commission on the customer — minus the Oblodai commission too, never more than was credited to your balance for this payment, less the refunds already made. All refunds of a payment together cannot exceed that refundable amount (refund.exceeds_refundable); POST /v1/payment/refund/calculate shows it.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
@@ -4425,6 +4441,97 @@ public sealed partial record RefundBatchRequest : Model
     public required IReadOnlyList<RefundBatchItem> Refunds { get; init; }
 }
 
+/// <summary><c>RefundCalculation</c> model.</summary>
+public sealed partial record RefundCalculation : Model
+{
+    /// <summary>Where the refund would go.</summary>
+    [JsonPropertyName("address")]
+    public required string Address { get; init; }
+
+    /// <summary>true — address was omitted and the refund goes to the recorded payer_address (allowed only when payer_address_is_refundable = true); false — the address you passed.</summary>
+    [JsonPropertyName("address_is_payer")]
+    public required bool AddressIsPayer { get; init; }
+
+    /// <summary>What this refund would send: the amount you passed, or by default the remaining refundable amount.</summary>
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
+    [JsonPropertyName("amount")]
+    public required decimal Amount { get; init; }
+
+    /// <summary>What the buyer paid in total, including the network surcharge.</summary>
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
+    [JsonPropertyName("amount_paid")]
+    public required decimal AmountPaid { get; init; }
+
+    /// <summary>The Oblodai commission withheld from the refund: the payment's commission when commission_bearer is customer, 0 when it is merchant.</summary>
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
+    [JsonPropertyName("commission")]
+    public required decimal Commission { get; init; }
+
+    /// <summary>Who bears the Oblodai commission on this refund (the store's refund fee setting, getRefundFeeConfig): customer — it is deducted from the refund; merchant — it is not.</summary>
+    [JsonPropertyName("commission_bearer")]
+    public required RefundCommissionBearer CommissionBearer { get; init; }
+
+    /// <summary>What this payment credited to your balance; null — cannot be reconstructed (a legacy payment).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
+    [JsonPropertyName("credited")]
+    public decimal? Credited { get; init; }
+
+    /// <summary>The refund coin — the one the buyer paid with.</summary>
+    [JsonPropertyName("currency")]
+    public required string Currency { get; init; }
+
+    /// <summary>How much USDT the funding conversion would debit, at the current rate plus the conversion spread; it re-prices at execution. Present only with from_currency.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
+    [JsonPropertyName("from_amount")]
+    public decimal? FromAmount { get; init; }
+
+    /// <summary>The currency whose conversion would fund the refund (from_currency); present only then.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyName("funded_by")]
+    public string? FundedBy { get; init; }
+
+    /// <summary>The network the refund would be sent on (canonical).</summary>
+    [JsonPropertyName("network")]
+    public required string Network { get; init; }
+
+    /// <summary>Your order_id of the payment; null if it has none.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyName("order_id")]
+    public string? OrderId { get; init; }
+
+    /// <summary>USDT per 1 unit of currency used for from_amount. Present only with from_currency.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
+    [JsonPropertyName("rate")]
+    public decimal? Rate { get; init; }
+
+    /// <summary>The most that all refunds of this payment together may send: amount_paid minus surcharge (minus commission when commission_bearer is customer), never more than credited.</summary>
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
+    [JsonPropertyName("refundable")]
+    public required decimal Refundable { get; init; }
+
+    /// <summary>Already refunded (live and completed refunds; failed and cancelled ones do not count).</summary>
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
+    [JsonPropertyName("refunded")]
+    public required decimal Refunded { get; init; }
+
+    /// <summary>refundable minus refunded: what can still be refunded before this refund.</summary>
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
+    [JsonPropertyName("remaining")]
+    public required decimal Remaining { get; init; }
+
+    /// <summary>The payer's network surcharge inside amount_paid: the cost of accepting the deposit, never refunded from your balance.</summary>
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
+    [JsonPropertyName("surcharge")]
+    public required decimal Surcharge { get; init; }
+
+    /// <summary>The payment id.</summary>
+    [JsonPropertyName("uuid")]
+    public required string Uuid { get; init; }
+}
+
 /// <summary><c>RefundFeeResult</c> model.</summary>
 public sealed partial record RefundFeeResult : Model
 {
@@ -4445,7 +4552,7 @@ public sealed partial record RefundRequest : Model
     [JsonPropertyName("address")]
     public string? Address { get; init; }
 
-    /// <summary>The amount to refund, in the payment coin; overrides the default. Without it the refund is the amount paid minus the payer's network surcharge and — when the store's refund fee setting (getRefundFeeConfig) puts the commission on the customer — minus the Oblodai commission too, never more than was credited to your balance for this payment.</summary>
+    /// <summary>The amount to refund, in the payment coin. Without it the refund is what is still refundable: the amount paid minus the payer's network surcharge and — when the store's refund fee setting (getRefundFeeConfig) puts the commission on the customer — minus the Oblodai commission too, never more than was credited to your balance for this payment, less the refunds already made. All refunds of a payment together cannot exceed that refundable amount (refund.exceeds_refundable); POST /v1/payment/refund/calculate shows it.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
@@ -5265,7 +5372,7 @@ public sealed partial record SummaryRequest : Model
     [JsonPropertyName("from")]
     public required string From { get; init; }
 
-    /// <summary>End of the window, exclusive (RFC 3339).</summary>
+    /// <summary>End of the window, exclusive (RFC 3339); must be after from, otherwise summary.bad_window.</summary>
     [JsonPropertyName("to")]
     public required string To { get; init; }
 }
@@ -5387,7 +5494,7 @@ public sealed partial record TransferBatchItem : Model
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Idempotency key: a retry with the same order_id is a no-op; required in a transfer batch.</summary>
+    /// <summary>Idempotency key: a retry with the same order_id is a no-op; required in a transfer batch. Always pass it (or an Idempotency-Key header, which the SDKs send for you): without either, retrying the request after a network timeout creates a second transfer.</summary>
     [JsonPropertyName("order_id")]
     public required string OrderId { get; init; }
 
@@ -5421,7 +5528,7 @@ public sealed partial record TransferRequest : Model
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Idempotency key: a retry with the same order_id is a no-op. Always pass it, otherwise retrying the request after a network timeout creates a second transfer.</summary>
+    /// <summary>Idempotency key: a retry with the same order_id is a no-op. Always pass it (or an Idempotency-Key header, which the SDKs send for you): without either, retrying the request after a network timeout creates a second transfer.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
@@ -5493,7 +5600,7 @@ public sealed partial record TransferToUserRequest : Model
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Idempotency key: a retry with the same order_id is a no-op; required in a transfer batch.</summary>
+    /// <summary>Idempotency key: a retry with the same order_id is a no-op; required in a transfer batch. Always pass it (or an Idempotency-Key header, which the SDKs send for you): without either, retrying the request after a network timeout creates a second transfer.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }

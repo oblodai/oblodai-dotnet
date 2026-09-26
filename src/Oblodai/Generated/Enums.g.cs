@@ -2336,6 +2336,39 @@ public readonly record struct PayoutStatus(string Value) : IStringValue<PayoutSt
     public override string ToString() => Value ?? string.Empty;
 }
 
+/// <summary><c>RefundCommissionBearer</c> values.</summary>
+/// <param name="Value">The wire value; a value this SDK version does not know is kept as is.</param>
+[JsonConverter(typeof(StringValueJsonConverter<RefundCommissionBearer>))]
+public readonly record struct RefundCommissionBearer(string Value) : IStringValue<RefundCommissionBearer>
+{
+    /// <summary><c>customer</c></summary>
+    public static readonly RefundCommissionBearer Customer = new("customer");
+
+    /// <summary><c>merchant</c></summary>
+    public static readonly RefundCommissionBearer Merchant = new("merchant");
+
+    /// <summary>Every value this SDK version knows.</summary>
+    public static IReadOnlyList<RefundCommissionBearer> Known { get; } = [Customer, Merchant];
+
+    /// <summary>Whether this SDK version knows the value.</summary>
+    public bool IsKnown => Value switch
+    {
+        "customer" or "merchant" => true,
+        _ => false,
+    };
+
+    /// <summary>Wrap a wire value, known or not.</summary>
+    /// <param name="value">The wire value.</param>
+    public static RefundCommissionBearer FromValue(string value) => new(value);
+
+    /// <summary>Wrap a wire value, known or not.</summary>
+    /// <param name="value">The wire value.</param>
+    public static implicit operator RefundCommissionBearer(string value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value ?? string.Empty;
+}
+
 /// <summary><c>RefundRollup</c> values.</summary>
 /// <param name="Value">The wire value; a value this SDK version does not know is kept as is.</param>
 [JsonConverter(typeof(StringValueJsonConverter<RefundRollup>))]

@@ -207,6 +207,17 @@ public static class Routes
         Bare: false,
         List: ListKind.None);
 
+    /// <summary><c>POST /v1/payment/refund/calculate</c> (<c>calculateRefund</c>).</summary>
+    public static readonly RouteSpec CalculateRefund = new(
+        OperationId: "calculateRefund",
+        Method: "POST",
+        Path: "/v1/payment/refund/calculate",
+        Auth: RouteAuth.Key,
+        Idempotent: false,
+        Safe: true,
+        Bare: false,
+        List: ListKind.None);
+
     /// <summary><c>POST /v1/wallet/blocked-address-refund</c> (<c>refundBlockedWallet</c>).</summary>
     public static readonly RouteSpec RefundBlockedWallet = new(
         OperationId: "refundBlockedWallet",
@@ -1017,7 +1028,7 @@ public static class Routes
         Path: "/v1/referral/info",
         Auth: RouteAuth.Key,
         Idempotent: false,
-        Safe: false,
+        Safe: true,
         Bare: false,
         List: ListKind.None);
 
@@ -1083,7 +1094,7 @@ public static class Routes
         Path: "/v1/payout/link/cheque",
         Auth: RouteAuth.Key,
         Idempotent: false,
-        Safe: false,
+        Safe: true,
         Bare: true,
         List: ListKind.None);
 
@@ -1403,6 +1414,7 @@ public static class Routes
         ["getPaymentLink"] = GetPaymentLink,
         ["togglePaymentLink"] = TogglePaymentLink,
         ["refundPayment"] = RefundPayment,
+        ["calculateRefund"] = CalculateRefund,
         ["refundBlockedWallet"] = RefundBlockedWallet,
         ["createPayout"] = CreatePayout,
         ["createMassPayout"] = CreateMassPayout,
