@@ -1222,7 +1222,7 @@ public sealed partial record ErrorError : Model
     [JsonPropertyName("code")]
     public required string Code { get; init; }
 
-    /// <summary>Machine-readable facts about this refusal, with keys documented by its code (e.g. `cli.permission_denied` carries `required_role` and `role`). Absent when the code has none.</summary>
+    /// <summary>Machine-readable facts about this refusal, with keys documented by its code (e.g. `cli.permission_denied` carries `required_role`, `role` and, for a money-out operation, `reason`; the keys and values are listed in `x-oblodai-permissions.denied`). Absent when the code has none.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("details")]
     public IReadOnlyDictionary<string, string>? Details { get; init; }
