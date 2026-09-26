@@ -28,7 +28,7 @@ using Oblodai.Resources;
 
 namespace Oblodai.Resources;
 
-/// <summary>Приём оплаты: создать счёт, узнать статус, история, QR.</summary>
+/// <summary>Accepting payments: create an invoice, check its status, history, QR code.</summary>
 public sealed partial class Payments : Resource
 {
     /// <summary>Bind the namespace to a transport.</summary>
@@ -38,16 +38,17 @@ public sealed partial class Payments : Resource
     {
     }
 
-    /// <summary>Создать платёж (счёт на оплату)</summary>
+    /// <summary>Create a payment (invoice)</summary>
     /// <remarks>
-    /// <para>Создаёт счёт и возвращает адрес + сумму к оплате и ссылку на страницу оплаты.</para>
-    /// <para>**Как проще всего:** передайте `amount` (сумма), `currency` (валюта цены, напр. `USD`), `order_id` (ваш номер заказа). Если укажете `network` и `to_currency` — сразу зафиксируется конкретная монета/сеть. Если НЕ укажете — получится валюто-агностичная ссылка: клиент сам выберет валюту и сеть на странице оплаты.</para>
-    /// <para>**Цена и расчёт — разные вещи.** `currency` говорит, сколько счёт СТОИТ: это может быть фиат (`USD`, `EUR`, `RUB`, `GBP`, `JPY` и ещё сорок фиатных валют — полный список в `/v1/currencies`) или любая монета. `to_currency` говорит, чем ПЛАТЯТ: **только крипта**. Фиата мы не храним, поэтому баланс, выплаты и возвраты всегда в монете — счёт на 5000 ₽ выставить можно, а получить за него можно USDT, TRX и т. д.</para>
-    /// <para>Отсюда правило: если цена в фиате, то `to_currency` либо задаётся явно, либо не задаётся вовсе — вместе с `network` (тогда монету выберет покупатель). Цена в фиате + одна лишь `network`, без монеты, вернёт `payment.to_currency_required`: вывести монету из рублей неоткуда.</para>
-    /// <para>У иены и воны (`JPY`, `KRW`) **нет копеек** — сумма пишется без дробной части (`"10000"`, не `"10000.00"`). Полный список валют цены — в `pricing_currencies` у `GET /v1/currencies`.</para>
-    /// <para>**Идемпотентность:** повтор с тем же `order_id` вернёт тот же счёт (двойного счёта не будет).</para>
-    /// <para>Необязательные удобства: `lifetime` (сколько секунд живёт счёт, 300–43200), `url_return`/`url_success` (куда вернуть клиента), `url_callback` (куда слать вебхук), `additional_data` (ваши приватные данные), `payer_email`, `accuracy_payment_percent` (допуск недо/переплаты 0–5%), `is_refresh` (оживить просроченный счёт по order_id).</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>invoice.address_failed</c>, <c>invoice.address_taken</c>, <c>invoice.already_paid</c>, <c>invoice.bad_price</c>, <c>invoice.corrupt_pay_asset</c>, <c>invoice.daily_quota</c>, <c>invoice.deposit_pending</c>, <c>invoice.fiat_pay_asset</c>, <c>invoice.no_pay_asset</c>, <c>invoice.quote_failed</c>, <c>invoice.refresh_lease</c>, <c>invoice.refresh_not_expired</c>, <c>invoice.refresh_paid</c>, <c>invoice.refresh_select</c>, <c>invoice.surcharge_asset</c>, <c>merchant.acceptance_blocked</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>pay.method_not_accepted</c>, <c>pay.surcharge_unknown</c>, <c>payment.bad_accuracy</c>, <c>payment.bad_amount</c>, <c>payment.bad_payer_email</c>, <c>payment.bad_redirect_url</c>, <c>payment.bad_subtract</c>, <c>payment.bad_url_callback</c>, <c>payment.below_minimum</c>, <c>payment.discount_unavailable</c>, <c>payment.minimum_unavailable</c>, <c>payment.network_required</c>, <c>payment.not_found</c>, <c>payment.subtract_impossible</c>, <c>payment.surcharge_unavailable</c>, <c>payment.to_currency_required</c>, <c>payment.unknown_to_currency</c>, <c>payment.unsupported_network</c>, <c>postgres.lock_pool_busy</c>, <c>rates.deviation</c>, <c>rates.fiat_pay_asset</c>, <c>rates.no_pay_asset</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>rates.unavailable</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>webhook.no_endpoint</c>.</para>
+    /// <para>Creates an invoice and returns the address and amount to pay plus a link to the payment page.</para>
+    /// <para>**The simplest way:** pass `amount`, `currency` (the price currency, e.g. `USD`) and `order_id` (your order number). If you set `network` and `to_currency`, a specific coin/network is locked in immediately. If you DON'T, you get a currency-agnostic link: the customer picks the currency and network on the payment page.</para>
+    /// <para>**Price and settlement are different things.** `currency` says what the invoice COSTS: it can be fiat (`USD`, `EUR`, `RUB`, `GBP`, `JPY` and forty more fiat currencies — the full list is in `/v1/currencies`) or any coin. `to_currency` says what the customer PAYS WITH: **crypto only**. We do not hold fiat, so balances, payouts and refunds are always in a coin — you can issue an invoice for 5000 RUB, but it is paid in USDT, TRX, etc.</para>
+    /// <para>Hence the rule: if the price is in fiat, `to_currency` is either set explicitly or omitted together with `network` (then the buyer picks the coin). A fiat price with only `network` and no coin returns `payment.to_currency_required`: there is no way to derive a coin from rubles.</para>
+    /// <para>The yen and the won (`JPY`, `KRW`) have **no minor units** — write the amount without a fractional part (`"10000"`, not `"10000.00"`). The full list of price currencies is in `pricing_currencies` of `GET /v1/currencies`.</para>
+    /// <para>**Idempotency:** a retry with the same `order_id` returns the same invoice (no duplicate invoice is created).</para>
+    /// <para>Optional conveniences: `lifetime` (invoice lifetime in seconds, 300–43200), `url_return`/`url_success` (where to send the customer back), `url_callback` (where to send the webhook), `additional_data` (your private data), `payer_email`, `accuracy_payment_percent` (underpayment/overpayment tolerance, 0–5%), `is_refresh` (revive an expired invoice by order_id).</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>invoice.address_failed</c>, <c>invoice.address_taken</c>, <c>invoice.already_paid</c>, <c>invoice.bad_price</c>, <c>invoice.corrupt_pay_asset</c>, <c>invoice.daily_quota</c>, <c>invoice.deposit_pending</c>, <c>invoice.fiat_pay_asset</c>, <c>invoice.no_pay_asset</c>, <c>invoice.quote_failed</c>, <c>invoice.refresh_lease</c>, <c>invoice.refresh_not_expired</c>, <c>invoice.refresh_paid</c>, <c>invoice.refresh_select</c>, <c>invoice.surcharge_asset</c>, <c>merchant.acceptance_blocked</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>pay.method_not_accepted</c>, <c>pay.surcharge_unknown</c>, <c>payment.bad_accuracy</c>, <c>payment.bad_amount</c>, <c>payment.bad_payer_email</c>, <c>payment.bad_redirect_url</c>, <c>payment.bad_subtract</c>, <c>payment.bad_url_callback</c>, <c>payment.below_minimum</c>, <c>payment.discount_unavailable</c>, <c>payment.minimum_unavailable</c>, <c>payment.network_required</c>, <c>payment.not_found</c>, <c>payment.subtract_impossible</c>, <c>payment.surcharge_unavailable</c>, <c>payment.to_currency_required</c>, <c>payment.unknown_to_currency</c>, <c>payment.unsupported_network</c>, <c>postgres.lock_pool_busy</c>, <c>rates.deviation</c>, <c>rates.fiat_pay_asset</c>, <c>rates.no_pay_asset</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>rates.unavailable</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>webhook.no_endpoint</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -66,33 +67,34 @@ public sealed partial class Payments : Resource
             cancellationToken);
     }
 
-    /// <summary>Создать платёж (счёт на оплату)</summary>
+    /// <summary>Create a payment (invoice)</summary>
     /// <remarks>
-    /// <para>Создаёт счёт и возвращает адрес + сумму к оплате и ссылку на страницу оплаты.</para>
-    /// <para>**Как проще всего:** передайте `amount` (сумма), `currency` (валюта цены, напр. `USD`), `order_id` (ваш номер заказа). Если укажете `network` и `to_currency` — сразу зафиксируется конкретная монета/сеть. Если НЕ укажете — получится валюто-агностичная ссылка: клиент сам выберет валюту и сеть на странице оплаты.</para>
-    /// <para>**Цена и расчёт — разные вещи.** `currency` говорит, сколько счёт СТОИТ: это может быть фиат (`USD`, `EUR`, `RUB`, `GBP`, `JPY` и ещё сорок фиатных валют — полный список в `/v1/currencies`) или любая монета. `to_currency` говорит, чем ПЛАТЯТ: **только крипта**. Фиата мы не храним, поэтому баланс, выплаты и возвраты всегда в монете — счёт на 5000 ₽ выставить можно, а получить за него можно USDT, TRX и т. д.</para>
-    /// <para>Отсюда правило: если цена в фиате, то `to_currency` либо задаётся явно, либо не задаётся вовсе — вместе с `network` (тогда монету выберет покупатель). Цена в фиате + одна лишь `network`, без монеты, вернёт `payment.to_currency_required`: вывести монету из рублей неоткуда.</para>
-    /// <para>У иены и воны (`JPY`, `KRW`) **нет копеек** — сумма пишется без дробной части (`"10000"`, не `"10000.00"`). Полный список валют цены — в `pricing_currencies` у `GET /v1/currencies`.</para>
-    /// <para>**Идемпотентность:** повтор с тем же `order_id` вернёт тот же счёт (двойного счёта не будет).</para>
-    /// <para>Необязательные удобства: `lifetime` (сколько секунд живёт счёт, 300–43200), `url_return`/`url_success` (куда вернуть клиента), `url_callback` (куда слать вебхук), `additional_data` (ваши приватные данные), `payer_email`, `accuracy_payment_percent` (допуск недо/переплаты 0–5%), `is_refresh` (оживить просроченный счёт по order_id).</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>invoice.address_failed</c>, <c>invoice.address_taken</c>, <c>invoice.already_paid</c>, <c>invoice.bad_price</c>, <c>invoice.corrupt_pay_asset</c>, <c>invoice.daily_quota</c>, <c>invoice.deposit_pending</c>, <c>invoice.fiat_pay_asset</c>, <c>invoice.no_pay_asset</c>, <c>invoice.quote_failed</c>, <c>invoice.refresh_lease</c>, <c>invoice.refresh_not_expired</c>, <c>invoice.refresh_paid</c>, <c>invoice.refresh_select</c>, <c>invoice.surcharge_asset</c>, <c>merchant.acceptance_blocked</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>pay.method_not_accepted</c>, <c>pay.surcharge_unknown</c>, <c>payment.bad_accuracy</c>, <c>payment.bad_amount</c>, <c>payment.bad_payer_email</c>, <c>payment.bad_redirect_url</c>, <c>payment.bad_subtract</c>, <c>payment.bad_url_callback</c>, <c>payment.below_minimum</c>, <c>payment.discount_unavailable</c>, <c>payment.minimum_unavailable</c>, <c>payment.network_required</c>, <c>payment.not_found</c>, <c>payment.subtract_impossible</c>, <c>payment.surcharge_unavailable</c>, <c>payment.to_currency_required</c>, <c>payment.unknown_to_currency</c>, <c>payment.unsupported_network</c>, <c>postgres.lock_pool_busy</c>, <c>rates.deviation</c>, <c>rates.fiat_pay_asset</c>, <c>rates.no_pay_asset</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>rates.unavailable</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>webhook.no_endpoint</c>.</para>
+    /// <para>Creates an invoice and returns the address and amount to pay plus a link to the payment page.</para>
+    /// <para>**The simplest way:** pass `amount`, `currency` (the price currency, e.g. `USD`) and `order_id` (your order number). If you set `network` and `to_currency`, a specific coin/network is locked in immediately. If you DON'T, you get a currency-agnostic link: the customer picks the currency and network on the payment page.</para>
+    /// <para>**Price and settlement are different things.** `currency` says what the invoice COSTS: it can be fiat (`USD`, `EUR`, `RUB`, `GBP`, `JPY` and forty more fiat currencies — the full list is in `/v1/currencies`) or any coin. `to_currency` says what the customer PAYS WITH: **crypto only**. We do not hold fiat, so balances, payouts and refunds are always in a coin — you can issue an invoice for 5000 RUB, but it is paid in USDT, TRX, etc.</para>
+    /// <para>Hence the rule: if the price is in fiat, `to_currency` is either set explicitly or omitted together with `network` (then the buyer picks the coin). A fiat price with only `network` and no coin returns `payment.to_currency_required`: there is no way to derive a coin from rubles.</para>
+    /// <para>The yen and the won (`JPY`, `KRW`) have **no minor units** — write the amount without a fractional part (`"10000"`, not `"10000.00"`). The full list of price currencies is in `pricing_currencies` of `GET /v1/currencies`.</para>
+    /// <para>**Idempotency:** a retry with the same `order_id` returns the same invoice (no duplicate invoice is created).</para>
+    /// <para>Optional conveniences: `lifetime` (invoice lifetime in seconds, 300–43200), `url_return`/`url_success` (where to send the customer back), `url_callback` (where to send the webhook), `additional_data` (your private data), `payer_email`, `accuracy_payment_percent` (underpayment/overpayment tolerance, 0–5%), `is_refresh` (revive an expired invoice by order_id).</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>invoice.address_failed</c>, <c>invoice.address_taken</c>, <c>invoice.already_paid</c>, <c>invoice.bad_price</c>, <c>invoice.corrupt_pay_asset</c>, <c>invoice.daily_quota</c>, <c>invoice.deposit_pending</c>, <c>invoice.fiat_pay_asset</c>, <c>invoice.no_pay_asset</c>, <c>invoice.quote_failed</c>, <c>invoice.refresh_lease</c>, <c>invoice.refresh_not_expired</c>, <c>invoice.refresh_paid</c>, <c>invoice.refresh_select</c>, <c>invoice.surcharge_asset</c>, <c>merchant.acceptance_blocked</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>pay.method_not_accepted</c>, <c>pay.surcharge_unknown</c>, <c>payment.bad_accuracy</c>, <c>payment.bad_amount</c>, <c>payment.bad_payer_email</c>, <c>payment.bad_redirect_url</c>, <c>payment.bad_subtract</c>, <c>payment.bad_url_callback</c>, <c>payment.below_minimum</c>, <c>payment.discount_unavailable</c>, <c>payment.minimum_unavailable</c>, <c>payment.network_required</c>, <c>payment.not_found</c>, <c>payment.subtract_impossible</c>, <c>payment.surcharge_unavailable</c>, <c>payment.to_currency_required</c>, <c>payment.unknown_to_currency</c>, <c>payment.unsupported_network</c>, <c>postgres.lock_pool_busy</c>, <c>rates.deviation</c>, <c>rates.fiat_pay_asset</c>, <c>rates.no_pay_asset</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>rates.unavailable</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>webhook.no_endpoint</c>.</para>
     /// </remarks>
-    /// <param name="amount">Сумма к оплате в валюте currency.</param>
-    /// <param name="currency">Код валюты цены: любой из 23 фиатов (USD, EUR, RUB, …) или любая монета (USDT, BTC, …). У JPY и KRW ноль знаков после запятой.</param>
-    /// <param name="accuracyPaymentPercent">Допуск недо/переплаты, 0–5 %. Перекрывает настройку мерчанта.</param>
-    /// <param name="additionalData">Приватные данные мерчанта, эхом в вебхуках (покупателю не видны).</param>
-    /// <param name="isPaymentMultiple">Разрешить доплату остатка.</param>
-    /// <param name="isRefresh">Оживить просроченный счёт по order_id вместо создания нового.</param>
-    /// <param name="lifetimeSeconds">Время жизни счёта в секундах, 300–43200; по умолчанию 3600. Значения вне диапазона обрезаются к ближайшей границе.</param>
-    /// <param name="network">Сеть расчёта (напр. tron, ethereum). Необязательна — см. режимы выбора валюты и сети.</param>
-    /// <param name="orderId">Ссылка мерчанта; ключ идемпотентности. Настоятельно рекомендуется.</param>
-    /// <param name="payerEmail">Email плательщика. Если задан — после оплаты на него автоматически уходит чек; он же получатель по умолчанию у POST /v1/payment/send-email.</param>
-    /// <param name="subtract">Устаревшее: % сетевой наценки на плательщика (0–100); payer-facing наценки настраиваются через discount.</param>
-    /// <param name="theme">Тема страницы оплаты: dark | light.</param>
-    /// <param name="toCurrency">Валюта расчёта — крипта, которой платят. По умолчанию = currency (только если currency — крипта); при цене в фиате задайте явно либо опустите вместе с network.</param>
-    /// <param name="urlCallback">Индивидуальный webhook для этого счёта. Требует зарегистрированного эндпоинта (POST /v1/webhooks): доставка подписывается его секретом.</param>
-    /// <param name="urlReturn">Ссылка «назад в магазин» на странице оплаты.</param>
-    /// <param name="urlSuccess">Редирект после успешной оплаты.</param>
+    /// <param name="amount">The amount to pay in currency.</param>
+    /// <param name="currency">The price currency code: any of the 23 fiat currencies (USD, EUR, RUB, …) or any coin (USDT, BTC, …). JPY and KRW have zero decimal places.</param>
+    /// <param name="accuracyPaymentPercent">Underpayment/overpayment tolerance, 0–5 %. Overrides the merchant setting.</param>
+    /// <param name="additionalData">The merchant's private data, echoed in webhooks (not visible to the buyer).</param>
+    /// <param name="isPaymentMultiple">Allow paying the remainder.</param>
+    /// <param name="isRefresh">Revive an expired invoice by order_id instead of creating a new one.</param>
+    /// <param name="lifetimeSeconds">Invoice lifetime in seconds, 300–43200; default 3600. Out-of-range values are clamped to the nearest bound.</param>
+    /// <param name="network">The settlement network (e.g. tron, ethereum). Optional — see the currency and network selection modes.</param>
+    /// <param name="orderId">The merchant reference; the idempotency key. Strongly recommended.</param>
+    /// <param name="payerEmail">The payer's email. If set, a receipt is sent to it automatically after payment; it is also the default recipient for POST /v1/payment/send-email.</param>
+    /// <param name="subtract">Deprecated: % network surcharge on the payer (0–100); payer-facing surcharges are configured via discount.</param>
+    /// <param name="theme">Payment page theme: dark | light.</param>
+    /// <param name="toCurrency">The settlement currency — the crypto used to pay. Defaults to currency (only if currency is crypto); for a fiat price set it explicitly or omit it together with network.</param>
+    /// <param name="urlCallback">A per-invoice webhook. Requires a registered endpoint (POST /v1/webhooks): the delivery is signed with its secret.</param>
+    /// <param name="urlReturn">The "back to store" link on the payment page.</param>
+    /// <param name="urlSuccess">Redirect after a successful payment.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<PaymentView> CreateAsync(
@@ -137,10 +139,11 @@ public sealed partial class Payments : Resource
             options,
             cancellationToken);
 
-    /// <summary>Узнать статус платежа</summary>
+    /// <summary>Get payment status</summary>
     /// <remarks>
-    /// <para>Передайте `uuid` (наш) ИЛИ `order_id` (ваш). Вернёт текущий статус и суммы. Если оба — приоритет у `order_id`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>payout.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Pass `uuid` (ours) OR `order_id` (yours). Returns the current status and amounts. If both are given, `order_id` takes precedence.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>payout.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -159,13 +162,14 @@ public sealed partial class Payments : Resource
             cancellationToken);
     }
 
-    /// <summary>Узнать статус платежа</summary>
+    /// <summary>Get payment status</summary>
     /// <remarks>
-    /// <para>Передайте `uuid` (наш) ИЛИ `order_id` (ваш). Вернёт текущий статус и суммы. Если оба — приоритет у `order_id`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>payout.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Pass `uuid` (ours) OR `order_id` (yours). Returns the current status and amounts. If both are given, `order_id` takes precedence.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>payout.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="orderId">Ваша ссылка на заказ.</param>
-    /// <param name="uuid">Идентификатор счёта в Oblodai. Нужен uuid или order_id; приоритет у uuid.</param>
+    /// <param name="orderId">Your order reference.</param>
+    /// <param name="uuid">The invoice id in Oblodai. Either uuid or order_id is required; uuid takes precedence.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<PaymentInfoResult> GetInfoAsync(
@@ -182,10 +186,11 @@ public sealed partial class Payments : Resource
             options,
             cancellationToken);
 
-    /// <summary>QR-код адреса счёта</summary>
+    /// <summary>Invoice address QR code</summary>
     /// <remarks>
-    /// <para>Возвращает QR адреса оплаты (по `uuid`/`order_id`) как PNG data:-URI — вставляется прямо в `&lt;img src&gt;`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Returns the QR code of the payment address (by `uuid`/`order_id`) as a PNG data: URI — drop it straight into `&lt;img src&gt;`.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -204,13 +209,14 @@ public sealed partial class Payments : Resource
             cancellationToken);
     }
 
-    /// <summary>QR-код адреса счёта</summary>
+    /// <summary>Invoice address QR code</summary>
     /// <remarks>
-    /// <para>Возвращает QR адреса оплаты (по `uuid`/`order_id`) как PNG data:-URI — вставляется прямо в `&lt;img src&gt;`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Returns the QR code of the payment address (by `uuid`/`order_id`) as a PNG data: URI — drop it straight into `&lt;img src&gt;`.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="orderId">Ваша ссылка на заказ.</param>
-    /// <param name="uuid">Идентификатор счёта в Oblodai. Нужен uuid или order_id; приоритет у uuid.</param>
+    /// <param name="orderId">Your order reference.</param>
+    /// <param name="uuid">The invoice id in Oblodai. Either uuid or order_id is required; uuid takes precedence.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<PaymentQRResult> GetQrAsync(
@@ -227,10 +233,11 @@ public sealed partial class Payments : Resource
             options,
             cancellationToken);
 
-    /// <summary>История платежей</summary>
+    /// <summary>Payment history</summary>
     /// <remarks>
-    /// <para>Список ваших платежей, новые сверху: `items` + блок `paginate` (`total` — всего записей по фильтру, `per_page`, `offset`, `has_pages`). Тело: `limit` (1–100, по умолчанию 25), `offset`, необязательный `status` — то же значение, что в ответах и вебхуках (`created`, `confirm_check`, `paid`, `paid_over`, `wrong_amount`, `expired`, `cancelled`, `select`).</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppressed_in</c>, <c>payment.bad_status</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Your payments, newest first: `items` plus a `paginate` block (`total` — number of records matching the filter, `per_page`, `offset`, `has_pages`). Body: `limit` (1–100, default 25), `offset`, optional `status` — the same value as in responses and webhooks (`created`, `confirm_check`, `paid`, `paid_over`, `wrong_amount`, `expired`, `cancelled`, `select`).</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppressed_in</c>, <c>payment.bad_status</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -249,16 +256,17 @@ public sealed partial class Payments : Resource
             cancellationToken);
     }
 
-    /// <summary>История платежей</summary>
+    /// <summary>Payment history</summary>
     /// <remarks>
-    /// <para>Список ваших платежей, новые сверху: `items` + блок `paginate` (`total` — всего записей по фильтру, `per_page`, `offset`, `has_pages`). Тело: `limit` (1–100, по умолчанию 25), `offset`, необязательный `status` — то же значение, что в ответах и вебхуках (`created`, `confirm_check`, `paid`, `paid_over`, `wrong_amount`, `expired`, `cancelled`, `select`).</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppressed_in</c>, <c>payment.bad_status</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Your payments, newest first: `items` plus a `paginate` block (`total` — number of records matching the filter, `per_page`, `offset`, `has_pages`). Body: `limit` (1–100, default 25), `offset`, optional `status` — the same value as in responses and webhooks (`created`, `confirm_check`, `paid`, `paid_over`, `wrong_amount`, `expired`, `cancelled`, `select`).</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppressed_in</c>, <c>payment.bad_status</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="includeRefunds">Только для /v1/payout/history: true — вместе с выплатами вернуть и возвраты (прежнее поведение ленты без kind). По умолчанию false: возвраты — отдельно, kind=refund.</param>
-    /// <param name="kind">Только для /v1/payout/history: payout — обычные выплаты, refund — возвраты; пусто — обычные выплаты (с include_refunds=true — всё вместе).</param>
-    /// <param name="limit">Размер страницы, 1–100; вне диапазона — 25.</param>
-    /// <param name="offset">Смещение от начала списка (новые сверху).</param>
-    /// <param name="status">Фильтр по статусу (точное значение из словаря статусов); пусто — все.</param>
+    /// <param name="includeRefunds">Only for /v1/payout/history: true — return refunds together with payouts (the former behavior of the feed without kind). Default false: refunds are separate, kind=refund.</param>
+    /// <param name="kind">Only for /v1/payout/history: payout — regular payouts, refund — refunds; empty — regular payouts (with include_refunds=true — everything together).</param>
+    /// <param name="limit">Page size, 1–100; out of range — 25.</param>
+    /// <param name="offset">Offset from the start of the list (newest first).</param>
+    /// <param name="status">Filter by status (an exact value from the status vocabulary); empty — all.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public PagePromise<PaymentView> ListHistoryAsync(
@@ -281,10 +289,11 @@ public sealed partial class Payments : Resource
             options,
             cancellationToken);
 
-    /// <summary>Доступные валюты и сети для приёма</summary>
+    /// <summary>Currencies and networks available for accepting payments</summary>
     /// <remarks>
-    /// <para>Список валют/сетей, которые можно принимать, с лимитами и комиссиями. Тело запроса — пустой `{}`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>rates.deviation</c>, <c>rates.fiat_pay_asset</c>, <c>rates.no_pay_asset</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.unavailable</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>The currencies/networks you can accept, with limits and fees. The request body is an empty `{}`.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>rates.deviation</c>, <c>rates.fiat_pay_asset</c>, <c>rates.no_pay_asset</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.unavailable</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -303,13 +312,14 @@ public sealed partial class Payments : Resource
             cancellationToken);
     }
 
-    /// <summary>Доступные валюты и сети для приёма</summary>
+    /// <summary>Currencies and networks available for accepting payments</summary>
     /// <remarks>
-    /// <para>Список валют/сетей, которые можно принимать, с лимитами и комиссиями. Тело запроса — пустой `{}`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>rates.deviation</c>, <c>rates.fiat_pay_asset</c>, <c>rates.no_pay_asset</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.unavailable</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>The currencies/networks you can accept, with limits and fees. The request body is an empty `{}`.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>rates.deviation</c>, <c>rates.fiat_pay_asset</c>, <c>rates.no_pay_asset</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.unavailable</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="limit">Размер страницы, 1–100; вне диапазона — 25.</param>
-    /// <param name="offset">Смещение от начала списка.</param>
+    /// <param name="limit">Page size, 1–100; out of range — 25.</param>
+    /// <param name="offset">Offset from the start of the list.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public PagePromise<PayServiceEntry> ListServicesAsync(
@@ -326,10 +336,11 @@ public sealed partial class Payments : Resource
             options,
             cancellationToken);
 
-    /// <summary>Отменить счёт</summary>
+    /// <summary>Cancel an invoice</summary>
     /// <remarks>
-    /// <para>Отменяет ваш неоплаченный счёт (например, созданный по ошибке) по `uuid`/`order_id`. Разрешено, пока по счёту не увиден ни один платёж или депозит в сети; после этого — 409 (`invoice.already_paid` / `invoice.deposit_pending`): такой счёт надо не отменять, а провести или вернуть.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>invoice.already_paid</c>, <c>invoice.corrupt_pay_asset</c>, <c>invoice.deposit_pending</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Cancels your unpaid invoice (e.g. one created by mistake) by `uuid`/`order_id`. Allowed as long as no payment or on-chain deposit has been seen for the invoice; after that — 409 (`invoice.already_paid` / `invoice.deposit_pending`): such an invoice must be settled or refunded, not cancelled.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>invoice.already_paid</c>, <c>invoice.corrupt_pay_asset</c>, <c>invoice.deposit_pending</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -348,13 +359,14 @@ public sealed partial class Payments : Resource
             cancellationToken);
     }
 
-    /// <summary>Отменить счёт</summary>
+    /// <summary>Cancel an invoice</summary>
     /// <remarks>
-    /// <para>Отменяет ваш неоплаченный счёт (например, созданный по ошибке) по `uuid`/`order_id`. Разрешено, пока по счёту не увиден ни один платёж или депозит в сети; после этого — 409 (`invoice.already_paid` / `invoice.deposit_pending`): такой счёт надо не отменять, а провести или вернуть.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>invoice.already_paid</c>, <c>invoice.corrupt_pay_asset</c>, <c>invoice.deposit_pending</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Cancels your unpaid invoice (e.g. one created by mistake) by `uuid`/`order_id`. Allowed as long as no payment or on-chain deposit has been seen for the invoice; after that — 409 (`invoice.already_paid` / `invoice.deposit_pending`): such an invoice must be settled or refunded, not cancelled.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>invoice.already_paid</c>, <c>invoice.corrupt_pay_asset</c>, <c>invoice.deposit_pending</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="orderId">Ваша ссылка на заказ.</param>
-    /// <param name="uuid">Идентификатор счёта в Oblodai. Нужен uuid или order_id; приоритет у uuid.</param>
+    /// <param name="orderId">Your order reference.</param>
+    /// <param name="uuid">The invoice id in Oblodai. Either uuid or order_id is required; uuid takes precedence.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<PaymentView> CancelAsync(
@@ -371,10 +383,11 @@ public sealed partial class Payments : Resource
             options,
             cancellationToken);
 
-    /// <summary>Отправить счёт на e-mail</summary>
+    /// <summary>Email the invoice</summary>
     /// <remarks>
-    /// <para>Шлёт покупателю письмо с кнопкой «Оплатить» для существующего платежа (по `uuid`/`order_id`). Адрес — поле `email` или `payer_email` платежа. Требует настроенный SMTP (иначе `email.disabled`). Отправка ограничена ПО АДРЕСУ ПОЛУЧАТЕЛЯ: не больше 10 писем на один адрес за час, считая по всем вашим платежам (иначе `email.rate_limited`, 429). Чек об оплате отправляется автоматически на `payer_email`, когда платёж получен.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>email.bad_recipient</c>, <c>email.disabled</c>, <c>email.no_recipient</c>, <c>email.rate_limited</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Sends the buyer an email with a "Pay" button for an existing payment (by `uuid`/`order_id`). The address is the `email` field or the payment's `payer_email`. Requires SMTP to be configured (otherwise `email.disabled`). Sending is limited PER RECIPIENT ADDRESS: no more than 10 emails to one address per hour, counted across all your payments (otherwise `email.rate_limited`, 429). A payment receipt is sent automatically to `payer_email` once the payment is received.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>email.bad_recipient</c>, <c>email.disabled</c>, <c>email.no_recipient</c>, <c>email.rate_limited</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -393,14 +406,15 @@ public sealed partial class Payments : Resource
             cancellationToken);
     }
 
-    /// <summary>Отправить счёт на e-mail</summary>
+    /// <summary>Email the invoice</summary>
     /// <remarks>
-    /// <para>Шлёт покупателю письмо с кнопкой «Оплатить» для существующего платежа (по `uuid`/`order_id`). Адрес — поле `email` или `payer_email` платежа. Требует настроенный SMTP (иначе `email.disabled`). Отправка ограничена ПО АДРЕСУ ПОЛУЧАТЕЛЯ: не больше 10 писем на один адрес за час, считая по всем вашим платежам (иначе `email.rate_limited`, 429). Чек об оплате отправляется автоматически на `payer_email`, когда платёж получен.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>email.bad_recipient</c>, <c>email.disabled</c>, <c>email.no_recipient</c>, <c>email.rate_limited</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Sends the buyer an email with a "Pay" button for an existing payment (by `uuid`/`order_id`). The address is the `email` field or the payment's `payer_email`. Requires SMTP to be configured (otherwise `email.disabled`). Sending is limited PER RECIPIENT ADDRESS: no more than 10 emails to one address per hour, counted across all your payments (otherwise `email.rate_limited`, 429). A payment receipt is sent automatically to `payer_email` once the payment is received.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>email.bad_recipient</c>, <c>email.disabled</c>, <c>email.no_recipient</c>, <c>email.rate_limited</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="email">Кому отправить. По умолчанию — payer_email, заданный у платежа.</param>
-    /// <param name="orderId">Ваша ссылка на заказ.</param>
-    /// <param name="uuid">Идентификатор платежа в Oblodai. Нужен uuid или order_id.</param>
+    /// <param name="email">Whom to send to. Defaults to the payer_email set on the payment.</param>
+    /// <param name="orderId">Your order reference.</param>
+    /// <param name="uuid">The payment id in Oblodai. Either uuid or order_id is required.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<SendEmailResult> SendEmailAsync(
@@ -419,12 +433,13 @@ public sealed partial class Payments : Resource
             options,
             cancellationToken);
 
-    /// <summary>Настройки страницы оплаты</summary>
+    /// <summary>Payment page settings</summary>
     /// <remarks>
-    /// <para>Куда возвращать покупателя после оплаты (`success_url`) и после отказа (`fail_url`), и слать ли ему чек на почту (`email_receipts`).</para>
-    /// <para>Редиректы — это ЗНАЧЕНИЯ ПО УМОЛЧАНИЮ: они подставляются только в те счета, где вы не прислали `url_success`/`url_return` сами. Присланное в `/v1/payment` всегда сильнее. Чек — не умолчание, а решение: у него нет поля в счёте, и он уходит только если покупатель оставил почту.</para>
-    /// <para>Присылайте только те поля, которые меняете: пропущенное поле сохраняет прежнее значение, а пустая строка в редиректе — это «никуда не отправлять». Адрес должен быть http(s); проверка на записи, а не на показе.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>checkoutcfg.bad_url</c>, <c>checkoutcfg.disabled</c>, <c>checkoutcfg.url_too_long</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.missing_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Where to send the buyer after payment (`success_url`) and after a failure (`fail_url`), and whether to email them a receipt (`email_receipts`).</para>
+    /// <para>The redirects are DEFAULTS: they apply only to invoices where you did not send `url_success`/`url_return` yourself. Values sent in `/v1/payment` always win. The receipt is not a default but a decision: the invoice has no field for it, and it is sent only if the buyer left an email.</para>
+    /// <para>Send only the fields you change: an omitted field keeps its previous value, and an empty string in a redirect means "do not redirect". The URL must be http(s); it is validated on write, not on display.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>checkoutcfg.bad_url</c>, <c>checkoutcfg.disabled</c>, <c>checkoutcfg.url_too_long</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.missing_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -443,16 +458,17 @@ public sealed partial class Payments : Resource
             cancellationToken);
     }
 
-    /// <summary>Настройки страницы оплаты</summary>
+    /// <summary>Payment page settings</summary>
     /// <remarks>
-    /// <para>Куда возвращать покупателя после оплаты (`success_url`) и после отказа (`fail_url`), и слать ли ему чек на почту (`email_receipts`).</para>
-    /// <para>Редиректы — это ЗНАЧЕНИЯ ПО УМОЛЧАНИЮ: они подставляются только в те счета, где вы не прислали `url_success`/`url_return` сами. Присланное в `/v1/payment` всегда сильнее. Чек — не умолчание, а решение: у него нет поля в счёте, и он уходит только если покупатель оставил почту.</para>
-    /// <para>Присылайте только те поля, которые меняете: пропущенное поле сохраняет прежнее значение, а пустая строка в редиректе — это «никуда не отправлять». Адрес должен быть http(s); проверка на записи, а не на показе.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>checkoutcfg.bad_url</c>, <c>checkoutcfg.disabled</c>, <c>checkoutcfg.url_too_long</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.missing_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Where to send the buyer after payment (`success_url`) and after a failure (`fail_url`), and whether to email them a receipt (`email_receipts`).</para>
+    /// <para>The redirects are DEFAULTS: they apply only to invoices where you did not send `url_success`/`url_return` yourself. Values sent in `/v1/payment` always win. The receipt is not a default but a decision: the invoice has no field for it, and it is sent only if the buyer left an email.</para>
+    /// <para>Send only the fields you change: an omitted field keeps its previous value, and an empty string in a redirect means "do not redirect". The URL must be http(s); it is validated on write, not on display.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>checkoutcfg.bad_url</c>, <c>checkoutcfg.disabled</c>, <c>checkoutcfg.url_too_long</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.missing_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="emailReceipts">Слать ли покупателю чек на почту после оплаты. Чек уходит только если покупатель оставил адрес. По умолчанию — да.</param>
-    /// <param name="failUrl">Куда вернуть покупателя, если он ушёл с оплаты. Пустая строка — никуда не отправлять. Поле можно не присылать — тогда прежнее значение сохранится. Подставляется только в те счета, где url_return не задан.</param>
-    /// <param name="successUrl">Куда вернуть покупателя после успешной оплаты. Пустая строка — никуда не отправлять. Поле можно не присылать — тогда прежнее значение сохранится. Подставляется только в те счета, где url_success не задан.</param>
+    /// <param name="emailReceipts">Whether to email the buyer a receipt after payment. The receipt is sent only if the buyer left an address. Defaults to yes.</param>
+    /// <param name="failUrl">Where to send the buyer if they left the payment page. An empty string — do not redirect. The field may be omitted — then the previous value is kept. Applied only to invoices where url_return is not set.</param>
+    /// <param name="successUrl">Where to send the buyer after a successful payment. An empty string — do not redirect. The field may be omitted — then the previous value is kept. Applied only to invoices where url_success is not set.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<CheckoutConfigView> SetCheckoutConfigAsync(
@@ -471,10 +487,11 @@ public sealed partial class Payments : Resource
             options,
             cancellationToken);
 
-    /// <summary>Текущие настройки страницы оплаты</summary>
+    /// <summary>Current payment page settings</summary>
     /// <remarks>
-    /// <para>Возвращает `success_url`, `fail_url`, `email_receipts` проекта. Ненастроенное поле отдаётся своим ФАКТИЧЕСКИМ поведением: пустой редирект и `email_receipts: true`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>checkoutcfg.disabled</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Returns the project's `success_url`, `fail_url`, `email_receipts`. An unconfigured field is returned as its EFFECTIVE behavior: an empty redirect and `email_receipts: true`.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>checkoutcfg.disabled</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -487,10 +504,11 @@ public sealed partial class Payments : Resource
             options,
             cancellationToken);
 
-    /// <summary>Ссылки на анкету происхождения средств</summary>
+    /// <summary>Source-of-funds questionnaire links</summary>
     /// <remarks>
-    /// <para>По `uuid` или `order_id`. Если по платежу ничего не заблокировано — **пустой массив**; это единственное, по чему различаются случаи, сама причина наружу не уходит. Каждый элемент: `link` (передайте её плательщику), `expired_at`, `status` (`init|pending|completed|expired`). Содержимое анкеты вам не показывается: это данные вашего клиента, а не ваши.</para>
-    /// <para>Errors: <c>aml.sof_race</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payment.bad_uuid</c>, <c>payment.no_reference</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>By `uuid` or `order_id`. If nothing is blocked for the payment — an **empty array**; that is the only thing that distinguishes the cases, the reason itself is not disclosed. Each item: `link` (hand it to the payer), `expired_at`, `status` (`init|pending|completed|expired`). The questionnaire contents are not shown to you: they are your customer's data, not yours.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>aml.sof_race</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payment.bad_uuid</c>, <c>payment.no_reference</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -509,13 +527,14 @@ public sealed partial class Payments : Resource
             cancellationToken);
     }
 
-    /// <summary>Ссылки на анкету происхождения средств</summary>
+    /// <summary>Source-of-funds questionnaire links</summary>
     /// <remarks>
-    /// <para>По `uuid` или `order_id`. Если по платежу ничего не заблокировано — **пустой массив**; это единственное, по чему различаются случаи, сама причина наружу не уходит. Каждый элемент: `link` (передайте её плательщику), `expired_at`, `status` (`init|pending|completed|expired`). Содержимое анкеты вам не показывается: это данные вашего клиента, а не ваши.</para>
-    /// <para>Errors: <c>aml.sof_race</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payment.bad_uuid</c>, <c>payment.no_reference</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>By `uuid` or `order_id`. If nothing is blocked for the payment — an **empty array**; that is the only thing that distinguishes the cases, the reason itself is not disclosed. Each item: `link` (hand it to the payer), `expired_at`, `status` (`init|pending|completed|expired`). The questionnaire contents are not shown to you: they are your customer's data, not yours.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>aml.sof_race</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payment.bad_uuid</c>, <c>payment.no_reference</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="orderId">Идентификатор заказа мерчанта.</param>
-    /// <param name="uuid">Идентификатор платежа. Нужен uuid или order_id; приоритет у uuid.</param>
+    /// <param name="orderId">The merchant's order id.</param>
+    /// <param name="uuid">Payment id. Either uuid or order_id is required; uuid takes precedence.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<AMLLinksResult> GetAmlLinksAsync(
@@ -532,10 +551,11 @@ public sealed partial class Payments : Resource
             options,
             cancellationToken);
 
-    /// <summary>Разрешить недоплату: принять или вернуть</summary>
+    /// <summary>Resolve an underpayment: accept or refund</summary>
     /// <remarks>
-    /// <para>Для платежа в статусе `wrong_amount` (недоплата, срок вышел) мерчант явно решает судьбу денег: `action:"accept"` — оставить частичную оплату как расчёт (снимает автовозврат), `action:"refund"` — вернуть полученное плательщику сейчас (адрес/сеть по умолчанию — записанный адрес плательщика). Двигает деньги — подписывается вашим API-ключом, как и всё остальное: ключ у мерчанта один и он полнодоступный.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.approver_is_creator</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.cap_unpriceable</c>, <c>payout.convert_bad_amount</c>, <c>payout.convert_frozen</c>, <c>payout.convert_idempotency_conflict</c>, <c>payout.convert_insufficient</c>, <c>payout.convert_no_rate</c>, <c>payout.convert_same_asset</c>, <c>payout.convert_unsupported</c>, <c>payout.daily_cap</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.illegal_transition</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.not_pending</c>, <c>payout.reference_collision</c>, <c>postgres.lock_pool_busy</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>refund.destination_internal</c>, <c>refund.dust</c>, <c>refund.exceeds_excess</c>, <c>refund.exceeds_refundable</c>, <c>refund.fence_check</c>, <c>refund.from_currency_personal_account</c>, <c>refund.no_address</c>, <c>refund.nothing_to_refund</c>, <c>refund.omnibus_destination</c>, <c>refund.paid_internally</c>, <c>refund.reference_collision</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>resolution.already_refunded</c>, <c>resolution.already_resolved</c>, <c>resolution.bad_action</c>, <c>resolution.chain_ambiguous</c>, <c>resolution.disabled</c>, <c>resolution.network_required</c>, <c>resolution.not_underpaid</c>, <c>resolution.unsupported_network</c>, <c>treasury.no_ccy_map</c>, <c>wallet.static_not_found</c>.</para>
+    /// <para>For a payment in status `wrong_amount` (underpaid, expired) the merchant explicitly decides what happens to the money: `action:"accept"` — keep the partial payment as settlement (cancels the auto-refund), `action:"refund"` — return what was received to the payer now (address/network default to the recorded payer address). It moves money — it is signed with your API key like everything else: a merchant has one key and it has full access.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.approver_is_creator</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.cap_unpriceable</c>, <c>payout.convert_bad_amount</c>, <c>payout.convert_frozen</c>, <c>payout.convert_idempotency_conflict</c>, <c>payout.convert_insufficient</c>, <c>payout.convert_no_rate</c>, <c>payout.convert_same_asset</c>, <c>payout.convert_unsupported</c>, <c>payout.daily_cap</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.illegal_transition</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.not_pending</c>, <c>payout.reference_collision</c>, <c>postgres.lock_pool_busy</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>refund.destination_internal</c>, <c>refund.dust</c>, <c>refund.exceeds_excess</c>, <c>refund.exceeds_refundable</c>, <c>refund.fence_check</c>, <c>refund.from_currency_personal_account</c>, <c>refund.no_address</c>, <c>refund.nothing_to_refund</c>, <c>refund.omnibus_destination</c>, <c>refund.paid_internally</c>, <c>refund.reference_collision</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>resolution.already_refunded</c>, <c>resolution.already_resolved</c>, <c>resolution.bad_action</c>, <c>resolution.chain_ambiguous</c>, <c>resolution.disabled</c>, <c>resolution.network_required</c>, <c>resolution.not_underpaid</c>, <c>resolution.unsupported_network</c>, <c>treasury.no_ccy_map</c>, <c>wallet.static_not_found</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -554,17 +574,18 @@ public sealed partial class Payments : Resource
             cancellationToken);
     }
 
-    /// <summary>Разрешить недоплату: принять или вернуть</summary>
+    /// <summary>Resolve an underpayment: accept or refund</summary>
     /// <remarks>
-    /// <para>Для платежа в статусе `wrong_amount` (недоплата, срок вышел) мерчант явно решает судьбу денег: `action:"accept"` — оставить частичную оплату как расчёт (снимает автовозврат), `action:"refund"` — вернуть полученное плательщику сейчас (адрес/сеть по умолчанию — записанный адрес плательщика). Двигает деньги — подписывается вашим API-ключом, как и всё остальное: ключ у мерчанта один и он полнодоступный.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.approver_is_creator</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.cap_unpriceable</c>, <c>payout.convert_bad_amount</c>, <c>payout.convert_frozen</c>, <c>payout.convert_idempotency_conflict</c>, <c>payout.convert_insufficient</c>, <c>payout.convert_no_rate</c>, <c>payout.convert_same_asset</c>, <c>payout.convert_unsupported</c>, <c>payout.daily_cap</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.illegal_transition</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.not_pending</c>, <c>payout.reference_collision</c>, <c>postgres.lock_pool_busy</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>refund.destination_internal</c>, <c>refund.dust</c>, <c>refund.exceeds_excess</c>, <c>refund.exceeds_refundable</c>, <c>refund.fence_check</c>, <c>refund.from_currency_personal_account</c>, <c>refund.no_address</c>, <c>refund.nothing_to_refund</c>, <c>refund.omnibus_destination</c>, <c>refund.paid_internally</c>, <c>refund.reference_collision</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>resolution.already_refunded</c>, <c>resolution.already_resolved</c>, <c>resolution.bad_action</c>, <c>resolution.chain_ambiguous</c>, <c>resolution.disabled</c>, <c>resolution.network_required</c>, <c>resolution.not_underpaid</c>, <c>resolution.unsupported_network</c>, <c>treasury.no_ccy_map</c>, <c>wallet.static_not_found</c>.</para>
+    /// <para>For a payment in status `wrong_amount` (underpaid, expired) the merchant explicitly decides what happens to the money: `action:"accept"` — keep the partial payment as settlement (cancels the auto-refund), `action:"refund"` — return what was received to the payer now (address/network default to the recorded payer address). It moves money — it is signed with your API key like everything else: a merchant has one key and it has full access.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.approver_is_creator</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.cap_unpriceable</c>, <c>payout.convert_bad_amount</c>, <c>payout.convert_frozen</c>, <c>payout.convert_idempotency_conflict</c>, <c>payout.convert_insufficient</c>, <c>payout.convert_no_rate</c>, <c>payout.convert_same_asset</c>, <c>payout.convert_unsupported</c>, <c>payout.daily_cap</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.illegal_transition</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.not_pending</c>, <c>payout.reference_collision</c>, <c>postgres.lock_pool_busy</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>refund.destination_internal</c>, <c>refund.dust</c>, <c>refund.exceeds_excess</c>, <c>refund.exceeds_refundable</c>, <c>refund.fence_check</c>, <c>refund.from_currency_personal_account</c>, <c>refund.no_address</c>, <c>refund.nothing_to_refund</c>, <c>refund.omnibus_destination</c>, <c>refund.paid_internally</c>, <c>refund.reference_collision</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>resolution.already_refunded</c>, <c>resolution.already_resolved</c>, <c>resolution.bad_action</c>, <c>resolution.chain_ambiguous</c>, <c>resolution.disabled</c>, <c>resolution.network_required</c>, <c>resolution.not_underpaid</c>, <c>resolution.unsupported_network</c>, <c>treasury.no_ccy_map</c>, <c>wallet.static_not_found</c>.</para>
     /// </remarks>
-    /// <param name="action">accept — принять частичную оплату, refund — вернуть плательщику.</param>
-    /// <param name="address">Только для refund: адрес возврата. По умолчанию — записанный payer_address платежа; если он пуст (Bitcoin/UTXO), адрес обязателен, иначе refund.no_address.</param>
-    /// <param name="network">Только для refund: сеть возврата, по умолчанию — сеть платежа.</param>
-    /// <param name="orderId">Ваш идентификатор платежа.</param>
-    /// <param name="reference">Только для refund: ваш ключ дедупликации возврата.</param>
-    /// <param name="uuid">UUID платежа. Нужен uuid или order_id.</param>
+    /// <param name="action">accept — accept the partial payment, refund — return it to the payer.</param>
+    /// <param name="address">Only for refund: the refund address. Defaults to the payment's recorded payer_address; if that is empty (Bitcoin/UTXO), the address is required, otherwise refund.no_address.</param>
+    /// <param name="network">Only for refund: the refund network, defaults to the payment's network.</param>
+    /// <param name="orderId">Your payment identifier.</param>
+    /// <param name="reference">Only for refund: your refund deduplication key.</param>
+    /// <param name="uuid">Payment UUID. Either uuid or order_id is required.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<IResolveResult> ResolveAsync(
@@ -590,7 +611,7 @@ public sealed partial class Payments : Resource
             cancellationToken);
 }
 
-/// <summary>Многоразовые ссылки на оплату: одна ссылка — много платежей.</summary>
+/// <summary>Reusable payment links: one link, many payments.</summary>
 public sealed partial class PaymentLinks : Resource
 {
     /// <summary>Bind the namespace to a transport.</summary>
@@ -600,11 +621,12 @@ public sealed partial class PaymentLinks : Resource
     {
     }
 
-    /// <summary>Создать платёжную ссылку</summary>
+    /// <summary>Create a payment link</summary>
     /// <remarks>
-    /// <para>Переиспользуемая ссылка (как страница доната): по ней платят много людей, каждый платёж — свой инвойс со своим адресом. `amount_mode`: `fixed` (сумма задана в `amount_fixed`), `open` (клиент вводит любую сумму, опц. `amount_min`), `range` (клиент вводит в диапазоне `amount_min`…`amount_max`). `currency` — валюта цены (крипто-тикер, напр. `USDT`).</para>
-    /// <para>Валюту/сеть оплаты можно **закрепить** (`pinned_currency` + `pinned_network`) или оставить пустыми — тогда клиент выбирает их на странице оплаты. `expires_in` — срок жизни ссылки в секундах (0 = **бессрочно**; сами инвойсы при этом живут обычный короткий срок). В ответе — `link_id` и `url` для клиента.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.acceptance_blocked</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>paylink.bad_amount</c>, <c>paylink.bad_max</c>, <c>paylink.bad_min</c>, <c>paylink.bad_mode</c>, <c>paylink.bad_range</c>, <c>paylink.disabled</c>, <c>paylink.expires_in_negative</c>, <c>paylink.expires_in_too_large</c>, <c>paylink.not_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
+    /// <para>A reusable link (like a donation page): many people pay through it, each payment is its own invoice with its own address. `amount_mode`: `fixed` (the amount is set in `amount_fixed`), `open` (the customer enters any amount, optionally `amount_min`), `range` (the customer enters an amount between `amount_min` and `amount_max`). `currency` — the price currency (a crypto ticker, e.g. `USDT`).</para>
+    /// <para>The payment currency/network can be **pinned** (`pinned_currency` + `pinned_network`) or left empty — then the customer picks them on the payment page. `expires_in` — the link lifetime in seconds (0 = **never expires**; the invoices themselves still have the usual short lifetime). The response contains `link_id` and the `url` for the customer.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.acceptance_blocked</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>paylink.bad_amount</c>, <c>paylink.bad_max</c>, <c>paylink.bad_min</c>, <c>paylink.bad_mode</c>, <c>paylink.bad_range</c>, <c>paylink.disabled</c>, <c>paylink.expires_in_negative</c>, <c>paylink.expires_in_too_large</c>, <c>paylink.not_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -623,22 +645,23 @@ public sealed partial class PaymentLinks : Resource
             cancellationToken);
     }
 
-    /// <summary>Создать платёжную ссылку</summary>
+    /// <summary>Create a payment link</summary>
     /// <remarks>
-    /// <para>Переиспользуемая ссылка (как страница доната): по ней платят много людей, каждый платёж — свой инвойс со своим адресом. `amount_mode`: `fixed` (сумма задана в `amount_fixed`), `open` (клиент вводит любую сумму, опц. `amount_min`), `range` (клиент вводит в диапазоне `amount_min`…`amount_max`). `currency` — валюта цены (крипто-тикер, напр. `USDT`).</para>
-    /// <para>Валюту/сеть оплаты можно **закрепить** (`pinned_currency` + `pinned_network`) или оставить пустыми — тогда клиент выбирает их на странице оплаты. `expires_in` — срок жизни ссылки в секундах (0 = **бессрочно**; сами инвойсы при этом живут обычный короткий срок). В ответе — `link_id` и `url` для клиента.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.acceptance_blocked</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>paylink.bad_amount</c>, <c>paylink.bad_max</c>, <c>paylink.bad_min</c>, <c>paylink.bad_mode</c>, <c>paylink.bad_range</c>, <c>paylink.disabled</c>, <c>paylink.expires_in_negative</c>, <c>paylink.expires_in_too_large</c>, <c>paylink.not_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
+    /// <para>A reusable link (like a donation page): many people pay through it, each payment is its own invoice with its own address. `amount_mode`: `fixed` (the amount is set in `amount_fixed`), `open` (the customer enters any amount, optionally `amount_min`), `range` (the customer enters an amount between `amount_min` and `amount_max`). `currency` — the price currency (a crypto ticker, e.g. `USDT`).</para>
+    /// <para>The payment currency/network can be **pinned** (`pinned_currency` + `pinned_network`) or left empty — then the customer picks them on the payment page. `expires_in` — the link lifetime in seconds (0 = **never expires**; the invoices themselves still have the usual short lifetime). The response contains `link_id` and the `url` for the customer.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.acceptance_blocked</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>paylink.bad_amount</c>, <c>paylink.bad_max</c>, <c>paylink.bad_min</c>, <c>paylink.bad_mode</c>, <c>paylink.bad_range</c>, <c>paylink.disabled</c>, <c>paylink.expires_in_negative</c>, <c>paylink.expires_in_too_large</c>, <c>paylink.not_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
     /// </remarks>
-    /// <param name="amountMode">Режим суммы: fixed | open | range</param>
-    /// <param name="currency">Валюта цены — фиат (USD, EUR, RUB, …) или монета; список — pricing_currencies из GET /v1/currencies</param>
-    /// <param name="amountFixed">Сумма — для режима fixed; обязательна в этом режиме</param>
-    /// <param name="description">Описание на странице оплаты</param>
-    /// <param name="expiresInSeconds">Срок жизни ссылки, секунд от момента создания; 0 (по умолчанию) — ссылка бессрочная</param>
-    /// <param name="maxAmount">Верхняя граница — для range; обязательна в этом режиме</param>
-    /// <param name="minAmount">Нижняя граница: необязательный «пол» для open, обязательный минимум для range</param>
-    /// <param name="pinnedCurrency">Валюта расчёта (монета), закреплённая за ссылкой; пусто — монету выбирает покупатель</param>
-    /// <param name="pinnedNetwork">Сеть расчёта, закреплённая за ссылкой; пусто — сеть выбирает покупатель</param>
-    /// <param name="title">Заголовок на странице оплаты</param>
+    /// <param name="amountMode">Amount mode: fixed | open | range</param>
+    /// <param name="currency">The price currency — fiat (USD, EUR, RUB, …) or a coin; the list is pricing_currencies from GET /v1/currencies</param>
+    /// <param name="amountFixed">Amount — for fixed mode; required in this mode</param>
+    /// <param name="description">Description on the payment page</param>
+    /// <param name="expiresInSeconds">The link lifetime, in seconds from creation; 0 (default) — the link never expires</param>
+    /// <param name="maxAmount">Upper bound — for range; required in this mode</param>
+    /// <param name="minAmount">Lower bound: an optional "floor" for open, a required minimum for range</param>
+    /// <param name="pinnedCurrency">The settlement currency (coin) pinned to the link; empty — the buyer chooses the coin</param>
+    /// <param name="pinnedNetwork">The settlement network pinned to the link; empty — the buyer chooses the network</param>
+    /// <param name="title">Title on the payment page</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<PaymentLinkResponse> CreateAsync(
@@ -671,10 +694,11 @@ public sealed partial class PaymentLinks : Resource
             options,
             cancellationToken);
 
-    /// <summary>Список ссылок</summary>
+    /// <summary>List links</summary>
     /// <remarks>
-    /// <para>Ваши платёжные ссылки, новые сверху.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>paylink.disabled</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Your payment links, newest first.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>paylink.disabled</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -693,13 +717,14 @@ public sealed partial class PaymentLinks : Resource
             cancellationToken);
     }
 
-    /// <summary>Список ссылок</summary>
+    /// <summary>List links</summary>
     /// <remarks>
-    /// <para>Ваши платёжные ссылки, новые сверху.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>paylink.disabled</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Your payment links, newest first.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>paylink.disabled</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="limit">Размер страницы, 1–100; вне диапазона — 25.</param>
-    /// <param name="offset">Смещение от начала списка.</param>
+    /// <param name="limit">Page size, 1–100; out of range — 25.</param>
+    /// <param name="offset">Offset from the start of the list.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public PagePromise<PaymentLinkView> ListAsync(
@@ -716,10 +741,11 @@ public sealed partial class PaymentLinks : Resource
             options,
             cancellationToken);
 
-    /// <summary>Ссылка + её платежи</summary>
+    /// <summary>Link and its payments</summary>
     /// <remarks>
-    /// <para>По `link_id`: конфиг ссылки и собранные по ней платежи (`payments[]`).</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>paylink.bad_id</c>, <c>paylink.disabled</c>, <c>paylink.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>By `link_id`: the link configuration and the payments collected through it (`payments[]`).</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>paylink.bad_id</c>, <c>paylink.disabled</c>, <c>paylink.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -738,14 +764,15 @@ public sealed partial class PaymentLinks : Resource
             cancellationToken);
     }
 
-    /// <summary>Ссылка + её платежи</summary>
+    /// <summary>Link and its payments</summary>
     /// <remarks>
-    /// <para>По `link_id`: конфиг ссылки и собранные по ней платежи (`payments[]`).</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>paylink.bad_id</c>, <c>paylink.disabled</c>, <c>paylink.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>By `link_id`: the link configuration and the payments collected through it (`payments[]`).</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>paylink.bad_id</c>, <c>paylink.disabled</c>, <c>paylink.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="linkId">Идентификатор платёжной ссылки.</param>
-    /// <param name="limit">Размер страницы платежей по ссылке, 1–100; вне диапазона — 25.</param>
-    /// <param name="offset">Смещение страницы платежей.</param>
+    /// <param name="linkId">Payment link id.</param>
+    /// <param name="limit">The page size for payments through the link, 1–100; out of range — 25.</param>
+    /// <param name="offset">The offset of the payments page.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<PaymentLinkDetail> GetAsync(
@@ -764,10 +791,11 @@ public sealed partial class PaymentLinks : Resource
             options,
             cancellationToken);
 
-    /// <summary>Включить/выключить ссылку</summary>
+    /// <summary>Enable/disable a link</summary>
     /// <remarks>
-    /// <para>`{link_id, active}`. Выключенная ссылка не принимает новые платежи.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>paylink.bad_id</c>, <c>paylink.disabled</c>, <c>paylink.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>`{link_id, active}`. A disabled link does not accept new payments.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>paylink.bad_id</c>, <c>paylink.disabled</c>, <c>paylink.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -786,13 +814,14 @@ public sealed partial class PaymentLinks : Resource
             cancellationToken);
     }
 
-    /// <summary>Включить/выключить ссылку</summary>
+    /// <summary>Enable/disable a link</summary>
     /// <remarks>
-    /// <para>`{link_id, active}`. Выключенная ссылка не принимает новые платежи.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>paylink.bad_id</c>, <c>paylink.disabled</c>, <c>paylink.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>`{link_id, active}`. A disabled link does not accept new payments.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>paylink.bad_id</c>, <c>paylink.disabled</c>, <c>paylink.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="active">true — ссылка принимает оплату; false — выключена (страница покажет, что ссылка неактивна).</param>
-    /// <param name="linkId">Идентификатор платёжной ссылки.</param>
+    /// <param name="active">true — the link accepts payments; false — disabled (the page will show that the link is inactive).</param>
+    /// <param name="linkId">Payment link id.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<PaymentLinkToggled> ToggleAsync(
@@ -810,7 +839,7 @@ public sealed partial class PaymentLinks : Resource
             cancellationToken);
 }
 
-/// <summary>Вернуть деньги плательщику (списание с вашего баланса).</summary>
+/// <summary>Return money to the payer (debited from your balance).</summary>
 public sealed partial class Refunds : Resource
 {
     /// <summary>Bind the namespace to a transport.</summary>
@@ -820,13 +849,14 @@ public sealed partial class Refunds : Resource
     {
     }
 
-    /// <summary>Вернуть платёж</summary>
+    /// <summary>Refund a payment</summary>
     /// <remarks>
-    /// <para>Возврат — это списание с вашего баланса.</para>
-    /// <para>`address` (куда вернуть) можно опустить ТОЛЬКО если в платеже `payer_address_is_refundable` = true: тогда вернём на записанный адрес плательщика (`payer_address`). Если там false — адрес плательщика нам известен, но он не является адресом возврата (Bitcoin/UTXO: первый вход мог быть биржей или сдачей; XRP: общий адрес биржи с тегом назначения; оплата КАРТОЙ через крипто-он-рамп: отправитель — омнибусный горячий кошелёк провайдера, а не покупатель). Возврат туда уходит безвозвратно тому, кто денег не платил, поэтому запрос без `address` будет отклонён (`refund.no_address`): спросите адрес у покупателя и передайте его явно. Нужен `uuid`/`order_id` платежа. По умолчанию вернём всю полученную сумму; можно указать частичную `amount`.</para>
-    /// <para>Идемпотентно по `(платёж, адрес, сумма)`; суммарно нельзя вернуть больше, чем оплачено. Возврат подтверждается автоматически на любой адрес. Единственное исключение — платёж картой через он-рамп: возврат НА ЗАПИСАННЫЙ АДРЕС ПЛАТЕЛЬЩИКА такого счёта отклоняется (`refund.omnibus_destination`), потому что этот адрес принадлежит провайдеру, а не покупателю — пришлите адрес покупателя явно.</para>
-    /// <para>Возврат платится ТОЙ ЖЕ монетой, которой заплатил покупатель. Если она уже сведена в стейбл автообменом, передайте `from_currency: "USDT"` — возврат профинансируется конвертацией вашего баланса USDT и останется ВОЗВРАТОМ: счёт пометится возвращённым, доли партнёрам отзовутся. Отправить деньги обычной выплатой тоже можно, но в отчётах это будет выплата, а не возврат.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.approver_is_creator</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.cap_unpriceable</c>, <c>payout.convert_bad_amount</c>, <c>payout.convert_frozen</c>, <c>payout.convert_idempotency_conflict</c>, <c>payout.convert_insufficient</c>, <c>payout.convert_no_rate</c>, <c>payout.convert_same_asset</c>, <c>payout.convert_unsupported</c>, <c>payout.daily_cap</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.illegal_transition</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.not_pending</c>, <c>payout.reference_collision</c>, <c>postgres.lock_pool_busy</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>refund.bad_amount</c>, <c>refund.chain_ambiguous</c>, <c>refund.destination_internal</c>, <c>refund.dust</c>, <c>refund.exceeds_excess</c>, <c>refund.exceeds_refundable</c>, <c>refund.fence_check</c>, <c>refund.from_currency_personal_account</c>, <c>refund.from_currency_unsupported</c>, <c>refund.network_required</c>, <c>refund.no_address</c>, <c>refund.nothing_to_refund</c>, <c>refund.omnibus_destination</c>, <c>refund.paid_internally</c>, <c>refund.reference_collision</c>, <c>refund.unsupported_network</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>sandbox.convert_not_available</c>, <c>treasury.no_ccy_map</c>, <c>wallet.static_not_found</c>.</para>
+    /// <para>A refund is debited from your balance.</para>
+    /// <para>`address` (where to refund) may be omitted ONLY if the payment has `payer_address_is_refundable` = true: then we refund to the recorded payer address (`payer_address`). If it is false, we know the payer's address but it is not a refund address (Bitcoin/UTXO: the first input may belong to an exchange or be change; XRP: a shared exchange address with a destination tag; CARD payment via a crypto on-ramp: the sender is the provider's omnibus hot wallet, not the buyer). A refund sent there is irrecoverably lost to someone who never paid, so a request without `address` is rejected (`refund.no_address`): ask the buyer for an address and pass it explicitly. The payment's `uuid`/`order_id` is required. By default the full received amount is refunded; you may specify a partial `amount`.</para>
+    /// <para>Idempotent on `(payment, address, amount)`; in total you cannot refund more than was paid. Refunds to any address are approved automatically. The only exception is a card payment via an on-ramp: a refund TO THE RECORDED PAYER ADDRESS of such an invoice is rejected (`refund.omnibus_destination`), because that address belongs to the provider, not the buyer — send the buyer's address explicitly.</para>
+    /// <para>A refund is paid in THE SAME coin the buyer paid with. If it has already been converted into a stablecoin by auto-conversion, pass `from_currency: "USDT"` — the refund is funded by converting your USDT balance and remains a REFUND: the invoice is marked refunded and partner shares are reversed. You can also send the money as a regular payout, but reports will show it as a payout, not a refund.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.approver_is_creator</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.cap_unpriceable</c>, <c>payout.convert_bad_amount</c>, <c>payout.convert_frozen</c>, <c>payout.convert_idempotency_conflict</c>, <c>payout.convert_insufficient</c>, <c>payout.convert_no_rate</c>, <c>payout.convert_same_asset</c>, <c>payout.convert_unsupported</c>, <c>payout.daily_cap</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.illegal_transition</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.not_pending</c>, <c>payout.reference_collision</c>, <c>postgres.lock_pool_busy</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>refund.bad_amount</c>, <c>refund.chain_ambiguous</c>, <c>refund.destination_internal</c>, <c>refund.dust</c>, <c>refund.exceeds_excess</c>, <c>refund.exceeds_refundable</c>, <c>refund.fence_check</c>, <c>refund.from_currency_personal_account</c>, <c>refund.from_currency_unsupported</c>, <c>refund.network_required</c>, <c>refund.no_address</c>, <c>refund.nothing_to_refund</c>, <c>refund.omnibus_destination</c>, <c>refund.paid_internally</c>, <c>refund.reference_collision</c>, <c>refund.unsupported_network</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>sandbox.convert_not_available</c>, <c>treasury.no_ccy_map</c>, <c>wallet.static_not_found</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -845,21 +875,22 @@ public sealed partial class Refunds : Resource
             cancellationToken);
     }
 
-    /// <summary>Вернуть платёж</summary>
+    /// <summary>Refund a payment</summary>
     /// <remarks>
-    /// <para>Возврат — это списание с вашего баланса.</para>
-    /// <para>`address` (куда вернуть) можно опустить ТОЛЬКО если в платеже `payer_address_is_refundable` = true: тогда вернём на записанный адрес плательщика (`payer_address`). Если там false — адрес плательщика нам известен, но он не является адресом возврата (Bitcoin/UTXO: первый вход мог быть биржей или сдачей; XRP: общий адрес биржи с тегом назначения; оплата КАРТОЙ через крипто-он-рамп: отправитель — омнибусный горячий кошелёк провайдера, а не покупатель). Возврат туда уходит безвозвратно тому, кто денег не платил, поэтому запрос без `address` будет отклонён (`refund.no_address`): спросите адрес у покупателя и передайте его явно. Нужен `uuid`/`order_id` платежа. По умолчанию вернём всю полученную сумму; можно указать частичную `amount`.</para>
-    /// <para>Идемпотентно по `(платёж, адрес, сумма)`; суммарно нельзя вернуть больше, чем оплачено. Возврат подтверждается автоматически на любой адрес. Единственное исключение — платёж картой через он-рамп: возврат НА ЗАПИСАННЫЙ АДРЕС ПЛАТЕЛЬЩИКА такого счёта отклоняется (`refund.omnibus_destination`), потому что этот адрес принадлежит провайдеру, а не покупателю — пришлите адрес покупателя явно.</para>
-    /// <para>Возврат платится ТОЙ ЖЕ монетой, которой заплатил покупатель. Если она уже сведена в стейбл автообменом, передайте `from_currency: "USDT"` — возврат профинансируется конвертацией вашего баланса USDT и останется ВОЗВРАТОМ: счёт пометится возвращённым, доли партнёрам отзовутся. Отправить деньги обычной выплатой тоже можно, но в отчётах это будет выплата, а не возврат.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.approver_is_creator</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.cap_unpriceable</c>, <c>payout.convert_bad_amount</c>, <c>payout.convert_frozen</c>, <c>payout.convert_idempotency_conflict</c>, <c>payout.convert_insufficient</c>, <c>payout.convert_no_rate</c>, <c>payout.convert_same_asset</c>, <c>payout.convert_unsupported</c>, <c>payout.daily_cap</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.illegal_transition</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.not_pending</c>, <c>payout.reference_collision</c>, <c>postgres.lock_pool_busy</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>refund.bad_amount</c>, <c>refund.chain_ambiguous</c>, <c>refund.destination_internal</c>, <c>refund.dust</c>, <c>refund.exceeds_excess</c>, <c>refund.exceeds_refundable</c>, <c>refund.fence_check</c>, <c>refund.from_currency_personal_account</c>, <c>refund.from_currency_unsupported</c>, <c>refund.network_required</c>, <c>refund.no_address</c>, <c>refund.nothing_to_refund</c>, <c>refund.omnibus_destination</c>, <c>refund.paid_internally</c>, <c>refund.reference_collision</c>, <c>refund.unsupported_network</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>sandbox.convert_not_available</c>, <c>treasury.no_ccy_map</c>, <c>wallet.static_not_found</c>.</para>
+    /// <para>A refund is debited from your balance.</para>
+    /// <para>`address` (where to refund) may be omitted ONLY if the payment has `payer_address_is_refundable` = true: then we refund to the recorded payer address (`payer_address`). If it is false, we know the payer's address but it is not a refund address (Bitcoin/UTXO: the first input may belong to an exchange or be change; XRP: a shared exchange address with a destination tag; CARD payment via a crypto on-ramp: the sender is the provider's omnibus hot wallet, not the buyer). A refund sent there is irrecoverably lost to someone who never paid, so a request without `address` is rejected (`refund.no_address`): ask the buyer for an address and pass it explicitly. The payment's `uuid`/`order_id` is required. By default the full received amount is refunded; you may specify a partial `amount`.</para>
+    /// <para>Idempotent on `(payment, address, amount)`; in total you cannot refund more than was paid. Refunds to any address are approved automatically. The only exception is a card payment via an on-ramp: a refund TO THE RECORDED PAYER ADDRESS of such an invoice is rejected (`refund.omnibus_destination`), because that address belongs to the provider, not the buyer — send the buyer's address explicitly.</para>
+    /// <para>A refund is paid in THE SAME coin the buyer paid with. If it has already been converted into a stablecoin by auto-conversion, pass `from_currency: "USDT"` — the refund is funded by converting your USDT balance and remains a REFUND: the invoice is marked refunded and partner shares are reversed. You can also send the money as a regular payout, but reports will show it as a payout, not a refund.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.approver_is_creator</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.cap_unpriceable</c>, <c>payout.convert_bad_amount</c>, <c>payout.convert_frozen</c>, <c>payout.convert_idempotency_conflict</c>, <c>payout.convert_insufficient</c>, <c>payout.convert_no_rate</c>, <c>payout.convert_same_asset</c>, <c>payout.convert_unsupported</c>, <c>payout.daily_cap</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.illegal_transition</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.not_pending</c>, <c>payout.reference_collision</c>, <c>postgres.lock_pool_busy</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>refund.bad_amount</c>, <c>refund.chain_ambiguous</c>, <c>refund.destination_internal</c>, <c>refund.dust</c>, <c>refund.exceeds_excess</c>, <c>refund.exceeds_refundable</c>, <c>refund.fence_check</c>, <c>refund.from_currency_personal_account</c>, <c>refund.from_currency_unsupported</c>, <c>refund.network_required</c>, <c>refund.no_address</c>, <c>refund.nothing_to_refund</c>, <c>refund.omnibus_destination</c>, <c>refund.paid_internally</c>, <c>refund.reference_collision</c>, <c>refund.unsupported_network</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>sandbox.convert_not_available</c>, <c>treasury.no_ccy_map</c>, <c>wallet.static_not_found</c>.</para>
     /// </remarks>
-    /// <param name="address">Адрес назначения возврата. По умолчанию — payer_address платежа; обязателен только для Bitcoin/UTXO.</param>
-    /// <param name="amount">Частичная сумма. По умолчанию — вся полученная.</param>
-    /// <param name="fromCurrency">Профинансировать возврат конвертацией баланса: только USDT → валюта платежа. Нужен, когда монета платежа уже сведена автообменом.</param>
-    /// <param name="network">Сеть.</param>
-    /// <param name="orderId">Ваша ссылка на заказ платежа. Нужен uuid или order_id.</param>
-    /// <param name="reference">Необязательный ключ идемпотентности возврата: различает два разных возврата с одинаковыми (платёж, адрес, сумма); повтор с тем же значением дедуплицируется. Это не order_id.</param>
-    /// <param name="uuid">Идентификатор платежа. Нужен uuid или order_id.</param>
+    /// <param name="address">Refund destination address. Defaults to the payment's payer_address; required only for Bitcoin/UTXO.</param>
+    /// <param name="amount">A partial amount. Defaults to the full received amount.</param>
+    /// <param name="fromCurrency">Fund the refund by converting balance: USDT → the payment currency only. Needed when the payment coin has already been converted by auto-exchange.</param>
+    /// <param name="network">Network.</param>
+    /// <param name="orderId">Your order reference of the payment. Either uuid or order_id is required.</param>
+    /// <param name="reference">An optional refund idempotency key: distinguishes two different refunds with the same (payment, address, amount); a retry with the same value is deduplicated. This is not order_id.</param>
+    /// <param name="uuid">Payment id. Either uuid or order_id is required.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<PayoutView> PaymentAsync(
@@ -886,11 +917,12 @@ public sealed partial class Refunds : Resource
             options,
             cancellationToken);
 
-    /// <summary>Вернуть средства со статик-кошелька</summary>
+    /// <summary>Refund funds from a static wallet</summary>
     /// <remarks>
-    /// <para>Возвращает на `address` ЧИСТУЮ сумму, полученную на (заблокированном) статик-кошельке: из полученного вычитается уже возвращённое. Пока возврат жив (создан, отправлен, подтверждён), повторный вызов возвращает его же. Если возврат не состоялся (failed/cancelled), вызов можно повторить — в том числе на другой адрес. Отменённые reorg'ом депозиты не считаются.</para>
-    /// <para>Блокировка смотрит ВПЕРЁД: она останавливает следующий приход, а не пересматривает уже зачисленные. Деньги, пришедшие ПОСЛЕ блокировки, на баланс не попадают — они уходят в карантин и ждут решения оператора; вернуть их этой ручкой можно после того, как он их разобрал. Пока не разобраны — они ещё не ваши, и ответ будет «возвращать нечего».</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.cap_unpriceable</c>, <c>payout.daily_cap</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.reference_collision</c>, <c>postgres.lock_pool_busy</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>refund.destination_internal</c>, <c>refund.dust</c>, <c>refund.no_address</c>, <c>refund.nothing_to_refund</c>, <c>refund.too_many_attempts</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>wallet.bad_uuid</c>, <c>wallet.static_disabled</c>, <c>wallet.static_not_found</c>.</para>
+    /// <para>Refunds to `address` the NET amount received on a (blocked) static wallet: the amount already refunded is subtracted from what was received. While a refund is alive (created, sent, confirmed), a repeated call returns that same refund. If the refund did not go through (failed/cancelled), the call can be repeated — including to a different address. Deposits reverted by a reorg are not counted.</para>
+    /// <para>Blocking looks FORWARD: it stops the next incoming deposit, it does not revisit ones already credited. Money that arrives AFTER the block does not reach the balance — it goes to quarantine and waits for an operator's decision; you can refund it with this endpoint once the operator has reviewed it. Until then it is not yours yet, and the response will be "nothing to refund".</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.cap_unpriceable</c>, <c>payout.daily_cap</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.reference_collision</c>, <c>postgres.lock_pool_busy</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>refund.destination_internal</c>, <c>refund.dust</c>, <c>refund.no_address</c>, <c>refund.nothing_to_refund</c>, <c>refund.too_many_attempts</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>wallet.bad_uuid</c>, <c>wallet.static_disabled</c>, <c>wallet.static_not_found</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -909,15 +941,16 @@ public sealed partial class Refunds : Resource
             cancellationToken);
     }
 
-    /// <summary>Вернуть средства со статик-кошелька</summary>
+    /// <summary>Refund funds from a static wallet</summary>
     /// <remarks>
-    /// <para>Возвращает на `address` ЧИСТУЮ сумму, полученную на (заблокированном) статик-кошельке: из полученного вычитается уже возвращённое. Пока возврат жив (создан, отправлен, подтверждён), повторный вызов возвращает его же. Если возврат не состоялся (failed/cancelled), вызов можно повторить — в том числе на другой адрес. Отменённые reorg'ом депозиты не считаются.</para>
-    /// <para>Блокировка смотрит ВПЕРЁД: она останавливает следующий приход, а не пересматривает уже зачисленные. Деньги, пришедшие ПОСЛЕ блокировки, на баланс не попадают — они уходят в карантин и ждут решения оператора; вернуть их этой ручкой можно после того, как он их разобрал. Пока не разобраны — они ещё не ваши, и ответ будет «возвращать нечего».</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.cap_unpriceable</c>, <c>payout.daily_cap</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.reference_collision</c>, <c>postgres.lock_pool_busy</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>refund.destination_internal</c>, <c>refund.dust</c>, <c>refund.no_address</c>, <c>refund.nothing_to_refund</c>, <c>refund.too_many_attempts</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>wallet.bad_uuid</c>, <c>wallet.static_disabled</c>, <c>wallet.static_not_found</c>.</para>
+    /// <para>Refunds to `address` the NET amount received on a (blocked) static wallet: the amount already refunded is subtracted from what was received. While a refund is alive (created, sent, confirmed), a repeated call returns that same refund. If the refund did not go through (failed/cancelled), the call can be repeated — including to a different address. Deposits reverted by a reorg are not counted.</para>
+    /// <para>Blocking looks FORWARD: it stops the next incoming deposit, it does not revisit ones already credited. Money that arrives AFTER the block does not reach the balance — it goes to quarantine and waits for an operator's decision; you can refund it with this endpoint once the operator has reviewed it. Until then it is not yours yet, and the response will be "nothing to refund".</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.cap_unpriceable</c>, <c>payout.daily_cap</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.reference_collision</c>, <c>postgres.lock_pool_busy</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>refund.destination_internal</c>, <c>refund.dust</c>, <c>refund.no_address</c>, <c>refund.nothing_to_refund</c>, <c>refund.too_many_attempts</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>wallet.bad_uuid</c>, <c>wallet.static_disabled</c>, <c>wallet.static_not_found</c>.</para>
     /// </remarks>
-    /// <param name="address">Адрес назначения возврата.</param>
-    /// <param name="uuid">Идентификатор статического кошелька (из ответа /v1/wallet).</param>
-    /// <param name="memo">Тег/мемо назначения (XRP destination tag, XLM memo id, TON comment). Обязателен для классического адреса на tag/memo-сети, если тег не встроен в X-/M-адрес.</param>
+    /// <param name="address">Refund destination address.</param>
+    /// <param name="uuid">The static wallet id (from the /v1/wallet response).</param>
+    /// <param name="memo">Destination tag/memo (XRP destination tag, XLM memo id, TON comment). Required for a classic address on a tag/memo network unless the tag is embedded in an X-/M-address.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<BlockedRefundResult> BlockedWalletAsync(
@@ -937,7 +970,7 @@ public sealed partial class Refunds : Resource
             cancellationToken);
 }
 
-/// <summary>Отправить деньги на адрес (списание с вашего баланса).</summary>
+/// <summary>Send money to an address (debited from your balance).</summary>
 public sealed partial class Payouts : Resource
 {
     /// <summary>Bind the namespace to a transport.</summary>
@@ -947,12 +980,13 @@ public sealed partial class Payouts : Resource
     {
     }
 
-    /// <summary>Создать выплату</summary>
+    /// <summary>Create a payout</summary>
     /// <remarks>
-    /// <para>Отправить деньги на адрес. Идемпотентно по `order_id`. Выплата уходит сразу: ключ мерчанта несёт полную выплатную полномочность, белого списка адресов нет, ручного подтверждения тоже (`approval_required` в ответе всегда `false`). Ограничивают её суточный лимит, заморозка аккаунта и комплаенс-проверка адреса.</para>
-    /// <para>**Конвертация (`from_currency`):** укажите `from_currency: "USDT"`, чтобы оплатить выплату в `currency`, списав ваш баланс USDT — мы сконвертируем USDT → `currency` (только те валюты, что казначейство может добыть он-чейн). В ответе появится объект `convert` с `from_amount` (сколько USDT списано) и `rate`.</para>
-    /// <para>Ещё: `memo` (тег/мемо для TON), `url_callback` (свой адрес вебхука для этой выплаты).</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.bad_url_callback</c>, <c>payout.cap_unpriceable</c>, <c>payout.convert_bad_amount</c>, <c>payout.convert_frozen</c>, <c>payout.convert_idempotency_conflict</c>, <c>payout.convert_insufficient</c>, <c>payout.convert_no_rate</c>, <c>payout.convert_same_asset</c>, <c>payout.convert_unsupported</c>, <c>payout.daily_cap</c>, <c>payout.destination_internal</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.from_currency_unsupported</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.network_required</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.order_id_required</c>, <c>payout.reference_collision</c>, <c>payout.reserved_reference</c>, <c>payout.unsupported_network</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>sandbox.convert_not_available</c>, <c>treasury.no_ccy_map</c>, <c>wallet.static_not_found</c>, <c>webhook.no_endpoint</c>.</para>
+    /// <para>Send money to an address. Idempotent on `order_id`. The payout goes out immediately: the merchant key carries full payout authority, there is no address whitelist and no manual approval (`approval_required` in the response is always `false`). It is limited by the daily limit, account freeze and the address compliance check.</para>
+    /// <para>**Conversion (`from_currency`):** set `from_currency: "USDT"` to fund a payout in `currency` by debiting your USDT balance — we convert USDT → `currency` (only currencies the treasury can source on-chain). The response then contains a `convert` object with `from_amount` (how much USDT was debited) and `rate`.</para>
+    /// <para>Also: `memo` (tag/memo for TON), `url_callback` (your own webhook URL for this payout).</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.bad_url_callback</c>, <c>payout.cap_unpriceable</c>, <c>payout.convert_bad_amount</c>, <c>payout.convert_frozen</c>, <c>payout.convert_idempotency_conflict</c>, <c>payout.convert_insufficient</c>, <c>payout.convert_no_rate</c>, <c>payout.convert_same_asset</c>, <c>payout.convert_unsupported</c>, <c>payout.daily_cap</c>, <c>payout.destination_internal</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.from_currency_unsupported</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.network_required</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.order_id_required</c>, <c>payout.reference_collision</c>, <c>payout.reserved_reference</c>, <c>payout.unsupported_network</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>sandbox.convert_not_available</c>, <c>treasury.no_ccy_map</c>, <c>wallet.static_not_found</c>, <c>webhook.no_endpoint</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -971,23 +1005,24 @@ public sealed partial class Payouts : Resource
             cancellationToken);
     }
 
-    /// <summary>Создать выплату</summary>
+    /// <summary>Create a payout</summary>
     /// <remarks>
-    /// <para>Отправить деньги на адрес. Идемпотентно по `order_id`. Выплата уходит сразу: ключ мерчанта несёт полную выплатную полномочность, белого списка адресов нет, ручного подтверждения тоже (`approval_required` в ответе всегда `false`). Ограничивают её суточный лимит, заморозка аккаунта и комплаенс-проверка адреса.</para>
-    /// <para>**Конвертация (`from_currency`):** укажите `from_currency: "USDT"`, чтобы оплатить выплату в `currency`, списав ваш баланс USDT — мы сконвертируем USDT → `currency` (только те валюты, что казначейство может добыть он-чейн). В ответе появится объект `convert` с `from_amount` (сколько USDT списано) и `rate`.</para>
-    /// <para>Ещё: `memo` (тег/мемо для TON), `url_callback` (свой адрес вебхука для этой выплаты).</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.bad_url_callback</c>, <c>payout.cap_unpriceable</c>, <c>payout.convert_bad_amount</c>, <c>payout.convert_frozen</c>, <c>payout.convert_idempotency_conflict</c>, <c>payout.convert_insufficient</c>, <c>payout.convert_no_rate</c>, <c>payout.convert_same_asset</c>, <c>payout.convert_unsupported</c>, <c>payout.daily_cap</c>, <c>payout.destination_internal</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.from_currency_unsupported</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.network_required</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.order_id_required</c>, <c>payout.reference_collision</c>, <c>payout.reserved_reference</c>, <c>payout.unsupported_network</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>sandbox.convert_not_available</c>, <c>treasury.no_ccy_map</c>, <c>wallet.static_not_found</c>, <c>webhook.no_endpoint</c>.</para>
+    /// <para>Send money to an address. Idempotent on `order_id`. The payout goes out immediately: the merchant key carries full payout authority, there is no address whitelist and no manual approval (`approval_required` in the response is always `false`). It is limited by the daily limit, account freeze and the address compliance check.</para>
+    /// <para>**Conversion (`from_currency`):** set `from_currency: "USDT"` to fund a payout in `currency` by debiting your USDT balance — we convert USDT → `currency` (only currencies the treasury can source on-chain). The response then contains a `convert` object with `from_amount` (how much USDT was debited) and `rate`.</para>
+    /// <para>Also: `memo` (tag/memo for TON), `url_callback` (your own webhook URL for this payout).</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.bad_url_callback</c>, <c>payout.cap_unpriceable</c>, <c>payout.convert_bad_amount</c>, <c>payout.convert_frozen</c>, <c>payout.convert_idempotency_conflict</c>, <c>payout.convert_insufficient</c>, <c>payout.convert_no_rate</c>, <c>payout.convert_same_asset</c>, <c>payout.convert_unsupported</c>, <c>payout.daily_cap</c>, <c>payout.destination_internal</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.from_currency_unsupported</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.network_required</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.order_id_required</c>, <c>payout.reference_collision</c>, <c>payout.reserved_reference</c>, <c>payout.unsupported_network</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>sandbox.convert_not_available</c>, <c>treasury.no_ccy_map</c>, <c>wallet.static_not_found</c>, <c>webhook.no_endpoint</c>.</para>
     /// </remarks>
-    /// <param name="address">Адрес получателя.</param>
-    /// <param name="amount">Сумма выплаты в валюте currency.</param>
-    /// <param name="currency">Код валюты (например USDT).</param>
-    /// <param name="orderId">Ваш номер выплаты; ключ идемпотентности.</param>
-    /// <param name="fromCurrency">Профинансировать выплату конвертацией баланса. Только USDT → currency.</param>
-    /// <param name="isSubtract">Кто платит сетевую комиссию: true — с баланса списывается amount+fee, получатель получает amount; false — получатель получает amount-fee; не передано — fee-config проекта.</param>
-    /// <param name="memo">Тег/мемо назначения (TON Jetton). Максимум 120 символов.</param>
-    /// <param name="network">Сеть (tron, ethereum, …). Обязательна для монет с несколькими сетями.</param>
-    /// <param name="source">Метка происхождения: api (по умолчанию) или manual.</param>
-    /// <param name="urlCallback">Свой URL вебхука для этой выплаты (проходит SSRF-проверку). Требует зарегистрированного эндпоинта (POST /v1/webhooks): доставка подписывается его секретом.</param>
+    /// <param name="address">Recipient address.</param>
+    /// <param name="amount">The payout amount in currency.</param>
+    /// <param name="currency">Currency code (e.g. USDT).</param>
+    /// <param name="orderId">Your payout number; the idempotency key.</param>
+    /// <param name="fromCurrency">Fund the payout by converting balance. USDT → currency only.</param>
+    /// <param name="isSubtract">Who pays the network fee: true — amount+fee is debited from the balance, the recipient gets amount; false — the recipient gets amount-fee; omitted — the project's fee-config.</param>
+    /// <param name="memo">Destination tag/memo (TON Jetton). At most 120 characters.</param>
+    /// <param name="network">Network (tron, ethereum, …). Required for coins with several networks.</param>
+    /// <param name="source">The origin label: api (default) or manual.</param>
+    /// <param name="urlCallback">Your own webhook URL for this payout (passes the SSRF check). Requires a registered endpoint (POST /v1/webhooks): the delivery is signed with its secret.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<PayoutItem> CreateAsync(
@@ -1020,10 +1055,11 @@ public sealed partial class Payouts : Resource
             options,
             cancellationToken);
 
-    /// <summary>Массовая выплата</summary>
+    /// <summary>Mass payout</summary>
     /// <remarks>
-    /// <para>Много выплат за один запрос (до 100). Каждая независима: ошибка по одной не останавливает остальные, по каждой возвращается результат. Идемпотентно по `order_id`, как обычная выплата.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>batch.duplicate_order_id</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.bad_url_callback</c>, <c>payout.batch_too_large</c>, <c>payout.cap_unpriceable</c>, <c>payout.convert_bad_amount</c>, <c>payout.convert_frozen</c>, <c>payout.convert_idempotency_conflict</c>, <c>payout.convert_insufficient</c>, <c>payout.convert_no_rate</c>, <c>payout.convert_same_asset</c>, <c>payout.convert_unsupported</c>, <c>payout.daily_cap</c>, <c>payout.destination_internal</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.empty_batch</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.from_currency_unsupported</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.network_required</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.order_id_required</c>, <c>payout.reference_collision</c>, <c>payout.reserved_reference</c>, <c>payout.unsupported_network</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>sandbox.convert_not_available</c>, <c>treasury.no_ccy_map</c>, <c>wallet.static_not_found</c>, <c>webhook.no_endpoint</c>.</para>
+    /// <para>Many payouts in one request (up to 100). Each one is independent: an error in one does not stop the rest, and a result is returned for each. Idempotent on `order_id`, like a regular payout.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>batch.duplicate_order_id</c>, <c>cli.permission_denied</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.bad_url_callback</c>, <c>payout.batch_too_large</c>, <c>payout.cap_unpriceable</c>, <c>payout.convert_bad_amount</c>, <c>payout.convert_frozen</c>, <c>payout.convert_idempotency_conflict</c>, <c>payout.convert_insufficient</c>, <c>payout.convert_no_rate</c>, <c>payout.convert_same_asset</c>, <c>payout.convert_unsupported</c>, <c>payout.daily_cap</c>, <c>payout.destination_internal</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.empty_batch</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.from_currency_unsupported</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.network_required</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.order_id_required</c>, <c>payout.reference_collision</c>, <c>payout.reserved_reference</c>, <c>payout.unsupported_network</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>sandbox.convert_not_available</c>, <c>treasury.no_ccy_map</c>, <c>wallet.static_not_found</c>, <c>webhook.no_endpoint</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -1042,13 +1078,14 @@ public sealed partial class Payouts : Resource
             cancellationToken);
     }
 
-    /// <summary>Массовая выплата</summary>
+    /// <summary>Mass payout</summary>
     /// <remarks>
-    /// <para>Много выплат за один запрос (до 100). Каждая независима: ошибка по одной не останавливает остальные, по каждой возвращается результат. Идемпотентно по `order_id`, как обычная выплата.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>batch.duplicate_order_id</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.bad_url_callback</c>, <c>payout.batch_too_large</c>, <c>payout.cap_unpriceable</c>, <c>payout.convert_bad_amount</c>, <c>payout.convert_frozen</c>, <c>payout.convert_idempotency_conflict</c>, <c>payout.convert_insufficient</c>, <c>payout.convert_no_rate</c>, <c>payout.convert_same_asset</c>, <c>payout.convert_unsupported</c>, <c>payout.daily_cap</c>, <c>payout.destination_internal</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.empty_batch</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.from_currency_unsupported</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.network_required</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.order_id_required</c>, <c>payout.reference_collision</c>, <c>payout.reserved_reference</c>, <c>payout.unsupported_network</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>sandbox.convert_not_available</c>, <c>treasury.no_ccy_map</c>, <c>wallet.static_not_found</c>, <c>webhook.no_endpoint</c>.</para>
+    /// <para>Many payouts in one request (up to 100). Each one is independent: an error in one does not stop the rest, and a result is returned for each. Idempotent on `order_id`, like a regular payout.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>batch.duplicate_order_id</c>, <c>cli.permission_denied</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.bad_url_callback</c>, <c>payout.batch_too_large</c>, <c>payout.cap_unpriceable</c>, <c>payout.convert_bad_amount</c>, <c>payout.convert_frozen</c>, <c>payout.convert_idempotency_conflict</c>, <c>payout.convert_insufficient</c>, <c>payout.convert_no_rate</c>, <c>payout.convert_same_asset</c>, <c>payout.convert_unsupported</c>, <c>payout.daily_cap</c>, <c>payout.destination_internal</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.empty_batch</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.from_currency_unsupported</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.network_required</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.order_id_required</c>, <c>payout.reference_collision</c>, <c>payout.reserved_reference</c>, <c>payout.unsupported_network</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>sandbox.convert_not_available</c>, <c>treasury.no_ccy_map</c>, <c>wallet.static_not_found</c>, <c>webhook.no_endpoint</c>.</para>
     /// </remarks>
-    /// <param name="payouts">Массив до 100 элементов; поля каждого — как в POST /v1/payout.</param>
-    /// <param name="source">Метка происхождения, применяется ко всем элементам без своего source.</param>
+    /// <param name="payouts">An array of up to 100 items; the fields of each are as in POST /v1/payout.</param>
+    /// <param name="source">The origin label, applied to all items without their own source.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<MassPayoutResult> CreateMassAsync(
@@ -1065,11 +1102,12 @@ public sealed partial class Payouts : Resource
             options,
             cancellationToken);
 
-    /// <summary>Узнать статус выплаты</summary>
+    /// <summary>Get payout status</summary>
     /// <remarks>
-    /// <para>По `uuid`/`order_id`.</para>
-    /// <para>Дополнительно к общему объекту выплаты этот ответ несёт `error` и `error_code`: последняя записанная причина, почему выплата упала или застряла (текст и, когда он есть, машинный код вида `payout.insufficient_funds`). Оба ключа присутствуют всегда; `null` — ошибок не записано.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.bad_uuid</c>, <c>payout.no_lookup</c>, <c>payout.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>By `uuid`/`order_id`.</para>
+    /// <para>In addition to the common payout object this response carries `error` and `error_code`: the last recorded reason why the payout failed or got stuck (the text and, when present, a machine code like `payout.insufficient_funds`). Both keys are always present; `null` — no errors recorded.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.bad_uuid</c>, <c>payout.no_lookup</c>, <c>payout.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -1088,14 +1126,15 @@ public sealed partial class Payouts : Resource
             cancellationToken);
     }
 
-    /// <summary>Узнать статус выплаты</summary>
+    /// <summary>Get payout status</summary>
     /// <remarks>
-    /// <para>По `uuid`/`order_id`.</para>
-    /// <para>Дополнительно к общему объекту выплаты этот ответ несёт `error` и `error_code`: последняя записанная причина, почему выплата упала или застряла (текст и, когда он есть, машинный код вида `payout.insufficient_funds`). Оба ключа присутствуют всегда; `null` — ошибок не записано.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.bad_uuid</c>, <c>payout.no_lookup</c>, <c>payout.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>By `uuid`/`order_id`.</para>
+    /// <para>In addition to the common payout object this response carries `error` and `error_code`: the last recorded reason why the payout failed or got stuck (the text and, when present, a machine code like `payout.insufficient_funds`). Both keys are always present; `null` — no errors recorded.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.bad_uuid</c>, <c>payout.no_lookup</c>, <c>payout.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="orderId">Ваша ссылка на заказ.</param>
-    /// <param name="uuid">Идентификатор счёта в Oblodai. Нужен uuid или order_id; приоритет у uuid.</param>
+    /// <param name="orderId">Your order reference.</param>
+    /// <param name="uuid">The invoice id in Oblodai. Either uuid or order_id is required; uuid takes precedence.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<PayoutInfoResult> GetInfoAsync(
@@ -1112,10 +1151,11 @@ public sealed partial class Payouts : Resource
             options,
             cancellationToken);
 
-    /// <summary>История выплат</summary>
+    /// <summary>Payout history</summary>
     /// <remarks>
-    /// <para>Список ваших выплат, новые сверху: `items` + блок `paginate` (`total`, `per_page`, `offset`, `has_pages`). Тело: `limit`, `offset`, необязательные `status`, `kind` (`refund` | `payout` | пусто — выплаты без возвратов) и `include_refunds`: по умолчанию возвраты в историю выплат не входят, `true` без `kind` возвращает выплаты и возвраты одной лентой; только возвраты — `kind: refund`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.bad_kind</c>, <c>payout.bad_status</c>, <c>payout.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Your payouts, newest first: `items` plus a `paginate` block (`total`, `per_page`, `offset`, `has_pages`). Body: `limit`, `offset`, optional `status`, `kind` (`refund` | `payout` | empty — payouts without refunds) and `include_refunds`: by default refunds are not included in the payout history; `true` without `kind` returns payouts and refunds as one feed; refunds only — `kind: refund`.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.bad_kind</c>, <c>payout.bad_status</c>, <c>payout.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -1134,16 +1174,17 @@ public sealed partial class Payouts : Resource
             cancellationToken);
     }
 
-    /// <summary>История выплат</summary>
+    /// <summary>Payout history</summary>
     /// <remarks>
-    /// <para>Список ваших выплат, новые сверху: `items` + блок `paginate` (`total`, `per_page`, `offset`, `has_pages`). Тело: `limit`, `offset`, необязательные `status`, `kind` (`refund` | `payout` | пусто — выплаты без возвратов) и `include_refunds`: по умолчанию возвраты в историю выплат не входят, `true` без `kind` возвращает выплаты и возвраты одной лентой; только возвраты — `kind: refund`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.bad_kind</c>, <c>payout.bad_status</c>, <c>payout.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Your payouts, newest first: `items` plus a `paginate` block (`total`, `per_page`, `offset`, `has_pages`). Body: `limit`, `offset`, optional `status`, `kind` (`refund` | `payout` | empty — payouts without refunds) and `include_refunds`: by default refunds are not included in the payout history; `true` without `kind` returns payouts and refunds as one feed; refunds only — `kind: refund`.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.bad_kind</c>, <c>payout.bad_status</c>, <c>payout.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="includeRefunds">Только для /v1/payout/history: true — вместе с выплатами вернуть и возвраты (прежнее поведение ленты без kind). По умолчанию false: возвраты — отдельно, kind=refund.</param>
-    /// <param name="kind">Только для /v1/payout/history: payout — обычные выплаты, refund — возвраты; пусто — обычные выплаты (с include_refunds=true — всё вместе).</param>
-    /// <param name="limit">Размер страницы, 1–100; вне диапазона — 25.</param>
-    /// <param name="offset">Смещение от начала списка (новые сверху).</param>
-    /// <param name="status">Фильтр по статусу (точное значение из словаря статусов); пусто — все.</param>
+    /// <param name="includeRefunds">Only for /v1/payout/history: true — return refunds together with payouts (the former behavior of the feed without kind). Default false: refunds are separate, kind=refund.</param>
+    /// <param name="kind">Only for /v1/payout/history: payout — regular payouts, refund — refunds; empty — regular payouts (with include_refunds=true — everything together).</param>
+    /// <param name="limit">Page size, 1–100; out of range — 25.</param>
+    /// <param name="offset">Offset from the start of the list (newest first).</param>
+    /// <param name="status">Filter by status (an exact value from the status vocabulary); empty — all.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public PagePromise<PayoutView> ListHistoryAsync(
@@ -1166,10 +1207,11 @@ public sealed partial class Payouts : Resource
             options,
             cancellationToken);
 
-    /// <summary>Рассчитать сумму и комиссию выплаты</summary>
+    /// <summary>Calculate payout amount and fee</summary>
     /// <remarks>
-    /// <para>Предварительный расчёт: сколько спишется, сколько комиссия, сколько получит адрес — без создания выплаты.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.amount_below_fee</c>, <c>payout.bad_amount</c>, <c>payout.network_required</c>, <c>payout.unsupported_network</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
+    /// <para>A preliminary calculation: how much will be debited, the fee, and how much the address will receive — without creating a payout.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.amount_below_fee</c>, <c>payout.bad_amount</c>, <c>payout.network_required</c>, <c>payout.unsupported_network</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -1188,15 +1230,16 @@ public sealed partial class Payouts : Resource
             cancellationToken);
     }
 
-    /// <summary>Рассчитать сумму и комиссию выплаты</summary>
+    /// <summary>Calculate payout amount and fee</summary>
     /// <remarks>
-    /// <para>Предварительный расчёт: сколько спишется, сколько комиссия, сколько получит адрес — без создания выплаты.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.amount_below_fee</c>, <c>payout.bad_amount</c>, <c>payout.network_required</c>, <c>payout.unsupported_network</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
+    /// <para>A preliminary calculation: how much will be debited, the fee, and how much the address will receive — without creating a payout.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.amount_below_fee</c>, <c>payout.bad_amount</c>, <c>payout.network_required</c>, <c>payout.unsupported_network</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
     /// </remarks>
-    /// <param name="amount">Сумма выплаты, строкой.</param>
-    /// <param name="currency">Актив выплаты (USDT, BTC, …).</param>
-    /// <param name="isSubtract">true — комиссия списывается с баланса поверх суммы (получатель получит ровно amount); false — из суммы выплаты.</param>
-    /// <param name="network">Сеть выплаты; обязательна, если актив живёт в нескольких сетях.</param>
+    /// <param name="amount">The payout amount, as a string.</param>
+    /// <param name="currency">Payout asset (USDT, BTC, …).</param>
+    /// <param name="isSubtract">true — the fee is debited from the balance on top of the amount (the recipient gets exactly amount); false — from the payout amount.</param>
+    /// <param name="network">Payout network; required if the asset lives on several networks.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<PayoutCalculation> CalculateAsync(
@@ -1217,10 +1260,11 @@ public sealed partial class Payouts : Resource
             options,
             cancellationToken);
 
-    /// <summary>Проверить выплату без создания (dry-run)</summary>
+    /// <summary>Validate a payout without creating it (dry run)</summary>
     /// <remarks>
-    /// <para>Прогоняет все проверки создания выплаты — валюта, сумма, сеть, адрес, memo, скрининг адреса, комиссия, заморозка/суточный лимит и достаточность баланса — но ничего не резервирует и не отправляет. Ответ `valid: true` с суммами (`amount`, `commission`, `payer_amount`, `fee_bearer`), либо та же ошибка, что вернуло бы создание. Тело — как у POST /v1/payout (order_id необязателен для проверки).</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_url_callback</c>, <c>payout.cap_unpriceable</c>, <c>payout.daily_cap</c>, <c>payout.destination_internal</c>, <c>payout.from_currency_unsupported</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.network_required</c>, <c>payout.reserved_reference</c>, <c>payout.unsupported_network</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>sandbox.convert_not_available</c>, <c>wallet.static_not_found</c>, <c>webhook.no_endpoint</c>.</para>
+    /// <para>Runs all payout-creation checks — currency, amount, network, address, memo, address screening, fee, freeze/daily limit and balance sufficiency — but reserves and sends nothing. The response is `valid: true` with the amounts (`amount`, `commission`, `payer_amount`, `fee_bearer`), or the same error that creation would return. The body is the same as for POST /v1/payout (order_id is optional for validation).</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_url_callback</c>, <c>payout.cap_unpriceable</c>, <c>payout.daily_cap</c>, <c>payout.destination_internal</c>, <c>payout.from_currency_unsupported</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.network_required</c>, <c>payout.reserved_reference</c>, <c>payout.unsupported_network</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>sandbox.convert_not_available</c>, <c>wallet.static_not_found</c>, <c>webhook.no_endpoint</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -1239,21 +1283,22 @@ public sealed partial class Payouts : Resource
             cancellationToken);
     }
 
-    /// <summary>Проверить выплату без создания (dry-run)</summary>
+    /// <summary>Validate a payout without creating it (dry run)</summary>
     /// <remarks>
-    /// <para>Прогоняет все проверки создания выплаты — валюта, сумма, сеть, адрес, memo, скрининг адреса, комиссия, заморозка/суточный лимит и достаточность баланса — но ничего не резервирует и не отправляет. Ответ `valid: true` с суммами (`amount`, `commission`, `payer_amount`, `fee_bearer`), либо та же ошибка, что вернуло бы создание. Тело — как у POST /v1/payout (order_id необязателен для проверки).</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_url_callback</c>, <c>payout.cap_unpriceable</c>, <c>payout.daily_cap</c>, <c>payout.destination_internal</c>, <c>payout.from_currency_unsupported</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.network_required</c>, <c>payout.reserved_reference</c>, <c>payout.unsupported_network</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>sandbox.convert_not_available</c>, <c>wallet.static_not_found</c>, <c>webhook.no_endpoint</c>.</para>
+    /// <para>Runs all payout-creation checks — currency, amount, network, address, memo, address screening, fee, freeze/daily limit and balance sufficiency — but reserves and sends nothing. The response is `valid: true` with the amounts (`amount`, `commission`, `payer_amount`, `fee_bearer`), or the same error that creation would return. The body is the same as for POST /v1/payout (order_id is optional for validation).</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_url_callback</c>, <c>payout.cap_unpriceable</c>, <c>payout.daily_cap</c>, <c>payout.destination_internal</c>, <c>payout.from_currency_unsupported</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.network_required</c>, <c>payout.reserved_reference</c>, <c>payout.unsupported_network</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>sandbox.convert_not_available</c>, <c>wallet.static_not_found</c>, <c>webhook.no_endpoint</c>.</para>
     /// </remarks>
-    /// <param name="address">Адрес получателя.</param>
-    /// <param name="amount">Сумма выплаты в валюте currency.</param>
-    /// <param name="currency">Код валюты (например USDT).</param>
-    /// <param name="fromCurrency">Профинансировать выплату конвертацией баланса. Только USDT → currency.</param>
-    /// <param name="isSubtract">Кто платит сетевую комиссию: true — с баланса списывается amount+fee, получатель получает amount; false — получатель получает amount-fee; не передано — fee-config проекта.</param>
-    /// <param name="memo">Тег/мемо назначения (TON Jetton). Максимум 120 символов.</param>
-    /// <param name="network">Сеть (tron, ethereum, …). Обязательна для монет с несколькими сетями.</param>
-    /// <param name="orderId">Ваш номер выплаты; ключ идемпотентности.</param>
-    /// <param name="source">Метка происхождения: api (по умолчанию) или manual.</param>
-    /// <param name="urlCallback">Свой URL вебхука для этой выплаты (проходит SSRF-проверку). Требует зарегистрированного эндпоинта (POST /v1/webhooks): доставка подписывается его секретом.</param>
+    /// <param name="address">Recipient address.</param>
+    /// <param name="amount">The payout amount in currency.</param>
+    /// <param name="currency">Currency code (e.g. USDT).</param>
+    /// <param name="fromCurrency">Fund the payout by converting balance. USDT → currency only.</param>
+    /// <param name="isSubtract">Who pays the network fee: true — amount+fee is debited from the balance, the recipient gets amount; false — the recipient gets amount-fee; omitted — the project's fee-config.</param>
+    /// <param name="memo">Destination tag/memo (TON Jetton). At most 120 characters.</param>
+    /// <param name="network">Network (tron, ethereum, …). Required for coins with several networks.</param>
+    /// <param name="orderId">Your payout number; the idempotency key.</param>
+    /// <param name="source">The origin label: api (default) or manual.</param>
+    /// <param name="urlCallback">Your own webhook URL for this payout (passes the SSRF check). Requires a registered endpoint (POST /v1/webhooks): the delivery is signed with its secret.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<PayoutValidateResult> ValidateAsync(
@@ -1286,10 +1331,11 @@ public sealed partial class Payouts : Resource
             options,
             cancellationToken);
 
-    /// <summary>Отменить неотправленную выплату</summary>
+    /// <summary>Cancel an unsent payout</summary>
     /// <remarks>
-    /// <para>Отменяет выплату и освобождает зарезервированные средства, пока она не отправлена в сеть (статусы pending / approved / awaiting_cosign); после отправки — 409. Возврат тоже является выплатой, поэтому этим же методом отклоняется ещё не отправленный возврат. Только своя выплата.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.already_broadcast</c>, <c>payout.bad_state</c>, <c>payout.bad_uuid</c>, <c>payout.illegal_transition</c>, <c>payout.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.bad_reversal_claim</c>.</para>
+    /// <para>Cancels a payout and releases the reserved funds as long as it has not been broadcast to the network (statuses pending / approved / awaiting_cosign); after broadcast — 409. A refund is also a payout, so this same method rejects a refund that has not been sent yet. Only your own payout.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.already_broadcast</c>, <c>payout.bad_state</c>, <c>payout.bad_uuid</c>, <c>payout.illegal_transition</c>, <c>payout.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.bad_reversal_claim</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -1308,12 +1354,13 @@ public sealed partial class Payouts : Resource
             cancellationToken);
     }
 
-    /// <summary>Отменить неотправленную выплату</summary>
+    /// <summary>Cancel an unsent payout</summary>
     /// <remarks>
-    /// <para>Отменяет выплату и освобождает зарезервированные средства, пока она не отправлена в сеть (статусы pending / approved / awaiting_cosign); после отправки — 409. Возврат тоже является выплатой, поэтому этим же методом отклоняется ещё не отправленный возврат. Только своя выплата.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.already_broadcast</c>, <c>payout.bad_state</c>, <c>payout.bad_uuid</c>, <c>payout.illegal_transition</c>, <c>payout.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.bad_reversal_claim</c>.</para>
+    /// <para>Cancels a payout and releases the reserved funds as long as it has not been broadcast to the network (statuses pending / approved / awaiting_cosign); after broadcast — 409. A refund is also a payout, so this same method rejects a refund that has not been sent yet. Only your own payout.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.already_broadcast</c>, <c>payout.bad_state</c>, <c>payout.bad_uuid</c>, <c>payout.illegal_transition</c>, <c>payout.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.bad_reversal_claim</c>.</para>
     /// </remarks>
-    /// <param name="uuid">Идентификатор выплаты (или возврата) для отмены.</param>
+    /// <param name="uuid">The id of the payout (or refund) to cancel.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<PayoutView> CancelAsync(
@@ -1328,10 +1375,11 @@ public sealed partial class Payouts : Resource
             options,
             cancellationToken);
 
-    /// <summary>Подтвердить выплату</summary>
+    /// <summary>Approve a payout</summary>
     /// <remarks>
-    /// <para>Подтверждает выплату, ожидающую подтверждения. Выплаты по API-ключу подтверждаются автоматически — этот метод нужен только внутренним/кабинетным сценариям.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.approver_is_creator</c>, <c>payout.bad_uuid</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.illegal_transition</c>, <c>payout.not_found</c>, <c>payout.not_pending</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Approves a payout awaiting approval. Payouts made with an API key are approved automatically — this method is only needed for internal/dashboard scenarios.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.approver_is_creator</c>, <c>payout.bad_uuid</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.illegal_transition</c>, <c>payout.not_found</c>, <c>payout.not_pending</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -1350,12 +1398,13 @@ public sealed partial class Payouts : Resource
             cancellationToken);
     }
 
-    /// <summary>Подтвердить выплату</summary>
+    /// <summary>Approve a payout</summary>
     /// <remarks>
-    /// <para>Подтверждает выплату, ожидающую подтверждения. Выплаты по API-ключу подтверждаются автоматически — этот метод нужен только внутренним/кабинетным сценариям.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.approver_is_creator</c>, <c>payout.bad_uuid</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.illegal_transition</c>, <c>payout.not_found</c>, <c>payout.not_pending</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Approves a payout awaiting approval. Payouts made with an API key are approved automatically — this method is only needed for internal/dashboard scenarios.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.approver_is_creator</c>, <c>payout.bad_uuid</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.illegal_transition</c>, <c>payout.not_found</c>, <c>payout.not_pending</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="uuid">Идентификатор выплаты.</param>
+    /// <param name="uuid">Payout id.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<PayoutView> ApproveAsync(
@@ -1370,10 +1419,11 @@ public sealed partial class Payouts : Resource
             options,
             cancellationToken);
 
-    /// <summary>Доступные валюты и сети для выплат</summary>
+    /// <summary>Currencies and networks available for payouts</summary>
     /// <remarks>
-    /// <para>Список с лимитами и комиссиями. Тело — пустой `{}`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>The list with limits and fees. The body is an empty `{}`.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -1392,13 +1442,14 @@ public sealed partial class Payouts : Resource
             cancellationToken);
     }
 
-    /// <summary>Доступные валюты и сети для выплат</summary>
+    /// <summary>Currencies and networks available for payouts</summary>
     /// <remarks>
-    /// <para>Список с лимитами и комиссиями. Тело — пустой `{}`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>The list with limits and fees. The body is an empty `{}`.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="limit">Размер страницы, 1–100; вне диапазона — 25.</param>
-    /// <param name="offset">Смещение от начала списка.</param>
+    /// <param name="limit">Page size, 1–100; out of range — 25.</param>
+    /// <param name="offset">Offset from the start of the list.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public PagePromise<PayServiceEntry> ListServicesAsync(
@@ -1415,10 +1466,11 @@ public sealed partial class Payouts : Resource
             options,
             cancellationToken);
 
-    /// <summary>Перевод на личный кошелёк</summary>
+    /// <summary>Transfer to the personal wallet</summary>
     /// <remarks>
-    /// <para>Перевести средства с бизнес-кошелька мерчанта на личный кошелёк владельца аккаунта. Требует привязки мерчанта к пользователю.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.no_personal_wallet</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.above_limit</c>, <c>payout.cap_unpriceable</c>, <c>payout.daily_cap</c>, <c>payout.merchant_frozen</c>, <c>personal.amount_invalid</c>, <c>personal.bad_source_id</c>, <c>personal.funds_maturing</c>, <c>personal.insufficient</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>sandbox.transfer_not_available</c>, <c>transfer.bad_amount</c>.</para>
+    /// <para>Transfer funds from the merchant's business wallet to the account owner's personal wallet. Requires the merchant to be linked to a user.</para>
+    /// <para>Not available to CLI keys: call it with the integration key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.no_personal_wallet</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.above_limit</c>, <c>payout.cap_unpriceable</c>, <c>payout.daily_cap</c>, <c>payout.merchant_frozen</c>, <c>personal.amount_invalid</c>, <c>personal.bad_source_id</c>, <c>personal.funds_maturing</c>, <c>personal.insufficient</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>sandbox.transfer_not_available</c>, <c>transfer.bad_amount</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -1437,14 +1489,15 @@ public sealed partial class Payouts : Resource
             cancellationToken);
     }
 
-    /// <summary>Перевод на личный кошелёк</summary>
+    /// <summary>Transfer to the personal wallet</summary>
     /// <remarks>
-    /// <para>Перевести средства с бизнес-кошелька мерчанта на личный кошелёк владельца аккаунта. Требует привязки мерчанта к пользователю.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.no_personal_wallet</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.above_limit</c>, <c>payout.cap_unpriceable</c>, <c>payout.daily_cap</c>, <c>payout.merchant_frozen</c>, <c>personal.amount_invalid</c>, <c>personal.bad_source_id</c>, <c>personal.funds_maturing</c>, <c>personal.insufficient</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>sandbox.transfer_not_available</c>, <c>transfer.bad_amount</c>.</para>
+    /// <para>Transfer funds from the merchant's business wallet to the account owner's personal wallet. Requires the merchant to be linked to a user.</para>
+    /// <para>Not available to CLI keys: call it with the integration key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.no_personal_wallet</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.above_limit</c>, <c>payout.cap_unpriceable</c>, <c>payout.daily_cap</c>, <c>payout.merchant_frozen</c>, <c>personal.amount_invalid</c>, <c>personal.bad_source_id</c>, <c>personal.funds_maturing</c>, <c>personal.insufficient</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>sandbox.transfer_not_available</c>, <c>transfer.bad_amount</c>.</para>
     /// </remarks>
-    /// <param name="amount">Сумма перевода в currency.</param>
-    /// <param name="currency">Код валюты (криптовалюта).</param>
-    /// <param name="orderId">Ключ идемпотентности: повтор с тем же order_id — no-op. Настоятельно передавайте всегда, иначе повтор запроса при сетевом таймауте создаст второй перевод.</param>
+    /// <param name="amount">The transfer amount in currency.</param>
+    /// <param name="currency">Currency code (cryptocurrency).</param>
+    /// <param name="orderId">Idempotency key: a retry with the same order_id is a no-op. Always pass it, otherwise retrying the request after a network timeout creates a second transfer.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<TransferToPersonalResult> TransferToPersonalAsync(
@@ -1463,10 +1516,11 @@ public sealed partial class Payouts : Resource
             options,
             cancellationToken);
 
-    /// <summary>Внутренний перевод пользователю платформы</summary>
+    /// <summary>Internal transfer to a platform user</summary>
     /// <remarks>
-    /// <para>Перевести средства с бизнес-кошелька на личный кошелёк ДРУГОГО пользователя платформы (без комиссии, мгновенно, без сети). Получатель адресуется по user id; юзернейм резолвится публичным эндпоинтом кабинета /public/users/{username}.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.above_limit</c>, <c>payout.cap_unpriceable</c>, <c>payout.daily_cap</c>, <c>payout.merchant_frozen</c>, <c>personal.amount_invalid</c>, <c>personal.bad_source</c>, <c>personal.bad_source_id</c>, <c>personal.insufficient</c>, <c>personal.no_recipient</c>, <c>personal.self_transfer</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>sandbox.transfer_not_available</c>, <c>transfer.bad_amount</c>, <c>transfer.bad_recipient</c>, <c>transfer.no_recipient</c>, <c>transfer.recipient_not_found</c>.</para>
+    /// <para>Transfer funds from the business wallet to the personal wallet of ANOTHER platform user (no fee, instant, off-chain). The recipient is addressed by user id; a username is resolved by the dashboard's public endpoint /public/users/{username}.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.above_limit</c>, <c>payout.cap_unpriceable</c>, <c>payout.daily_cap</c>, <c>payout.merchant_frozen</c>, <c>personal.amount_invalid</c>, <c>personal.bad_source</c>, <c>personal.bad_source_id</c>, <c>personal.insufficient</c>, <c>personal.no_recipient</c>, <c>personal.self_transfer</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>sandbox.transfer_not_available</c>, <c>transfer.bad_amount</c>, <c>transfer.bad_recipient</c>, <c>transfer.no_recipient</c>, <c>transfer.recipient_not_found</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -1485,15 +1539,16 @@ public sealed partial class Payouts : Resource
             cancellationToken);
     }
 
-    /// <summary>Внутренний перевод пользователю платформы</summary>
+    /// <summary>Internal transfer to a platform user</summary>
     /// <remarks>
-    /// <para>Перевести средства с бизнес-кошелька на личный кошелёк ДРУГОГО пользователя платформы (без комиссии, мгновенно, без сети). Получатель адресуется по user id; юзернейм резолвится публичным эндпоинтом кабинета /public/users/{username}.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.above_limit</c>, <c>payout.cap_unpriceable</c>, <c>payout.daily_cap</c>, <c>payout.merchant_frozen</c>, <c>personal.amount_invalid</c>, <c>personal.bad_source</c>, <c>personal.bad_source_id</c>, <c>personal.insufficient</c>, <c>personal.no_recipient</c>, <c>personal.self_transfer</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>sandbox.transfer_not_available</c>, <c>transfer.bad_amount</c>, <c>transfer.bad_recipient</c>, <c>transfer.no_recipient</c>, <c>transfer.recipient_not_found</c>.</para>
+    /// <para>Transfer funds from the business wallet to the personal wallet of ANOTHER platform user (no fee, instant, off-chain). The recipient is addressed by user id; a username is resolved by the dashboard's public endpoint /public/users/{username}.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.above_limit</c>, <c>payout.cap_unpriceable</c>, <c>payout.daily_cap</c>, <c>payout.merchant_frozen</c>, <c>personal.amount_invalid</c>, <c>personal.bad_source</c>, <c>personal.bad_source_id</c>, <c>personal.insufficient</c>, <c>personal.no_recipient</c>, <c>personal.self_transfer</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>sandbox.transfer_not_available</c>, <c>transfer.bad_amount</c>, <c>transfer.bad_recipient</c>, <c>transfer.no_recipient</c>, <c>transfer.recipient_not_found</c>.</para>
     /// </remarks>
-    /// <param name="amount">Сумма перевода в currency.</param>
-    /// <param name="currency">Код валюты (криптовалюта).</param>
-    /// <param name="toUserId">Платформенный user id получателя (UUID, не username); username резолвится в id через публичный профиль кабинета /public/users/{username}.</param>
-    /// <param name="orderId">Ключ идемпотентности: повтор с тем же order_id — no-op; в батче переводов обязателен.</param>
+    /// <param name="amount">The transfer amount in currency.</param>
+    /// <param name="currency">Currency code (cryptocurrency).</param>
+    /// <param name="toUserId">The recipient's platform user id (a UUID, not a username); a username is resolved to an id via the dashboard's public profile /public/users/{username}.</param>
+    /// <param name="orderId">Idempotency key: a retry with the same order_id is a no-op; required in a transfer batch.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<TransferResult> TransferToUserAsync(
@@ -1514,10 +1569,11 @@ public sealed partial class Payouts : Resource
             options,
             cancellationToken);
 
-    /// <summary>Массовые внутренние переводы (ведомость)</summary>
+    /// <summary>Bulk internal transfers (payroll)</summary>
     /// <remarks>
-    /// <para>Асинхронная пачка внутренних переводов: {"transfers":[&lt;как /v1/transfer/to-user&gt;...], "on_error":"continue"}. Статус и результаты по строкам — POST /v1/batch/info.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>batch.bad_on_error</c>, <c>batch.bad_recipient</c>, <c>batch.disabled</c>, <c>batch.duplicate_order_id</c>, <c>batch.duplicate_reference</c>, <c>batch.empty</c>, <c>batch.invoice_required</c>, <c>batch.order_id_required</c>, <c>batch.reference_required</c>, <c>batch.too_large</c>, <c>batch.unsupported_kind</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>An asynchronous batch of internal transfers: {"transfers":[&lt;as in /v1/transfer/to-user&gt;...], "on_error":"continue"}. Status and per-row results — POST /v1/batch/info.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>batch.bad_on_error</c>, <c>batch.bad_recipient</c>, <c>batch.disabled</c>, <c>batch.duplicate_order_id</c>, <c>batch.duplicate_reference</c>, <c>batch.empty</c>, <c>batch.invoice_required</c>, <c>batch.order_id_required</c>, <c>batch.reference_required</c>, <c>batch.too_large</c>, <c>batch.unsupported_kind</c>, <c>cli.permission_denied</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -1536,13 +1592,14 @@ public sealed partial class Payouts : Resource
             cancellationToken);
     }
 
-    /// <summary>Массовые внутренние переводы (ведомость)</summary>
+    /// <summary>Bulk internal transfers (payroll)</summary>
     /// <remarks>
-    /// <para>Асинхронная пачка внутренних переводов: {"transfers":[&lt;как /v1/transfer/to-user&gt;...], "on_error":"continue"}. Статус и результаты по строкам — POST /v1/batch/info.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>batch.bad_on_error</c>, <c>batch.bad_recipient</c>, <c>batch.disabled</c>, <c>batch.duplicate_order_id</c>, <c>batch.duplicate_reference</c>, <c>batch.empty</c>, <c>batch.invoice_required</c>, <c>batch.order_id_required</c>, <c>batch.reference_required</c>, <c>batch.too_large</c>, <c>batch.unsupported_kind</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>An asynchronous batch of internal transfers: {"transfers":[&lt;as in /v1/transfer/to-user&gt;...], "on_error":"continue"}. Status and per-row results — POST /v1/batch/info.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>batch.bad_on_error</c>, <c>batch.bad_recipient</c>, <c>batch.disabled</c>, <c>batch.duplicate_order_id</c>, <c>batch.duplicate_reference</c>, <c>batch.empty</c>, <c>batch.invoice_required</c>, <c>batch.order_id_required</c>, <c>batch.reference_required</c>, <c>batch.too_large</c>, <c>batch.unsupported_kind</c>, <c>cli.permission_denied</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="transfers">Массив от 1 до 5000 элементов — те же поля, что у POST /v1/transfer/to-user; у каждого элемента обязательны order_id (ключ идемпотентности) и to_user_id (UUID пользователя).</param>
-    /// <param name="onError">Что делать при ошибке элемента: continue (по умолчанию) — обрабатывать остальные; stop — прекратить обработку после первой ошибки.</param>
+    /// <param name="transfers">An array of 1 to 5000 items — the same fields as in POST /v1/transfer/to-user; each item requires order_id (the idempotency key) and to_user_id (the user's UUID).</param>
+    /// <param name="onError">What to do when an item fails: continue (default) — process the rest; stop — stop processing after the first error.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<BatchSubmitResponse> CreateTransferBatchAsync(
@@ -1560,7 +1617,7 @@ public sealed partial class Payouts : Resource
             cancellationToken);
 }
 
-/// <summary>Выплата без адреса: получатель сам вводит адрес по секретной ссылке.</summary>
+/// <summary>Payouts without an address: the recipient enters their own address via a secret link.</summary>
 public sealed partial class PayoutLinks : Resource
 {
     /// <summary>Bind the namespace to a transport.</summary>
@@ -1570,10 +1627,11 @@ public sealed partial class PayoutLinks : Resource
     {
     }
 
-    /// <summary>Создать выплатную ссылку</summary>
+    /// <summary>Create a payout link</summary>
     /// <remarks>
-    /// <para>Резервирует сумму с баланса и выпускает ссылку, по которой получатель сам вводит адрес и забирает деньги. Адрес получателя знать не нужно. `email` — отправим письмо со ссылкой; `expires_in_seconds` — окно на получение, 3600–2592000 (час–30 суток). ⚠ Без поля или при `0` ссылка живёт ОДИН ЧАС, а не максимум — задавайте срок явно. Идемпотентность: `reference` (или заголовок `Idempotency-Key`).</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>email.bad_recipient</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.merchant_frozen</c>, <c>payoutlink.bad_amount</c>, <c>payoutlink.bad_fee_bearer</c>, <c>payoutlink.bad_passcode</c>, <c>payoutlink.disabled</c>, <c>payoutlink.duplicate_reference</c>, <c>payoutlink.funds_maturing</c>, <c>payoutlink.idempotency_required</c>, <c>payoutlink.insufficient_funds</c>, <c>payoutlink.passcode</c>, <c>payoutlink.token</c>, <c>payoutlink.unsupported_network</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
+    /// <para>Reserves the amount from the balance and issues a link through which the recipient enters their own address and claims the money. You do not need to know the recipient's address. `email` — we will send an email with the link; `expires_in_seconds` — the claim window, 3600–2592000 (an hour to 30 days). ⚠ If the field is omitted or `0`, the link lives ONE HOUR, not the maximum — set the lifetime explicitly. Idempotency: `reference` (or the `Idempotency-Key` header).</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>email.bad_recipient</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.merchant_frozen</c>, <c>payoutlink.bad_amount</c>, <c>payoutlink.bad_fee_bearer</c>, <c>payoutlink.bad_passcode</c>, <c>payoutlink.disabled</c>, <c>payoutlink.duplicate_reference</c>, <c>payoutlink.funds_maturing</c>, <c>payoutlink.idempotency_required</c>, <c>payoutlink.insufficient_funds</c>, <c>payoutlink.passcode</c>, <c>payoutlink.token</c>, <c>payoutlink.unsupported_network</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -1592,21 +1650,22 @@ public sealed partial class PayoutLinks : Resource
             cancellationToken);
     }
 
-    /// <summary>Создать выплатную ссылку</summary>
+    /// <summary>Create a payout link</summary>
     /// <remarks>
-    /// <para>Резервирует сумму с баланса и выпускает ссылку, по которой получатель сам вводит адрес и забирает деньги. Адрес получателя знать не нужно. `email` — отправим письмо со ссылкой; `expires_in_seconds` — окно на получение, 3600–2592000 (час–30 суток). ⚠ Без поля или при `0` ссылка живёт ОДИН ЧАС, а не максимум — задавайте срок явно. Идемпотентность: `reference` (или заголовок `Idempotency-Key`).</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>email.bad_recipient</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.merchant_frozen</c>, <c>payoutlink.bad_amount</c>, <c>payoutlink.bad_fee_bearer</c>, <c>payoutlink.bad_passcode</c>, <c>payoutlink.disabled</c>, <c>payoutlink.duplicate_reference</c>, <c>payoutlink.funds_maturing</c>, <c>payoutlink.idempotency_required</c>, <c>payoutlink.insufficient_funds</c>, <c>payoutlink.passcode</c>, <c>payoutlink.token</c>, <c>payoutlink.unsupported_network</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
+    /// <para>Reserves the amount from the balance and issues a link through which the recipient enters their own address and claims the money. You do not need to know the recipient's address. `email` — we will send an email with the link; `expires_in_seconds` — the claim window, 3600–2592000 (an hour to 30 days). ⚠ If the field is omitted or `0`, the link lives ONE HOUR, not the maximum — set the lifetime explicitly. Idempotency: `reference` (or the `Idempotency-Key` header).</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>email.bad_recipient</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.merchant_frozen</c>, <c>payoutlink.bad_amount</c>, <c>payoutlink.bad_fee_bearer</c>, <c>payoutlink.bad_passcode</c>, <c>payoutlink.disabled</c>, <c>payoutlink.duplicate_reference</c>, <c>payoutlink.funds_maturing</c>, <c>payoutlink.idempotency_required</c>, <c>payoutlink.insufficient_funds</c>, <c>payoutlink.passcode</c>, <c>payoutlink.token</c>, <c>payoutlink.unsupported_network</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
     /// </remarks>
-    /// <param name="amount">Сумма в currency, строкой; больше нуля</param>
-    /// <param name="currency">Крипто-актив выплаты (USDT, BTC, …); фиат невозможен</param>
-    /// <param name="network">Сеть выплаты получателю (tron, bitcoin, …)</param>
-    /// <param name="email">Если задан — получателю уходит письмо с кнопкой «Получить средства»; сбой доставки не отменяет создание ссылки</param>
-    /// <param name="expiresInSeconds">Срок жизни ссылки в секундах, клампится в диапазон 3600–2592000 (час–30 суток); без поля или при 0 ссылка живёт 1 час, а не максимум — задавайте явно</param>
-    /// <param name="feeBearer">Кто платит сетевую комиссию: "recipient" (по умолчанию — вычитается из суммы, получателю придёт меньше) или "merchant" (резервируется сумма плюс комиссия, получателю придёт ровно amount)</param>
-    /// <param name="note">Сообщение получателю (видно на странице получения и в письме)</param>
-    /// <param name="passcode">Код получения — второй фактор к ссылке: "auto" — сгенерируем и вернём ОДИН раз в ответе, либо свой (6–64 видимых символа), пусто — без кода. Код передавайте получателю ОТДЕЛЬНЫМ от ссылки каналом (в письмо он не кладётся); после 10 неверных вводов ссылка запирается.</param>
-    /// <param name="reference">Ваш ключ дедупликации ссылки, уникальный на мерчанта: повтор с тем же reference не зарезервирует деньги второй раз. В одиночном POST /v1/payout/link необязателен — без него ключом становится заголовок Idempotency-Key, а без обоих запрос отвергается (payoutlink.idempotency_required). В пачке POST /v1/payout/link/batch обязателен у каждой ссылки: Idempotency-Key пачки на элементы не переносится</param>
-    /// <param name="title">Заголовок — виден получателю на странице получения</param>
+    /// <param name="amount">The amount in currency, as a string; greater than zero</param>
+    /// <param name="currency">The payout crypto asset (USDT, BTC, …); fiat is not possible</param>
+    /// <param name="network">The network of the payout to the recipient (tron, bitcoin, …)</param>
+    /// <param name="email">If set, the recipient gets an email with a "Claim funds" button; a delivery failure does not cancel the link creation</param>
+    /// <param name="expiresInSeconds">The link lifetime in seconds, clamped to the range 3600–2592000 (an hour to 30 days); without the field or at 0 the link lives 1 hour, not the maximum — set it explicitly</param>
+    /// <param name="feeBearer">Who pays the network fee: "recipient" (default — deducted from the amount, the recipient gets less) or "merchant" (the amount plus the fee is reserved, the recipient gets exactly amount)</param>
+    /// <param name="note">A message to the recipient (visible on the claim page and in the email)</param>
+    /// <param name="passcode">Claim passcode — a second factor for the link: "auto" — we generate it and return it ONCE in the response, or your own (6–64 visible characters), empty — no passcode. Give the passcode to the recipient over a channel SEPARATE from the link (it is not included in the email); after 10 wrong attempts the link is locked.</param>
+    /// <param name="reference">Your deduplication key for the link, unique per merchant: a retry with the same reference will not reserve the money a second time. Optional in a single POST /v1/payout/link — without it the Idempotency-Key header becomes the key, and without both the request is rejected (payoutlink.idempotency_required). Required on every link in a POST /v1/payout/link/batch: the batch's Idempotency-Key is not carried over to the items</param>
+    /// <param name="title">Title — visible to the recipient on the claim page</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<PayoutLinkCreated> CreateAsync(
@@ -1639,10 +1698,11 @@ public sealed partial class PayoutLinks : Resource
             options,
             cancellationToken);
 
-    /// <summary>Создать выплатные ссылки пачкой</summary>
+    /// <summary>Create payout links in bulk</summary>
     /// <remarks>
-    /// <para>До 500 ссылок за вызов; каждая проходит или падает независимо, ответ выровнен по индексам запроса. Повтор с теми же `reference` безопасен.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>email.bad_recipient</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.merchant_frozen</c>, <c>payoutlink.bad_amount</c>, <c>payoutlink.bad_fee_bearer</c>, <c>payoutlink.bad_passcode</c>, <c>payoutlink.batch_too_large</c>, <c>payoutlink.disabled</c>, <c>payoutlink.duplicate_reference</c>, <c>payoutlink.empty_batch</c>, <c>payoutlink.funds_maturing</c>, <c>payoutlink.insufficient_funds</c>, <c>payoutlink.passcode</c>, <c>payoutlink.reference_required</c>, <c>payoutlink.token</c>, <c>payoutlink.unsupported_network</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
+    /// <para>Up to 500 links per call; each succeeds or fails independently, the response is aligned with the request indices. Retrying with the same `reference` values is safe.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>email.bad_recipient</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.merchant_frozen</c>, <c>payoutlink.bad_amount</c>, <c>payoutlink.bad_fee_bearer</c>, <c>payoutlink.bad_passcode</c>, <c>payoutlink.batch_too_large</c>, <c>payoutlink.disabled</c>, <c>payoutlink.duplicate_reference</c>, <c>payoutlink.empty_batch</c>, <c>payoutlink.funds_maturing</c>, <c>payoutlink.insufficient_funds</c>, <c>payoutlink.passcode</c>, <c>payoutlink.reference_required</c>, <c>payoutlink.token</c>, <c>payoutlink.unsupported_network</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -1661,12 +1721,13 @@ public sealed partial class PayoutLinks : Resource
             cancellationToken);
     }
 
-    /// <summary>Создать выплатные ссылки пачкой</summary>
+    /// <summary>Create payout links in bulk</summary>
     /// <remarks>
-    /// <para>До 500 ссылок за вызов; каждая проходит или падает независимо, ответ выровнен по индексам запроса. Повтор с теми же `reference` безопасен.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>email.bad_recipient</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.merchant_frozen</c>, <c>payoutlink.bad_amount</c>, <c>payoutlink.bad_fee_bearer</c>, <c>payoutlink.bad_passcode</c>, <c>payoutlink.batch_too_large</c>, <c>payoutlink.disabled</c>, <c>payoutlink.duplicate_reference</c>, <c>payoutlink.empty_batch</c>, <c>payoutlink.funds_maturing</c>, <c>payoutlink.insufficient_funds</c>, <c>payoutlink.passcode</c>, <c>payoutlink.reference_required</c>, <c>payoutlink.token</c>, <c>payoutlink.unsupported_network</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
+    /// <para>Up to 500 links per call; each succeeds or fails independently, the response is aligned with the request indices. Retrying with the same `reference` values is safe.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>email.bad_recipient</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.merchant_frozen</c>, <c>payoutlink.bad_amount</c>, <c>payoutlink.bad_fee_bearer</c>, <c>payoutlink.bad_passcode</c>, <c>payoutlink.batch_too_large</c>, <c>payoutlink.disabled</c>, <c>payoutlink.duplicate_reference</c>, <c>payoutlink.empty_batch</c>, <c>payoutlink.funds_maturing</c>, <c>payoutlink.insufficient_funds</c>, <c>payoutlink.passcode</c>, <c>payoutlink.reference_required</c>, <c>payoutlink.token</c>, <c>payoutlink.unsupported_network</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.reference_invalid</c>, <c>request.reference_too_long</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
     /// </remarks>
-    /// <param name="items">До 500 ссылок за вызов; каждая проходит или падает независимо, ответ выровнен по индексам запроса. reference обязателен у каждой.</param>
+    /// <param name="items">Up to 500 links per call; each succeeds or fails independently, the response is aligned with the request indices. reference is required on each.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<PayoutLinkBatchResult> CreateBatchAsync(
@@ -1681,9 +1742,10 @@ public sealed partial class PayoutLinks : Resource
             options,
             cancellationToken);
 
-    /// <summary>Список выплатных ссылок</summary>
+    /// <summary>List payout links</summary>
     /// <remarks>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payoutlink.disabled</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payoutlink.disabled</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -1702,12 +1764,13 @@ public sealed partial class PayoutLinks : Resource
             cancellationToken);
     }
 
-    /// <summary>Список выплатных ссылок</summary>
+    /// <summary>List payout links</summary>
     /// <remarks>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payoutlink.disabled</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payoutlink.disabled</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="limit">Размер страницы, 1–100; вне диапазона — 25.</param>
-    /// <param name="offset">Смещение от начала списка.</param>
+    /// <param name="limit">Page size, 1–100; out of range — 25.</param>
+    /// <param name="offset">Offset from the start of the list.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public PagePromise<PayoutLinkView> ListAsync(
@@ -1724,9 +1787,10 @@ public sealed partial class PayoutLinks : Resource
             options,
             cancellationToken);
 
-    /// <summary>Статус выплатной ссылки</summary>
+    /// <summary>Payout link status</summary>
     /// <remarks>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payoutlink.bad_id</c>, <c>payoutlink.disabled</c>, <c>payoutlink.not_found</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payoutlink.bad_id</c>, <c>payoutlink.disabled</c>, <c>payoutlink.not_found</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -1745,11 +1809,12 @@ public sealed partial class PayoutLinks : Resource
             cancellationToken);
     }
 
-    /// <summary>Статус выплатной ссылки</summary>
+    /// <summary>Payout link status</summary>
     /// <remarks>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payoutlink.bad_id</c>, <c>payoutlink.disabled</c>, <c>payoutlink.not_found</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payoutlink.bad_id</c>, <c>payoutlink.disabled</c>, <c>payoutlink.not_found</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="linkId">Идентификатор выплатной ссылки (link_id из ответа создания).</param>
+    /// <param name="linkId">The payout link id (link_id from the creation response).</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<PayoutLinkView> GetAsync(
@@ -1764,10 +1829,11 @@ public sealed partial class PayoutLinks : Resource
             options,
             cancellationToken);
 
-    /// <summary>Отменить выплатную ссылку</summary>
+    /// <summary>Cancel a payout link</summary>
     /// <remarks>
-    /// <para>Непогашенная ссылка отменяется, резерв возвращается на баланс.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.not_found</c>, <c>payoutlink.bad_id</c>, <c>payoutlink.disabled</c>, <c>payoutlink.not_found</c>, <c>payoutlink.not_funded</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>An unclaimed link is cancelled and the reserve is returned to the balance.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.not_found</c>, <c>payoutlink.bad_id</c>, <c>payoutlink.disabled</c>, <c>payoutlink.not_found</c>, <c>payoutlink.not_funded</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -1786,12 +1852,13 @@ public sealed partial class PayoutLinks : Resource
             cancellationToken);
     }
 
-    /// <summary>Отменить выплатную ссылку</summary>
+    /// <summary>Cancel a payout link</summary>
     /// <remarks>
-    /// <para>Непогашенная ссылка отменяется, резерв возвращается на баланс.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.not_found</c>, <c>payoutlink.bad_id</c>, <c>payoutlink.disabled</c>, <c>payoutlink.not_found</c>, <c>payoutlink.not_funded</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>An unclaimed link is cancelled and the reserve is returned to the balance.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.not_found</c>, <c>payoutlink.bad_id</c>, <c>payoutlink.disabled</c>, <c>payoutlink.not_found</c>, <c>payoutlink.not_funded</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="linkId">Идентификатор выплатной ссылки (link_id из ответа создания).</param>
+    /// <param name="linkId">The payout link id (link_id from the creation response).</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<PayoutLinkView> CancelAsync(
@@ -1806,9 +1873,9 @@ public sealed partial class PayoutLinks : Resource
             options,
             cancellationToken);
 
-    /// <summary>Страница получения: что внутри ссылки (без ключа)</summary>
+    /// <summary>Claim page: what the link holds (no key)</summary>
     /// <remarks>
-    /// <para>Публичный просмотр для получателя: валюта, сумма, заметка, срок. Токен — секрет из URL. У ссылки с кодом получения код передаётся заголовком `X-Claim-Passcode` (не query — второй фактор не должен оседать в логах); без кода отдаётся минимум (`passcode_required: true`, статус, срок) — суммы видны только после верного кода; неверные коды считаются и после 10 запирают ссылку (429 `payoutlink.passcode_locked`).</para>
+    /// <para>A public view for the recipient: currency, amount, note, expiry. The token is the secret from the URL. For a link with a claim passcode, the passcode is sent in the `X-Claim-Passcode` header (not the query — a second factor must not end up in logs); without the passcode only a minimum is returned (`passcode_required: true`, status, expiry) — amounts are visible only after a correct passcode; wrong passcodes are counted and after 10 the link is locked (429 `payoutlink.passcode_locked`).</para>
     /// <para>Errors: <c>internal</c>, <c>payoutlink.disabled</c>, <c>payoutlink.not_found</c>, <c>payoutlink.passcode_locked</c>, <c>payoutlink.passcode_required</c>, <c>payoutlink.passcode_wrong</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>.</para>
     /// </remarks>
     /// <param name="token"><c>token</c> path parameter.</param>
@@ -1828,9 +1895,9 @@ public sealed partial class PayoutLinks : Resource
                 ["token"] = token,
             });
 
-    /// <summary>Получить выплату по ссылке (без ключа)</summary>
+    /// <summary>Claim a payout via a link (no key)</summary>
     /// <remarks>
-    /// <para>Получатель вводит свой `address` (и `memo`, если сеть требует) — из резерва рождается обычная выплата. Ссылка с кодом получения требует `passcode`: без него — 403 `payoutlink.passcode_required`, неверный — 403 `payoutlink.passcode_wrong`, после 10 неверных — 429 `payoutlink.passcode_locked` (мерчант отменяет ссылку и выпускает новую).</para>
+    /// <para>The recipient enters their `address` (and `memo`, if the network requires one) — a regular payout is created from the reserve. A link with a claim passcode requires `passcode`: without it — 403 `payoutlink.passcode_required`, a wrong one — 403 `payoutlink.passcode_wrong`, after 10 wrong ones — 429 `payoutlink.passcode_locked` (the merchant cancels the link and issues a new one).</para>
     /// <para>Errors: <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.cap_unpriceable</c>, <c>payout.daily_cap</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.reference_collision</c>, <c>payoutlink.already_claimed</c>, <c>payoutlink.bad_state</c>, <c>payoutlink.cancelled</c>, <c>payoutlink.claim_in_progress</c>, <c>payoutlink.destination_internal</c>, <c>payoutlink.disabled</c>, <c>payoutlink.expired</c>, <c>payoutlink.no_address</c>, <c>payoutlink.not_found</c>, <c>payoutlink.passcode_locked</c>, <c>payoutlink.passcode_required</c>, <c>payoutlink.passcode_wrong</c>, <c>payoutlink.unavailable</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>wallet.static_not_found</c>.</para>
     /// </remarks>
     /// <param name="token"><c>token</c> path parameter.</param>
@@ -1856,15 +1923,15 @@ public sealed partial class PayoutLinks : Resource
             });
     }
 
-    /// <summary>Получить выплату по ссылке (без ключа)</summary>
+    /// <summary>Claim a payout via a link (no key)</summary>
     /// <remarks>
-    /// <para>Получатель вводит свой `address` (и `memo`, если сеть требует) — из резерва рождается обычная выплата. Ссылка с кодом получения требует `passcode`: без него — 403 `payoutlink.passcode_required`, неверный — 403 `payoutlink.passcode_wrong`, после 10 неверных — 429 `payoutlink.passcode_locked` (мерчант отменяет ссылку и выпускает новую).</para>
+    /// <para>The recipient enters their `address` (and `memo`, if the network requires one) — a regular payout is created from the reserve. A link with a claim passcode requires `passcode`: without it — 403 `payoutlink.passcode_required`, a wrong one — 403 `payoutlink.passcode_wrong`, after 10 wrong ones — 429 `payoutlink.passcode_locked` (the merchant cancels the link and issues a new one).</para>
     /// <para>Errors: <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.cap_unpriceable</c>, <c>payout.daily_cap</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.reference_collision</c>, <c>payoutlink.already_claimed</c>, <c>payoutlink.bad_state</c>, <c>payoutlink.cancelled</c>, <c>payoutlink.claim_in_progress</c>, <c>payoutlink.destination_internal</c>, <c>payoutlink.disabled</c>, <c>payoutlink.expired</c>, <c>payoutlink.no_address</c>, <c>payoutlink.not_found</c>, <c>payoutlink.passcode_locked</c>, <c>payoutlink.passcode_required</c>, <c>payoutlink.passcode_wrong</c>, <c>payoutlink.unavailable</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>wallet.static_not_found</c>.</para>
     /// </remarks>
     /// <param name="token"><c>token</c> path parameter.</param>
-    /// <param name="address">Адрес получателя в сети выплаты.</param>
-    /// <param name="memo">Memo/tag — только для сетей, где он обязателен.</param>
-    /// <param name="passcode">Код получения — если отправитель установил его на ссылку. После 10 неверных вводов ссылка запирается.</param>
+    /// <param name="address">The recipient's address on the payout network.</param>
+    /// <param name="memo">Memo/tag — only for networks where it is required.</param>
+    /// <param name="passcode">Claim passcode — if the sender set one on the link. After 10 wrong attempts the link is locked.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<PayoutClaimed> ClaimPayoutAsync(
@@ -1886,7 +1953,7 @@ public sealed partial class PayoutLinks : Resource
             cancellationToken);
 }
 
-/// <summary>Асинхронные батчи: платежи, возвраты, выплаты, переводы пачками.</summary>
+/// <summary>Asynchronous batches of payments, refunds, payouts and transfers.</summary>
 public sealed partial class Batches : Resource
 {
     /// <summary>Bind the namespace to a transport.</summary>
@@ -1896,11 +1963,12 @@ public sealed partial class Batches : Resource
     {
     }
 
-    /// <summary>Массовое создание платежей</summary>
+    /// <summary>Create payments in bulk</summary>
     /// <remarks>
-    /// <para>До 5000 платежей за ОДИН запрос (одна отметка rate-limit). Каждый элемент — обычный объект `/v1/payment` (разные валюты/сети допустимы). В ответ сразу приходит `batch_id`; обработка идёт в фоне. Статус и результаты (включая `uuid` и ссылку оплаты каждого платежа) — через `/v1/batch/info`.</para>
-    /// <para>`on_error`: `continue` (по умолчанию — ошибка одного не мешает остальным) или `stop` (после первой ошибки оставшиеся отменяются); регистр не важен, любое другое значение — отказ `batch.bad_on_error`. Каждый элемент идемпотентен по своему `order_id`; вся пачка — по заголовку `Idempotency-Key`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>batch.bad_on_error</c>, <c>batch.bad_recipient</c>, <c>batch.disabled</c>, <c>batch.duplicate_order_id</c>, <c>batch.duplicate_reference</c>, <c>batch.empty</c>, <c>batch.invoice_required</c>, <c>batch.order_id_required</c>, <c>batch.reference_required</c>, <c>batch.too_large</c>, <c>batch.unsupported_kind</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Up to 5000 payments in ONE request (one rate-limit hit). Each item is a regular `/v1/payment` object (different currencies/networks are allowed). The response immediately returns `batch_id`; processing runs in the background. Status and results (including each payment's `uuid` and payment link) — via `/v1/batch/info`.</para>
+    /// <para>`on_error`: `continue` (default — one item's error does not affect the rest) or `stop` (after the first error the remaining items are cancelled); case-insensitive, any other value is rejected with `batch.bad_on_error`. Each item is idempotent on its own `order_id`; the whole batch — on the `Idempotency-Key` header.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>batch.bad_on_error</c>, <c>batch.bad_recipient</c>, <c>batch.disabled</c>, <c>batch.duplicate_order_id</c>, <c>batch.duplicate_reference</c>, <c>batch.empty</c>, <c>batch.invoice_required</c>, <c>batch.order_id_required</c>, <c>batch.reference_required</c>, <c>batch.too_large</c>, <c>batch.unsupported_kind</c>, <c>cli.permission_denied</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -1919,14 +1987,15 @@ public sealed partial class Batches : Resource
             cancellationToken);
     }
 
-    /// <summary>Массовое создание платежей</summary>
+    /// <summary>Create payments in bulk</summary>
     /// <remarks>
-    /// <para>До 5000 платежей за ОДИН запрос (одна отметка rate-limit). Каждый элемент — обычный объект `/v1/payment` (разные валюты/сети допустимы). В ответ сразу приходит `batch_id`; обработка идёт в фоне. Статус и результаты (включая `uuid` и ссылку оплаты каждого платежа) — через `/v1/batch/info`.</para>
-    /// <para>`on_error`: `continue` (по умолчанию — ошибка одного не мешает остальным) или `stop` (после первой ошибки оставшиеся отменяются); регистр не важен, любое другое значение — отказ `batch.bad_on_error`. Каждый элемент идемпотентен по своему `order_id`; вся пачка — по заголовку `Idempotency-Key`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>batch.bad_on_error</c>, <c>batch.bad_recipient</c>, <c>batch.disabled</c>, <c>batch.duplicate_order_id</c>, <c>batch.duplicate_reference</c>, <c>batch.empty</c>, <c>batch.invoice_required</c>, <c>batch.order_id_required</c>, <c>batch.reference_required</c>, <c>batch.too_large</c>, <c>batch.unsupported_kind</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Up to 5000 payments in ONE request (one rate-limit hit). Each item is a regular `/v1/payment` object (different currencies/networks are allowed). The response immediately returns `batch_id`; processing runs in the background. Status and results (including each payment's `uuid` and payment link) — via `/v1/batch/info`.</para>
+    /// <para>`on_error`: `continue` (default — one item's error does not affect the rest) or `stop` (after the first error the remaining items are cancelled); case-insensitive, any other value is rejected with `batch.bad_on_error`. Each item is idempotent on its own `order_id`; the whole batch — on the `Idempotency-Key` header.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>batch.bad_on_error</c>, <c>batch.bad_recipient</c>, <c>batch.disabled</c>, <c>batch.duplicate_order_id</c>, <c>batch.duplicate_reference</c>, <c>batch.empty</c>, <c>batch.invoice_required</c>, <c>batch.order_id_required</c>, <c>batch.reference_required</c>, <c>batch.too_large</c>, <c>batch.unsupported_kind</c>, <c>cli.permission_denied</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="payments">Массив от 1 до 5000 элементов — те же поля, что у POST /v1/payment; order_id обязателен у каждого элемента: по нему сопоставляются результаты и он защищает от дублей.</param>
-    /// <param name="onError">Что делать при ошибке элемента: continue (по умолчанию) — обрабатывать остальные; stop — прекратить обработку после первой ошибки.</param>
+    /// <param name="payments">An array of 1 to 5000 items — the same fields as in POST /v1/payment; order_id is required on each item: results are matched by it and it protects against duplicates.</param>
+    /// <param name="onError">What to do when an item fails: continue (default) — process the rest; stop — stop processing after the first error.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<BatchSubmitResponse> CreatePaymentAsync(
@@ -1943,10 +2012,11 @@ public sealed partial class Batches : Resource
             options,
             cancellationToken);
 
-    /// <summary>Массовые возвраты</summary>
+    /// <summary>Bulk refunds</summary>
     /// <remarks>
-    /// <para>До 5000 возвратов за один запрос. Каждый элемент — обычный объект `/v1/payment/refund`, но `reference` ОБЯЗАТЕЛЕН на каждом элементе и уникален внутри батча: это ключ идемпотентности именно этого возврата (не путать с `order_id`, который указывает на счёт). Без него два разных возврата одной суммы одному плательщику молча схлопнулись бы в один. Возвращает `batch_id`; статус по каждому — через `/v1/batch/info`. `on_error`: `continue`/`stop`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>batch.bad_on_error</c>, <c>batch.bad_recipient</c>, <c>batch.disabled</c>, <c>batch.duplicate_order_id</c>, <c>batch.duplicate_reference</c>, <c>batch.empty</c>, <c>batch.invoice_required</c>, <c>batch.order_id_required</c>, <c>batch.reference_required</c>, <c>batch.too_large</c>, <c>batch.unsupported_kind</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Up to 5000 refunds in one request. Each item is a regular `/v1/payment/refund` object, but `reference` is REQUIRED on every item and must be unique within the batch: it is the idempotency key of that particular refund (not to be confused with `order_id`, which points to the invoice). Without it, two different refunds of the same amount to the same payer would silently collapse into one. Returns `batch_id`; per-item status via `/v1/batch/info`. `on_error`: `continue`/`stop`.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>batch.bad_on_error</c>, <c>batch.bad_recipient</c>, <c>batch.disabled</c>, <c>batch.duplicate_order_id</c>, <c>batch.duplicate_reference</c>, <c>batch.empty</c>, <c>batch.invoice_required</c>, <c>batch.order_id_required</c>, <c>batch.reference_required</c>, <c>batch.too_large</c>, <c>batch.unsupported_kind</c>, <c>cli.permission_denied</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -1965,13 +2035,14 @@ public sealed partial class Batches : Resource
             cancellationToken);
     }
 
-    /// <summary>Массовые возвраты</summary>
+    /// <summary>Bulk refunds</summary>
     /// <remarks>
-    /// <para>До 5000 возвратов за один запрос. Каждый элемент — обычный объект `/v1/payment/refund`, но `reference` ОБЯЗАТЕЛЕН на каждом элементе и уникален внутри батча: это ключ идемпотентности именно этого возврата (не путать с `order_id`, который указывает на счёт). Без него два разных возврата одной суммы одному плательщику молча схлопнулись бы в один. Возвращает `batch_id`; статус по каждому — через `/v1/batch/info`. `on_error`: `continue`/`stop`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>batch.bad_on_error</c>, <c>batch.bad_recipient</c>, <c>batch.disabled</c>, <c>batch.duplicate_order_id</c>, <c>batch.duplicate_reference</c>, <c>batch.empty</c>, <c>batch.invoice_required</c>, <c>batch.order_id_required</c>, <c>batch.reference_required</c>, <c>batch.too_large</c>, <c>batch.unsupported_kind</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Up to 5000 refunds in one request. Each item is a regular `/v1/payment/refund` object, but `reference` is REQUIRED on every item and must be unique within the batch: it is the idempotency key of that particular refund (not to be confused with `order_id`, which points to the invoice). Without it, two different refunds of the same amount to the same payer would silently collapse into one. Returns `batch_id`; per-item status via `/v1/batch/info`. `on_error`: `continue`/`stop`.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>batch.bad_on_error</c>, <c>batch.bad_recipient</c>, <c>batch.disabled</c>, <c>batch.duplicate_order_id</c>, <c>batch.duplicate_reference</c>, <c>batch.empty</c>, <c>batch.invoice_required</c>, <c>batch.order_id_required</c>, <c>batch.reference_required</c>, <c>batch.too_large</c>, <c>batch.unsupported_kind</c>, <c>cli.permission_denied</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="refunds">Массив от 1 до 5000 элементов — те же поля, что у POST /v1/payment/refund; у каждого элемента обязательны reference (ключ идемпотентности) и uuid либо order_id платежа.</param>
-    /// <param name="onError">Что делать при ошибке элемента: continue (по умолчанию) — обрабатывать остальные; stop — прекратить обработку после первой ошибки.</param>
+    /// <param name="refunds">An array of 1 to 5000 items — the same fields as in POST /v1/payment/refund; each item requires reference (the idempotency key) and the payment's uuid or order_id.</param>
+    /// <param name="onError">What to do when an item fails: continue (default) — process the rest; stop — stop processing after the first error.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<BatchSubmitResponse> CreateRefundAsync(
@@ -1988,10 +2059,11 @@ public sealed partial class Batches : Resource
             options,
             cancellationToken);
 
-    /// <summary>Массовые выплаты (async, без лимита 100)</summary>
+    /// <summary>Bulk payouts (async, no 100 limit)</summary>
     /// <remarks>
-    /// <para>Асинхронный аналог `/v1/payout/mass` без ограничения в 100: до 5000 выплат, обработка в фоне, статус через `/v1/batch/info`. Каждый элемент — обычный объект `/v1/payout`, идемпотентен по `order_id`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>batch.bad_on_error</c>, <c>batch.bad_recipient</c>, <c>batch.disabled</c>, <c>batch.duplicate_order_id</c>, <c>batch.duplicate_reference</c>, <c>batch.empty</c>, <c>batch.invoice_required</c>, <c>batch.order_id_required</c>, <c>batch.reference_required</c>, <c>batch.too_large</c>, <c>batch.unsupported_kind</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Asynchronous counterpart of `/v1/payout/mass` without the 100-item limit: up to 5000 payouts, processed in the background, status via `/v1/batch/info`. Each item is a regular `/v1/payout` object, idempotent on `order_id`.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>batch.bad_on_error</c>, <c>batch.bad_recipient</c>, <c>batch.disabled</c>, <c>batch.duplicate_order_id</c>, <c>batch.duplicate_reference</c>, <c>batch.empty</c>, <c>batch.invoice_required</c>, <c>batch.order_id_required</c>, <c>batch.reference_required</c>, <c>batch.too_large</c>, <c>batch.unsupported_kind</c>, <c>cli.permission_denied</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -2010,13 +2082,14 @@ public sealed partial class Batches : Resource
             cancellationToken);
     }
 
-    /// <summary>Массовые выплаты (async, без лимита 100)</summary>
+    /// <summary>Bulk payouts (async, no 100 limit)</summary>
     /// <remarks>
-    /// <para>Асинхронный аналог `/v1/payout/mass` без ограничения в 100: до 5000 выплат, обработка в фоне, статус через `/v1/batch/info`. Каждый элемент — обычный объект `/v1/payout`, идемпотентен по `order_id`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>batch.bad_on_error</c>, <c>batch.bad_recipient</c>, <c>batch.disabled</c>, <c>batch.duplicate_order_id</c>, <c>batch.duplicate_reference</c>, <c>batch.empty</c>, <c>batch.invoice_required</c>, <c>batch.order_id_required</c>, <c>batch.reference_required</c>, <c>batch.too_large</c>, <c>batch.unsupported_kind</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Asynchronous counterpart of `/v1/payout/mass` without the 100-item limit: up to 5000 payouts, processed in the background, status via `/v1/batch/info`. Each item is a regular `/v1/payout` object, idempotent on `order_id`.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>batch.bad_on_error</c>, <c>batch.bad_recipient</c>, <c>batch.disabled</c>, <c>batch.duplicate_order_id</c>, <c>batch.duplicate_reference</c>, <c>batch.empty</c>, <c>batch.invoice_required</c>, <c>batch.order_id_required</c>, <c>batch.reference_required</c>, <c>batch.too_large</c>, <c>batch.unsupported_kind</c>, <c>cli.permission_denied</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="payouts">Массив от 1 до 5000 элементов — те же поля, что у POST /v1/payout; order_id у каждого элемента обязателен и служит ключом идемпотентности: повтор вернёт уже созданную выплату.</param>
-    /// <param name="onError">Что делать при ошибке элемента: continue (по умолчанию) — обрабатывать остальные; stop — прекратить обработку после первой ошибки.</param>
+    /// <param name="payouts">An array of 1 to 5000 items — the same fields as in POST /v1/payout; order_id is required on each item and serves as the idempotency key: a retry returns the payout already created.</param>
+    /// <param name="onError">What to do when an item fails: continue (default) — process the rest; stop — stop processing after the first error.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<BatchSubmitResponse> CreatePayoutAsync(
@@ -2033,10 +2106,11 @@ public sealed partial class Batches : Resource
             options,
             cancellationToken);
 
-    /// <summary>Статус пачки</summary>
+    /// <summary>Batch status</summary>
     /// <remarks>
-    /// <para>Прогресс пачки (`total`/`succeeded`/`failed`/`status`) и постранично её элементы с результатом или ошибкой по каждому. `status`: `pending` → `processing` → `completed`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>batch.bad_id</c>, <c>batch.disabled</c>, <c>batch.not_found</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Batch progress (`total`/`succeeded`/`failed`/`status`) and its items, paginated, with the result or error for each. `status`: `pending` → `processing` → `completed`.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>batch.bad_id</c>, <c>batch.disabled</c>, <c>batch.not_found</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -2055,14 +2129,15 @@ public sealed partial class Batches : Resource
             cancellationToken);
     }
 
-    /// <summary>Статус пачки</summary>
+    /// <summary>Batch status</summary>
     /// <remarks>
-    /// <para>Прогресс пачки (`total`/`succeeded`/`failed`/`status`) и постранично её элементы с результатом или ошибкой по каждому. `status`: `pending` → `processing` → `completed`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>batch.bad_id</c>, <c>batch.disabled</c>, <c>batch.not_found</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Batch progress (`total`/`succeeded`/`failed`/`status`) and its items, paginated, with the result or error for each. `status`: `pending` → `processing` → `completed`.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>batch.bad_id</c>, <c>batch.disabled</c>, <c>batch.not_found</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="batchId">Идентификатор батча из ответа на submit.</param>
-    /// <param name="limit">Сколько элементов вернуть в items (пагинация).</param>
-    /// <param name="offset">Смещение по элементам.</param>
+    /// <param name="batchId">The batch id from the submit response.</param>
+    /// <param name="limit">How many items to return in items (pagination).</param>
+    /// <param name="offset">Offset in items.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<BatchInfoResponse> GetInfoAsync(
@@ -2121,7 +2196,7 @@ public sealed partial class Batches : Resource
     }
 }
 
-/// <summary>Автоматическое разделение поступлений между получателями.</summary>
+/// <summary>Automatic splitting of incoming funds between recipients.</summary>
 public sealed partial class Splits : Resource
 {
     /// <summary>Bind the namespace to a transport.</summary>
@@ -2131,16 +2206,17 @@ public sealed partial class Splits : Resource
     {
     }
 
-    /// <summary>Правило сплита (отчисление партнёру)</summary>
+    /// <summary>Split rule (partner share)</summary>
     /// <remarks>
-    /// <para>Автоматически отправлять долю КАЖДОГО входящего платежа партнёру. Укажите ровно одного получателя:</para>
+    /// <para>Automatically send a share of EVERY incoming payment to a partner. Specify exactly one recipient:</para>
     /// <para>
-    /// • `address` + `network` — внешний крипто-адрес. Уходит он-чейн выплатой, **необратимо**.
-    /// • `merchant_id` — аккаунт на Oblodai. Уходит проводкой по балансу: **обратимо** (возврат отзовёт долю обратно).
+    /// • `address` + `network` — an external crypto address. Sent as an on-chain payout, **irreversibly**.
+    /// • `merchant_id` — an Oblodai account. Sent as a balance posting: **reversible** (a refund claws the share back).
     /// </para>
-    /// <para>`percent` — доля от платежа (напр. `10` или `2.5`). Сумма всех активных правил проекта не может превышать 100%.</para>
-    /// <para>⚠️ **Возвраты.** Возврат списывается с ВАШЕГО баланса на всю сумму, что прислал плательщик. Поэтому отправка партнёрам не происходит сразу: она откладывается на `refund_hold_seconds` (см. `/v1/split/config/set`), и в момент отправки база пересчитывается как «оплачено − возвращено». Возврат внутри окна автоматически уменьшает (или отменяет) отчисление, и вам всегда есть чем вернуть деньги. Возврат ПОСЛЕ отправки: внешнюю долю вернуть нельзя (пополняйте баланс), долю on-platform партнёра мы отзовём автоматически.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.address_network_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_memo</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.bad_destination</c>, <c>split.bad_merchant</c>, <c>split.bad_percent</c>, <c>split.consent_check_failed</c>, <c>split.dest_check_failed</c>, <c>split.dest_not_found</c>, <c>split.disabled</c>, <c>split.duplicate_destination</c>, <c>split.exceeds_100</c>, <c>split.network_required</c>, <c>split.recipient_not_opted_in</c>, <c>split.self_destination</c>, <c>split.unsupported_network</c>.</para>
+    /// <para>`percent` — the share of the payment (e.g. `10` or `2.5`). The sum of all active rules of a project cannot exceed 100%.</para>
+    /// <para>⚠️ **Refunds.** A refund is debited from YOUR balance for the full amount the payer sent. That is why partner shares are not sent immediately: sending is deferred by `refund_hold_seconds` (see `/v1/split/config/set`), and at send time the base is recalculated as "paid − refunded". A refund within the window automatically reduces (or cancels) the share, so you always have the funds to refund. A refund AFTER sending: an external share cannot be recovered (top up your balance); an on-platform partner's share is clawed back automatically.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.address_network_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_memo</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.bad_destination</c>, <c>split.bad_merchant</c>, <c>split.bad_percent</c>, <c>split.consent_check_failed</c>, <c>split.dest_check_failed</c>, <c>split.dest_not_found</c>, <c>split.disabled</c>, <c>split.duplicate_destination</c>, <c>split.exceeds_100</c>, <c>split.network_required</c>, <c>split.recipient_not_opted_in</c>, <c>split.self_destination</c>, <c>split.unsupported_network</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -2159,22 +2235,23 @@ public sealed partial class Splits : Resource
             cancellationToken);
     }
 
-    /// <summary>Правило сплита (отчисление партнёру)</summary>
+    /// <summary>Split rule (partner share)</summary>
     /// <remarks>
-    /// <para>Автоматически отправлять долю КАЖДОГО входящего платежа партнёру. Укажите ровно одного получателя:</para>
+    /// <para>Automatically send a share of EVERY incoming payment to a partner. Specify exactly one recipient:</para>
     /// <para>
-    /// • `address` + `network` — внешний крипто-адрес. Уходит он-чейн выплатой, **необратимо**.
-    /// • `merchant_id` — аккаунт на Oblodai. Уходит проводкой по балансу: **обратимо** (возврат отзовёт долю обратно).
+    /// • `address` + `network` — an external crypto address. Sent as an on-chain payout, **irreversibly**.
+    /// • `merchant_id` — an Oblodai account. Sent as a balance posting: **reversible** (a refund claws the share back).
     /// </para>
-    /// <para>`percent` — доля от платежа (напр. `10` или `2.5`). Сумма всех активных правил проекта не может превышать 100%.</para>
-    /// <para>⚠️ **Возвраты.** Возврат списывается с ВАШЕГО баланса на всю сумму, что прислал плательщик. Поэтому отправка партнёрам не происходит сразу: она откладывается на `refund_hold_seconds` (см. `/v1/split/config/set`), и в момент отправки база пересчитывается как «оплачено − возвращено». Возврат внутри окна автоматически уменьшает (или отменяет) отчисление, и вам всегда есть чем вернуть деньги. Возврат ПОСЛЕ отправки: внешнюю долю вернуть нельзя (пополняйте баланс), долю on-platform партнёра мы отзовём автоматически.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.address_network_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_memo</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.bad_destination</c>, <c>split.bad_merchant</c>, <c>split.bad_percent</c>, <c>split.consent_check_failed</c>, <c>split.dest_check_failed</c>, <c>split.dest_not_found</c>, <c>split.disabled</c>, <c>split.duplicate_destination</c>, <c>split.exceeds_100</c>, <c>split.network_required</c>, <c>split.recipient_not_opted_in</c>, <c>split.self_destination</c>, <c>split.unsupported_network</c>.</para>
+    /// <para>`percent` — the share of the payment (e.g. `10` or `2.5`). The sum of all active rules of a project cannot exceed 100%.</para>
+    /// <para>⚠️ **Refunds.** A refund is debited from YOUR balance for the full amount the payer sent. That is why partner shares are not sent immediately: sending is deferred by `refund_hold_seconds` (see `/v1/split/config/set`), and at send time the base is recalculated as "paid − refunded". A refund within the window automatically reduces (or cancels) the share, so you always have the funds to refund. A refund AFTER sending: an external share cannot be recovered (top up your balance); an on-platform partner's share is clawed back automatically.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>idempotency.bad_key</c>, <c>idempotency.in_progress</c>, <c>idempotency.key_reused</c>, <c>idempotency.unavailable</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.address_network_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_memo</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.bad_destination</c>, <c>split.bad_merchant</c>, <c>split.bad_percent</c>, <c>split.consent_check_failed</c>, <c>split.dest_check_failed</c>, <c>split.dest_not_found</c>, <c>split.disabled</c>, <c>split.duplicate_destination</c>, <c>split.exceeds_100</c>, <c>split.network_required</c>, <c>split.recipient_not_opted_in</c>, <c>split.self_destination</c>, <c>split.unsupported_network</c>.</para>
     /// </remarks>
-    /// <param name="percent">Доля от каждого платежа, строкой: "10" = 10 %, "2.5" = 2.5 %. Больше 0 и не больше 100, шаг 0.01 %; сумма всех правил не может превышать 100 %.</param>
-    /// <param name="address">Внешний криптоадрес партнёра; доля уходит реальной транзакцией в блокчейне — необратимо. Ровно один вариант получателя: либо address+network, либо merchant_id.</param>
-    /// <param name="merchantId">Идентификатор мерчанта-партнёра внутри Oblodai; доля движется по внутреннему учёту и при возврате отзывается обратно.</param>
-    /// <param name="network">Сеть адреса. Обязательна вместе с address.</param>
-    /// <param name="note">Комментарий для себя (виден в списке правил).</param>
+    /// <param name="percent">The share of each payment, as a string: "10" = 10 %, "2.5" = 2.5 %. Greater than 0 and at most 100, in steps of 0.01 %; the sum of all rules cannot exceed 100 %.</param>
+    /// <param name="address">The partner's external crypto address; the share is sent as a real on-chain transaction — irreversibly. Exactly one recipient option: either address+network or merchant_id.</param>
+    /// <param name="merchantId">The id of the partner merchant within Oblodai; the share moves within internal accounting and is clawed back on refund.</param>
+    /// <param name="network">The address network. Required together with address.</param>
+    /// <param name="note">A note for yourself (visible in the rule list).</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<SplitRuleCreated> CreateRuleAsync(
@@ -2197,10 +2274,11 @@ public sealed partial class Splits : Resource
             options,
             cancellationToken);
 
-    /// <summary>Список правил</summary>
+    /// <summary>List rules</summary>
     /// <remarks>
-    /// <para>Ваши правила сплита. `reversible: true` — партнёр на платформе (долю можно отозвать при возврате).</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.disabled</c>.</para>
+    /// <para>Your split rules. `reversible: true` — an on-platform partner (the share can be clawed back on refund).</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.disabled</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -2219,13 +2297,14 @@ public sealed partial class Splits : Resource
             cancellationToken);
     }
 
-    /// <summary>Список правил</summary>
+    /// <summary>List rules</summary>
     /// <remarks>
-    /// <para>Ваши правила сплита. `reversible: true` — партнёр на платформе (долю можно отозвать при возврате).</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.disabled</c>.</para>
+    /// <para>Your split rules. `reversible: true` — an on-platform partner (the share can be clawed back on refund).</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.disabled</c>.</para>
     /// </remarks>
-    /// <param name="limit">Размер страницы, 1–100; вне диапазона — 25.</param>
-    /// <param name="offset">Смещение от начала списка.</param>
+    /// <param name="limit">Page size, 1–100; out of range — 25.</param>
+    /// <param name="offset">Offset from the start of the list.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public PagePromise<SplitRuleView> ListRulesAsync(
@@ -2242,10 +2321,11 @@ public sealed partial class Splits : Resource
             options,
             cancellationToken);
 
-    /// <summary>Удалить правило</summary>
+    /// <summary>Delete a rule</summary>
     /// <remarks>
-    /// <para>`{rule_id}`. На уже отправленные доли не влияет.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.bad_id</c>, <c>split.disabled</c>, <c>split.not_found</c>.</para>
+    /// <para>`{rule_id}`. Does not affect shares already sent.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.bad_id</c>, <c>split.disabled</c>, <c>split.not_found</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -2264,12 +2344,13 @@ public sealed partial class Splits : Resource
             cancellationToken);
     }
 
-    /// <summary>Удалить правило</summary>
+    /// <summary>Delete a rule</summary>
     /// <remarks>
-    /// <para>`{rule_id}`. На уже отправленные доли не влияет.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.bad_id</c>, <c>split.disabled</c>, <c>split.not_found</c>.</para>
+    /// <para>`{rule_id}`. Does not affect shares already sent.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.bad_id</c>, <c>split.disabled</c>, <c>split.not_found</c>.</para>
     /// </remarks>
-    /// <param name="ruleId">Идентификатор правила из POST /v1/split/rule или списка.</param>
+    /// <param name="ruleId">The rule id from POST /v1/split/rule or the list.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<SplitRuleDeleted> DeleteRuleAsync(
@@ -2284,11 +2365,12 @@ public sealed partial class Splits : Resource
             options,
             cancellationToken);
 
-    /// <summary>Окно удержания под возвраты</summary>
+    /// <summary>Refund hold window</summary>
     /// <remarks>
-    /// <para>`refund_hold_seconds` — на сколько СЕКУНД откладывается ВСЯ исходящая маршрутизация платежа (сплиты партнёрам, авто-вывод, авто-конвертация в USDT) после его зачисления.</para>
-    /// <para>Смысл: пока окно не истекло, деньги лежат на вашем балансе, и любой возврат проходит без проблем. `0` = отправлять сразу, тогда риск возврата после отправки вы берёте на себя. Диапазон 0–7776000 (до 90 суток); поле обязательное — пришлите `0` явно, если доли нужно отправлять сразу.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.missing_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.bad_hold</c>, <c>split.disabled</c>.</para>
+    /// <para>`refund_hold_seconds` — how many SECONDS ALL outgoing routing of a payment (partner splits, auto-withdrawal, auto-conversion to USDT) is deferred after the payment is credited.</para>
+    /// <para>The point: until the window expires the money stays on your balance, and any refund goes through without trouble. `0` = send immediately, in which case you bear the risk of a refund after sending. Range 0–7776000 (up to 90 days); the field is required — send `0` explicitly if shares should be sent immediately.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.missing_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.bad_hold</c>, <c>split.disabled</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -2307,13 +2389,14 @@ public sealed partial class Splits : Resource
             cancellationToken);
     }
 
-    /// <summary>Окно удержания под возвраты</summary>
+    /// <summary>Refund hold window</summary>
     /// <remarks>
-    /// <para>`refund_hold_seconds` — на сколько СЕКУНД откладывается ВСЯ исходящая маршрутизация платежа (сплиты партнёрам, авто-вывод, авто-конвертация в USDT) после его зачисления.</para>
-    /// <para>Смысл: пока окно не истекло, деньги лежат на вашем балансе, и любой возврат проходит без проблем. `0` = отправлять сразу, тогда риск возврата после отправки вы берёте на себя. Диапазон 0–7776000 (до 90 суток); поле обязательное — пришлите `0` явно, если доли нужно отправлять сразу.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.missing_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.bad_hold</c>, <c>split.disabled</c>.</para>
+    /// <para>`refund_hold_seconds` — how many SECONDS ALL outgoing routing of a payment (partner splits, auto-withdrawal, auto-conversion to USDT) is deferred after the payment is credited.</para>
+    /// <para>The point: until the window expires the money stays on your balance, and any refund goes through without trouble. `0` = send immediately, in which case you bear the risk of a refund after sending. Range 0–7776000 (up to 90 days); the field is required — send `0` explicitly if shares should be sent immediately.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.missing_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.bad_hold</c>, <c>split.disabled</c>.</para>
     /// </remarks>
-    /// <param name="refundHoldSeconds">На сколько секунд откладывать расчёт по сплитам; диапазон 0–7776000 (до 90 суток). 0 — отправлять доли сразу: риск невозможности возврата берёте на себя.</param>
+    /// <param name="refundHoldSeconds">How many seconds to defer split settlement; range 0–7776000 (up to 90 days). 0 — send shares immediately: you bear the risk of being unable to refund.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<SplitConfigView> SetConfigAsync(
@@ -2328,10 +2411,11 @@ public sealed partial class Splits : Resource
             options,
             cancellationToken);
 
-    /// <summary>Текущее окно удержания</summary>
+    /// <summary>Current hold window</summary>
     /// <remarks>
-    /// <para>Возвращает `refund_hold_seconds` проекта.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.disabled</c>.</para>
+    /// <para>Returns the project's `refund_hold_seconds`.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.disabled</c>.</para>
     /// </remarks>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -2344,10 +2428,11 @@ public sealed partial class Splits : Resource
             options,
             cancellationToken);
 
-    /// <summary>Согласие принимать сплиты</summary>
+    /// <summary>Consent to receive splits</summary>
     /// <remarks>
-    /// <para>`{enabled}` — разрешить другим мерчантам направлять доли своих платежей на ВАШ баланс. Пока выключено, никто не может создать внутреннее правило сплита с получателем-вами. Выключение не отзывает уже созданные правила (деньги по ним продолжают поступать), но блокирует новые.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.missing_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.disabled</c>.</para>
+    /// <para>`{enabled}` — allow other merchants to route shares of their payments to YOUR balance. While disabled, nobody can create an internal split rule with you as the recipient. Disabling does not revoke rules already created (money keeps arriving under them), but blocks new ones.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.missing_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.disabled</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -2366,12 +2451,13 @@ public sealed partial class Splits : Resource
             cancellationToken);
     }
 
-    /// <summary>Согласие принимать сплиты</summary>
+    /// <summary>Consent to receive splits</summary>
     /// <remarks>
-    /// <para>`{enabled}` — разрешить другим мерчантам направлять доли своих платежей на ВАШ баланс. Пока выключено, никто не может создать внутреннее правило сплита с получателем-вами. Выключение не отзывает уже созданные правила (деньги по ним продолжают поступать), но блокирует новые.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.missing_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.disabled</c>.</para>
+    /// <para>`{enabled}` — allow other merchants to route shares of their payments to YOUR balance. While disabled, nobody can create an internal split rule with you as the recipient. Disabling does not revoke rules already created (money keeps arriving under them), but blocks new ones.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.missing_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.disabled</c>.</para>
     /// </remarks>
-    /// <param name="enabled">Разрешить другим мерчантам направлять доли сплитов на ваш баланс. true — включить приём, false — выключить (новые правила на вас перестанут создаваться; уже созданные продолжают исполняться).</param>
+    /// <param name="enabled">Allow other merchants to route split shares to your balance. true — enable receiving, false — disable (new rules targeting you can no longer be created; existing ones keep executing).</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<SplitRecipientOptInView> SetRecipientOptInAsync(
@@ -2386,10 +2472,11 @@ public sealed partial class Splits : Resource
             options,
             cancellationToken);
 
-    /// <summary>Текущее согласие на приём сплитов</summary>
+    /// <summary>Current consent to receive splits</summary>
     /// <remarks>
-    /// <para>Возвращает `enabled` — включён ли приём внутренних сплитов на ваш баланс.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.disabled</c>.</para>
+    /// <para>Returns `enabled` — whether receiving internal splits to your balance is enabled.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>split.disabled</c>.</para>
     /// </remarks>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -2403,7 +2490,7 @@ public sealed partial class Splits : Resource
             cancellationToken);
 }
 
-/// <summary>Постоянные (статические) адреса пополнения под клиента.</summary>
+/// <summary>Permanent (static) deposit addresses assigned to a customer.</summary>
 public sealed partial class Wallets : Resource
 {
     /// <summary>Bind the namespace to a transport.</summary>
@@ -2413,11 +2500,12 @@ public sealed partial class Wallets : Resource
     {
     }
 
-    /// <summary>Создать (или получить) статический кошелёк</summary>
+    /// <summary>Create (or get) a static wallet</summary>
     /// <remarks>
-    /// <para>Постоянный адрес пополнения, закреплённый за мерчантом (и, по желанию, за одним клиентом через `order_id`). Любое пополнение на него сразу падает вам на баланс + шлёт вебхук.</para>
-    /// <para>Идемпотентно по `(currency, network, order_id)`: тот же `order_id` вернёт тот же адрес — удобно закрепить адрес за каждым клиентом.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>invoice.daily_quota</c>, <c>merchant.acceptance_blocked</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>wallet.abandoned</c>, <c>wallet.deposits_unavailable</c>, <c>wallet.no_network</c>, <c>wallet.sandbox_unsupported</c>, <c>wallet.static_disabled</c>, <c>wallet.static_exists</c>, <c>wallet.static_not_found</c>, <c>wallet.unsupported_network</c>.</para>
+    /// <para>A permanent deposit address assigned to the merchant (and, optionally, to one customer via `order_id`). Any deposit to it is credited to your balance immediately and triggers a webhook.</para>
+    /// <para>Idempotent on `(currency, network, order_id)`: the same `order_id` returns the same address — handy for assigning an address to each customer.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>invoice.daily_quota</c>, <c>merchant.acceptance_blocked</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>wallet.abandoned</c>, <c>wallet.deposits_unavailable</c>, <c>wallet.no_network</c>, <c>wallet.sandbox_unsupported</c>, <c>wallet.static_disabled</c>, <c>wallet.static_exists</c>, <c>wallet.static_not_found</c>, <c>wallet.unsupported_network</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -2436,15 +2524,16 @@ public sealed partial class Wallets : Resource
             cancellationToken);
     }
 
-    /// <summary>Создать (или получить) статический кошелёк</summary>
+    /// <summary>Create (or get) a static wallet</summary>
     /// <remarks>
-    /// <para>Постоянный адрес пополнения, закреплённый за мерчантом (и, по желанию, за одним клиентом через `order_id`). Любое пополнение на него сразу падает вам на баланс + шлёт вебхук.</para>
-    /// <para>Идемпотентно по `(currency, network, order_id)`: тот же `order_id` вернёт тот же адрес — удобно закрепить адрес за каждым клиентом.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>invoice.daily_quota</c>, <c>merchant.acceptance_blocked</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>wallet.abandoned</c>, <c>wallet.deposits_unavailable</c>, <c>wallet.no_network</c>, <c>wallet.sandbox_unsupported</c>, <c>wallet.static_disabled</c>, <c>wallet.static_exists</c>, <c>wallet.static_not_found</c>, <c>wallet.unsupported_network</c>.</para>
+    /// <para>A permanent deposit address assigned to the merchant (and, optionally, to one customer via `order_id`). Any deposit to it is credited to your balance immediately and triggers a webhook.</para>
+    /// <para>Idempotent on `(currency, network, order_id)`: the same `order_id` returns the same address — handy for assigning an address to each customer.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>invoice.daily_quota</c>, <c>merchant.acceptance_blocked</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>wallet.abandoned</c>, <c>wallet.deposits_unavailable</c>, <c>wallet.no_network</c>, <c>wallet.sandbox_unsupported</c>, <c>wallet.static_disabled</c>, <c>wallet.static_exists</c>, <c>wallet.static_not_found</c>, <c>wallet.unsupported_network</c>.</para>
     /// </remarks>
-    /// <param name="currency">Символ валюты приёма (USDT, BTC, ETH, …)</param>
-    /// <param name="network">Сеть приёма (tron, ethereum, bitcoin, …)</param>
-    /// <param name="orderId">Ваш идентификатор клиента/заказа. Закрепляет отдельный постоянный адрес за клиентом</param>
+    /// <param name="currency">The symbol of the accepted currency (USDT, BTC, ETH, …)</param>
+    /// <param name="network">The receiving network (tron, ethereum, bitcoin, …)</param>
+    /// <param name="orderId">Your customer/order identifier. Assigns a dedicated permanent address to the customer</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<StaticWalletView> CreateAsync(
@@ -2463,10 +2552,11 @@ public sealed partial class Wallets : Resource
             options,
             cancellationToken);
 
-    /// <summary>Заблокировать / разблокировать кошелёк</summary>
+    /// <summary>Block / unblock a wallet</summary>
     /// <remarks>
-    /// <para>Заблокированный кошелёк перестаёт зачислять новые пополнения. `is_force_block` по умолчанию true (блокировать); передайте false, чтобы снять блокировку.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>wallet.no_address</c>, <c>wallet.static_disabled</c>, <c>wallet.static_not_found</c>.</para>
+    /// <para>A blocked wallet stops crediting new deposits. `is_force_block` defaults to true (block); pass false to lift the block.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>wallet.no_address</c>, <c>wallet.static_disabled</c>, <c>wallet.static_not_found</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -2485,13 +2575,14 @@ public sealed partial class Wallets : Resource
             cancellationToken);
     }
 
-    /// <summary>Заблокировать / разблокировать кошелёк</summary>
+    /// <summary>Block / unblock a wallet</summary>
     /// <remarks>
-    /// <para>Заблокированный кошелёк перестаёт зачислять новые пополнения. `is_force_block` по умолчанию true (блокировать); передайте false, чтобы снять блокировку.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>wallet.no_address</c>, <c>wallet.static_disabled</c>, <c>wallet.static_not_found</c>.</para>
+    /// <para>A blocked wallet stops crediting new deposits. `is_force_block` defaults to true (block); pass false to lift the block.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>wallet.no_address</c>, <c>wallet.static_disabled</c>, <c>wallet.static_not_found</c>.</para>
     /// </remarks>
-    /// <param name="address">Адрес статического кошелька</param>
-    /// <param name="isForceBlock">true — заблокировать (значение по умолчанию, если поле опущено); false — снять блокировку</param>
+    /// <param name="address">Static wallet address</param>
+    /// <param name="isForceBlock">true — block (the default if the field is omitted); false — lift the block</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<BlockWalletResult> BlockAsync(
@@ -2508,10 +2599,11 @@ public sealed partial class Wallets : Resource
             options,
             cancellationToken);
 
-    /// <summary>QR-код адреса</summary>
+    /// <summary>Address QR code</summary>
     /// <remarks>
-    /// <para>Возвращает PNG data:-URI по полю `address` — для `&lt;img src&gt;`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>qr.no_address</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Returns a PNG data: URI for the `address` field — for `&lt;img src&gt;`.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>qr.no_address</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -2530,12 +2622,13 @@ public sealed partial class Wallets : Resource
             cancellationToken);
     }
 
-    /// <summary>QR-код адреса</summary>
+    /// <summary>Address QR code</summary>
     /// <remarks>
-    /// <para>Возвращает PNG data:-URI по полю `address` — для `&lt;img src&gt;`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>qr.no_address</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Returns a PNG data: URI for the `address` field — for `&lt;img src&gt;`.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>qr.no_address</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="address">Произвольный адрес для рендера в QR-код (PNG как data:-URI).</param>
+    /// <param name="address">An arbitrary address to render into a QR code (PNG as a data: URI).</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<WalletQRResult> GetQrAsync(
@@ -2551,7 +2644,7 @@ public sealed partial class Wallets : Resource
             cancellationToken);
 }
 
-/// <summary>Балансы мерчанта и курсы обмена.</summary>
+/// <summary>Merchant balances and exchange rates.</summary>
 public sealed partial class Account : Resource
 {
     /// <summary>Bind the namespace to a transport.</summary>
@@ -2561,10 +2654,11 @@ public sealed partial class Account : Resource
     {
     }
 
-    /// <summary>Баланс мерчанта</summary>
+    /// <summary>Merchant balance</summary>
     /// <remarks>
-    /// <para>Ваши доступные балансы по каждой валюте. Тело — пустой `{}`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
+    /// <para>Your available balances per currency. The body is an empty `{}`.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
     /// </remarks>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -2577,10 +2671,11 @@ public sealed partial class Account : Resource
             options,
             cancellationToken);
 
-    /// <summary>Итоги за период</summary>
+    /// <summary>Period totals</summary>
     /// <remarks>
-    /// <para>Оборот окна `[from, to)` по монете оплаты (оплаченное по счетам в `paid`/`paid_over`, созданным в окне) и число выплат в работе прямо сейчас (без возвратов). Считается по всем записям, а не по странице истории.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>summary.bad_window</c>.</para>
+    /// <para>Turnover for the `[from, to)` window per payment coin (amounts paid on invoices in `paid`/`paid_over` created within the window) and the number of payouts in progress right now (excluding refunds). Computed over all records, not over a history page.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>summary.bad_window</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -2599,13 +2694,14 @@ public sealed partial class Account : Resource
             cancellationToken);
     }
 
-    /// <summary>Итоги за период</summary>
+    /// <summary>Period totals</summary>
     /// <remarks>
-    /// <para>Оборот окна `[from, to)` по монете оплаты (оплаченное по счетам в `paid`/`paid_over`, созданным в окне) и число выплат в работе прямо сейчас (без возвратов). Считается по всем записям, а не по странице истории.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>summary.bad_window</c>.</para>
+    /// <para>Turnover for the `[from, to)` window per payment coin (amounts paid on invoices in `paid`/`paid_over` created within the window) and the number of payouts in progress right now (excluding refunds). Computed over all records, not over a history page.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>summary.bad_window</c>.</para>
     /// </remarks>
-    /// <param name="from">Начало окна, включительно (RFC 3339).</param>
-    /// <param name="to">Конец окна, не включительно (RFC 3339).</param>
+    /// <param name="from">Start of the window, inclusive (RFC 3339).</param>
+    /// <param name="to">End of the window, exclusive (RFC 3339).</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<SummaryResult> GetSummaryAsync(
@@ -2622,9 +2718,9 @@ public sealed partial class Account : Resource
             options,
             cancellationToken);
 
-    /// <summary>Курсы обмена к USDT</summary>
+    /// <summary>Exchange rates to USDT</summary>
     /// <remarks>
-    /// <para>Список курсов. Необязательный `currency_from` фильтрует по исходной валюте.</para>
+    /// <para>List of rates. The optional `currency_from` filters by source currency.</para>
     /// <para>Errors: <c>convert.economy_unavailable</c>, <c>internal</c>, <c>personal.amount_invalid</c>, <c>personal.bad_amount</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>rates.unavailable</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>treasury.no_ccy_map</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
@@ -2644,16 +2740,16 @@ public sealed partial class Account : Resource
             cancellationToken);
     }
 
-    /// <summary>Курсы обмена к USDT</summary>
+    /// <summary>Exchange rates to USDT</summary>
     /// <remarks>
-    /// <para>Список курсов. Необязательный `currency_from` фильтрует по исходной валюте.</para>
+    /// <para>List of rates. The optional `currency_from` filters by source currency.</para>
     /// <para>Errors: <c>convert.economy_unavailable</c>, <c>internal</c>, <c>personal.amount_invalid</c>, <c>personal.bad_amount</c>, <c>rates.deviation</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>rates.unavailable</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>treasury.no_ccy_map</c>.</para>
     /// </remarks>
-    /// <param name="amount">Сумма в currency_from. Вместе с currency_from и currency_to добавляет в ответ блок modes: обе цены конвертации (instant/economy) с доступностью каждого режима</param>
-    /// <param name="currencyFrom">Код валюты. Если задан — вернётся курс только по нему. Если пусто или тело {} — по всем валютам</param>
-    /// <param name="currencyTo">Валюта котировки: по умолчанию USDT; любой прайсинговый актив, включая фиаты с прямым фидом (EUR, RUB, …)</param>
-    /// <param name="limit">Размер страницы, 1–100; по умолчанию 25</param>
-    /// <param name="offset">Смещение от начала списка; по умолчанию 0</param>
+    /// <param name="amount">The amount in currency_from. Together with currency_from and currency_to it adds a modes block to the response: both conversion prices (instant/economy) with the availability of each mode</param>
+    /// <param name="currencyFrom">Currency code. If set, only its rate is returned. If empty or the body is {} — rates for all currencies</param>
+    /// <param name="currencyTo">Quote currency: USDT by default; any pricing asset, including fiat currencies with a direct feed (EUR, RUB, …)</param>
+    /// <param name="limit">Page size, 1–100; default 25</param>
+    /// <param name="offset">Offset from the start of the list; default 0</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public PagePromise<ExchangeRate> ListExchangeRatesAsync(
@@ -2677,7 +2773,7 @@ public sealed partial class Account : Resource
             cancellationToken);
 }
 
-/// <summary>Регистрация endpoint'а для коллбэков, тест и переотправка.</summary>
+/// <summary>Registering the callback endpoint, test deliveries and resends.</summary>
 public sealed partial class Webhooks : Resource
 {
     /// <summary>Bind the namespace to a transport.</summary>
@@ -2687,10 +2783,11 @@ public sealed partial class Webhooks : Resource
     {
     }
 
-    /// <summary>Переотправить вебхук по платежу</summary>
+    /// <summary>Resend the payment webhook</summary>
     /// <remarks>
-    /// <para>Заново поставит в очередь коллбэк по платежу (по `uuid`/`order_id`). Полезно, если ваш сервер был недоступен.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.no_endpoint</c>.</para>
+    /// <para>Re-queues the payment callback (by `uuid`/`order_id`). Useful if your server was unavailable.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.no_endpoint</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -2709,13 +2806,14 @@ public sealed partial class Webhooks : Resource
             cancellationToken);
     }
 
-    /// <summary>Переотправить вебхук по платежу</summary>
+    /// <summary>Resend the payment webhook</summary>
     /// <remarks>
-    /// <para>Заново поставит в очередь коллбэк по платежу (по `uuid`/`order_id`). Полезно, если ваш сервер был недоступен.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.no_endpoint</c>.</para>
+    /// <para>Re-queues the payment callback (by `uuid`/`order_id`). Useful if your server was unavailable.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.bad_uuid</c>, <c>payment.no_lookup</c>, <c>payment.not_found</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.no_endpoint</c>.</para>
     /// </remarks>
-    /// <param name="orderId">Ваша ссылка на заказ.</param>
-    /// <param name="uuid">Идентификатор счёта в Oblodai. Нужен uuid или order_id; приоритет у uuid.</param>
+    /// <param name="orderId">Your order reference.</param>
+    /// <param name="uuid">The invoice id in Oblodai. Either uuid or order_id is required; uuid takes precedence.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<WebhookResendResult> ResendPaymentAsync(
@@ -2732,10 +2830,11 @@ public sealed partial class Webhooks : Resource
             options,
             cancellationToken);
 
-    /// <summary>Зарегистрировать endpoint для коллбэков</summary>
+    /// <summary>Register the callback endpoint</summary>
     /// <remarks>
-    /// <para>Задаёт URL проекта, куда слать вебхуки, и возвращает `secret` (показывается один раз) для проверки подписи `X-Webhook-Signature`. Проверив подпись, обработчик ОБЯЗАН отбросить тело с `test: true` — это репетиция с тестовой ручки, а не событие.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_url</c>, <c>webhook.no_url</c>.</para>
+    /// <para>Sets the project URL to send webhooks to and returns the `secret` (shown once) for verifying the `X-Webhook-Signature`. After verifying the signature, your handler MUST discard a body with `test: true` — it is a rehearsal from the test endpoint, not an event.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_url</c>, <c>webhook.no_url</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -2754,12 +2853,13 @@ public sealed partial class Webhooks : Resource
             cancellationToken);
     }
 
-    /// <summary>Зарегистрировать endpoint для коллбэков</summary>
+    /// <summary>Register the callback endpoint</summary>
     /// <remarks>
-    /// <para>Задаёт URL проекта, куда слать вебхуки, и возвращает `secret` (показывается один раз) для проверки подписи `X-Webhook-Signature`. Проверив подпись, обработчик ОБЯЗАН отбросить тело с `test: true` — это репетиция с тестовой ручки, а не событие.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_url</c>, <c>webhook.no_url</c>.</para>
+    /// <para>Sets the project URL to send webhooks to and returns the `secret` (shown once) for verifying the `X-Webhook-Signature`. After verifying the signature, your handler MUST discard a body with `test: true` — it is a rehearsal from the test endpoint, not an event.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_url</c>, <c>webhook.no_url</c>.</para>
     /// </remarks>
-    /// <param name="url">HTTPS-URL коллбэка. SSRF-проверка: приватные и локальные адреса запрещены.</param>
+    /// <param name="url">HTTPS callback URL. SSRF check: private and local addresses are forbidden.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<RegisterWebhookResult> RegisterAsync(
@@ -2774,10 +2874,11 @@ public sealed partial class Webhooks : Resource
             options,
             cancellationToken);
 
-    /// <summary>Журнал доставок вебхуков</summary>
+    /// <summary>Webhook delivery log</summary>
     /// <remarks>
-    /// <para>Последние доставки: URL, статус, число попыток, последняя ошибка — для отладки. Статусы: `pending` (в очереди или ждёт ретрая), `delivered`, `dead` (ретраи исчерпаны), `cancelled` (эндпоинт выключили, пока доставка ждала в очереди; причина — в `cancel_reason`).</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Recent deliveries: URL, status, attempt count, last error — for debugging. Statuses: `pending` (queued or waiting for a retry), `delivered`, `dead` (retries exhausted), `cancelled` (the endpoint was disabled while the delivery was waiting in the queue; the reason is in `cancel_reason`).</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -2796,13 +2897,14 @@ public sealed partial class Webhooks : Resource
             cancellationToken);
     }
 
-    /// <summary>Журнал доставок вебхуков</summary>
+    /// <summary>Webhook delivery log</summary>
     /// <remarks>
-    /// <para>Последние доставки: URL, статус, число попыток, последняя ошибка — для отладки. Статусы: `pending` (в очереди или ждёт ретрая), `delivered`, `dead` (ретраи исчерпаны), `cancelled` (эндпоинт выключили, пока доставка ждала в очереди; причина — в `cancel_reason`).</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Recent deliveries: URL, status, attempt count, last error — for debugging. Statuses: `pending` (queued or waiting for a retry), `delivered`, `dead` (retries exhausted), `cancelled` (the endpoint was disabled while the delivery was waiting in the queue; the reason is in `cancel_reason`).</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="limit">Размер страницы, 1–100; вне диапазона — 25.</param>
-    /// <param name="offset">Смещение от начала списка.</param>
+    /// <param name="limit">Page size, 1–100; out of range — 25.</param>
+    /// <param name="offset">Offset from the start of the list.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public PagePromise<WebhookDeliveryLogItem> ListDeliveriesAsync(
@@ -2819,10 +2921,11 @@ public sealed partial class Webhooks : Resource
             options,
             cancellationToken);
 
-    /// <summary>Переотправить доставку из журнала</summary>
+    /// <summary>Resend a delivery from the log</summary>
     /// <remarks>
-    /// <para>Возвращает в очередь вашу доставку в статусе `dead` (ретраи исчерпаны) или `cancelled` (эндпоинт выключали): новая лестница ретраев, подпись текущим секретом. Тело доставки то же, что было в журнале, — для отправки ТЕКУЩЕГО состояния платежа есть `POST /v1/payment/resend`. Повтор вызова безопасен: доставка, уже стоящая в очереди или доставленная, возвращается как есть с `ok: false`. Чужая доставка — 404 `webhook.delivery_not_found`; выключенный эндпоинт — 409 `webhook.endpoint_disabled` (сначала включите его).</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_id</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.delivery_not_found</c>, <c>webhook.endpoint_disabled</c>.</para>
+    /// <para>Re-queues your delivery in status `dead` (retries exhausted) or `cancelled` (the endpoint was disabled): a fresh retry schedule, signed with the current secret. The delivery body is the same as in the log — to send the CURRENT state of a payment use `POST /v1/payment/resend`. Repeating the call is safe: a delivery already queued or delivered is returned as is with `ok: false`. Someone else's delivery — 404 `webhook.delivery_not_found`; a disabled endpoint — 409 `webhook.endpoint_disabled` (enable it first).</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_id</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.delivery_not_found</c>, <c>webhook.endpoint_disabled</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -2841,12 +2944,13 @@ public sealed partial class Webhooks : Resource
             cancellationToken);
     }
 
-    /// <summary>Переотправить доставку из журнала</summary>
+    /// <summary>Resend a delivery from the log</summary>
     /// <remarks>
-    /// <para>Возвращает в очередь вашу доставку в статусе `dead` (ретраи исчерпаны) или `cancelled` (эндпоинт выключали): новая лестница ретраев, подпись текущим секретом. Тело доставки то же, что было в журнале, — для отправки ТЕКУЩЕГО состояния платежа есть `POST /v1/payment/resend`. Повтор вызова безопасен: доставка, уже стоящая в очереди или доставленная, возвращается как есть с `ok: false`. Чужая доставка — 404 `webhook.delivery_not_found`; выключенный эндпоинт — 409 `webhook.endpoint_disabled` (сначала включите его).</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_id</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.delivery_not_found</c>, <c>webhook.endpoint_disabled</c>.</para>
+    /// <para>Re-queues your delivery in status `dead` (retries exhausted) or `cancelled` (the endpoint was disabled): a fresh retry schedule, signed with the current secret. The delivery body is the same as in the log — to send the CURRENT state of a payment use `POST /v1/payment/resend`. Repeating the call is safe: a delivery already queued or delivered is returned as is with `ok: false`. Someone else's delivery — 404 `webhook.delivery_not_found`; a disabled endpoint — 409 `webhook.endpoint_disabled` (enable it first).</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_id</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.delivery_not_found</c>, <c>webhook.endpoint_disabled</c>.</para>
     /// </remarks>
-    /// <param name="id">Идентификатор доставки из журнала (POST /v1/webhooks/deliveries).</param>
+    /// <param name="id">The delivery id from the log (POST /v1/webhooks/deliveries).</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<RequeueWebhookDeliveryResult> RequeueDeliveryAsync(
@@ -2861,10 +2965,11 @@ public sealed partial class Webhooks : Resource
             options,
             cancellationToken);
 
-    /// <summary>Тестовый вебхук на URL (старый вариант)</summary>
+    /// <summary>Test webhook to a URL (legacy)</summary>
     /// <remarks>
-    /// <para>Шлёт пробное тело на указанный `url` — проверить, что ваш обработчик работает. Тело репетиции несёт `"test": true` (внутри подписи) и заголовок `X-Webhook-Test: true`, а `sequence` в нём всегда 0. Боевое событие этих признаков НЕ несёт никогда: обработчик обязан игнорировать тело с `test: true`, даже если подпись верна.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_endpoint</c>.</para>
+    /// <para>Sends a sample body to the given `url` — to check that your handler works. The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_endpoint</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -2883,13 +2988,14 @@ public sealed partial class Webhooks : Resource
             cancellationToken);
     }
 
-    /// <summary>Тестовый вебхук на URL (старый вариант)</summary>
+    /// <summary>Test webhook to a URL (legacy)</summary>
     /// <remarks>
-    /// <para>Шлёт пробное тело на указанный `url` — проверить, что ваш обработчик работает. Тело репетиции несёт `"test": true` (внутри подписи) и заголовок `X-Webhook-Test: true`, а `sequence` в нём всегда 0. Боевое событие этих признаков НЕ несёт никогда: обработчик обязан игнорировать тело с `test: true`, даже если подпись верна.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_endpoint</c>.</para>
+    /// <para>Sends a sample body to the given `url` — to check that your handler works. The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_endpoint</c>.</para>
     /// </remarks>
-    /// <param name="status">Статус в теле. По умолчанию paid</param>
-    /// <param name="url">Куда отправить пробное тело. Не передан — доставка уходит на зарегистрированный endpoint проекта; без endpoint — ошибка webhook.no_endpoint. Подпись — секретом endpoint'а проекта, в том числе при явном url</param>
+    /// <param name="status">The status in the body. Default paid</param>
+    /// <param name="url">Where to send the sample body. If omitted, the delivery goes to the project's registered endpoint; without an endpoint — the webhook.no_endpoint error. Signed with the project endpoint's secret, including when url is given explicitly</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<TestWebhookResult> SendLegacyTestAsync(
@@ -2906,10 +3012,11 @@ public sealed partial class Webhooks : Resource
             options,
             cancellationToken);
 
-    /// <summary>Тестовый вебхук ПЛАТЕЖА</summary>
+    /// <summary>Test PAYMENT webhook</summary>
     /// <remarks>
-    /// <para>Доставит пробный вебхук типа payment на `url_callback`. Тело репетиции несёт `"test": true` (внутри подписи) и заголовок `X-Webhook-Test: true`, а `sequence` в нём всегда 0. Боевое событие этих признаков НЕ несёт никогда: обработчик обязан игнорировать тело с `test: true`, даже если подпись верна.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_url</c>, <c>webhook.test_failed</c>.</para>
+    /// <para>Delivers a sample webhook of type payment to `url_callback`. The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_url</c>, <c>webhook.test_failed</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -2928,17 +3035,18 @@ public sealed partial class Webhooks : Resource
             cancellationToken);
     }
 
-    /// <summary>Тестовый вебхук ПЛАТЕЖА</summary>
+    /// <summary>Test PAYMENT webhook</summary>
     /// <remarks>
-    /// <para>Доставит пробный вебхук типа payment на `url_callback`. Тело репетиции несёт `"test": true` (внутри подписи) и заголовок `X-Webhook-Test: true`, а `sequence` в нём всегда 0. Боевое событие этих признаков НЕ несёт никогда: обработчик обязан игнорировать тело с `test: true`, даже если подпись верна.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_url</c>, <c>webhook.test_failed</c>.</para>
+    /// <para>Delivers a sample webhook of type payment to `url_callback`. The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_url</c>, <c>webhook.test_failed</c>.</para>
     /// </remarks>
-    /// <param name="urlCallback">Куда отправить пробное тело</param>
-    /// <param name="currency">Валюта в теле</param>
-    /// <param name="network">Сеть в теле</param>
-    /// <param name="orderId">Ваш order_id, который попадёт в пробное тело события</param>
-    /// <param name="status">Статус в теле — только те, с которыми боевой вебхук этого вида действительно приходит (кошелёк — только paid); иначе 400 webhook.bad_status. По умолчанию paid (для выплаты — confirmed, для конвертации — completed)</param>
-    /// <param name="uuid">UUID объекта (платежа, кошелька или выплаты), который попадёт в пробное тело события</param>
+    /// <param name="urlCallback">Where to send the sample body</param>
+    /// <param name="currency">Currency in the body</param>
+    /// <param name="network">Network in the body</param>
+    /// <param name="orderId">Your order_id placed in the sample event body</param>
+    /// <param name="status">The status in the body — only those with which a live webhook of this kind actually arrives (wallet — paid only); otherwise 400 webhook.bad_status. Default paid (for a payout — confirmed, for a conversion — completed)</param>
+    /// <param name="uuid">The UUID of the object (payment, wallet or payout) placed in the sample event body</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<TestWebhookKindResult> SendTestPaymentAsync(
@@ -2963,10 +3071,11 @@ public sealed partial class Webhooks : Resource
             options,
             cancellationToken);
 
-    /// <summary>Тестовый вебхук КОШЕЛЬКА</summary>
+    /// <summary>Test WALLET webhook</summary>
     /// <remarks>
-    /// <para>Доставит пробный вебхук типа wallet (пополнение статик-кошелька). Тело репетиции несёт `"test": true` (внутри подписи) и заголовок `X-Webhook-Test: true`, а `sequence` в нём всегда 0. Боевое событие этих признаков НЕ несёт никогда: обработчик обязан игнорировать тело с `test: true`, даже если подпись верна.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_url</c>, <c>webhook.test_failed</c>.</para>
+    /// <para>Delivers a sample webhook of type wallet (a static wallet deposit). The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_url</c>, <c>webhook.test_failed</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -2985,17 +3094,18 @@ public sealed partial class Webhooks : Resource
             cancellationToken);
     }
 
-    /// <summary>Тестовый вебхук КОШЕЛЬКА</summary>
+    /// <summary>Test WALLET webhook</summary>
     /// <remarks>
-    /// <para>Доставит пробный вебхук типа wallet (пополнение статик-кошелька). Тело репетиции несёт `"test": true` (внутри подписи) и заголовок `X-Webhook-Test: true`, а `sequence` в нём всегда 0. Боевое событие этих признаков НЕ несёт никогда: обработчик обязан игнорировать тело с `test: true`, даже если подпись верна.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_url</c>, <c>webhook.test_failed</c>.</para>
+    /// <para>Delivers a sample webhook of type wallet (a static wallet deposit). The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_url</c>, <c>webhook.test_failed</c>.</para>
     /// </remarks>
-    /// <param name="urlCallback">Куда отправить пробное тело</param>
-    /// <param name="currency">Валюта в теле</param>
-    /// <param name="network">Сеть в теле</param>
-    /// <param name="orderId">Ваш order_id, который попадёт в пробное тело события</param>
-    /// <param name="status">Статус в теле — только те, с которыми боевой вебхук этого вида действительно приходит (кошелёк — только paid); иначе 400 webhook.bad_status. По умолчанию paid (для выплаты — confirmed, для конвертации — completed)</param>
-    /// <param name="uuid">UUID объекта (платежа, кошелька или выплаты), который попадёт в пробное тело события</param>
+    /// <param name="urlCallback">Where to send the sample body</param>
+    /// <param name="currency">Currency in the body</param>
+    /// <param name="network">Network in the body</param>
+    /// <param name="orderId">Your order_id placed in the sample event body</param>
+    /// <param name="status">The status in the body — only those with which a live webhook of this kind actually arrives (wallet — paid only); otherwise 400 webhook.bad_status. Default paid (for a payout — confirmed, for a conversion — completed)</param>
+    /// <param name="uuid">The UUID of the object (payment, wallet or payout) placed in the sample event body</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<TestWebhookKindResult> SendTestWalletAsync(
@@ -3020,10 +3130,11 @@ public sealed partial class Webhooks : Resource
             options,
             cancellationToken);
 
-    /// <summary>Тестовый вебхук ВЫПЛАТЫ</summary>
+    /// <summary>Test PAYOUT webhook</summary>
     /// <remarks>
-    /// <para>Доставит пробный вебхук типа payout. Тело репетиции несёт `"test": true` (внутри подписи) и заголовок `X-Webhook-Test: true`, а `sequence` в нём всегда 0. Боевое событие этих признаков НЕ несёт никогда: обработчик обязан игнорировать тело с `test: true`, даже если подпись верна.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_url</c>, <c>webhook.test_failed</c>.</para>
+    /// <para>Delivers a sample webhook of type payout. The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_url</c>, <c>webhook.test_failed</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -3042,17 +3153,18 @@ public sealed partial class Webhooks : Resource
             cancellationToken);
     }
 
-    /// <summary>Тестовый вебхук ВЫПЛАТЫ</summary>
+    /// <summary>Test PAYOUT webhook</summary>
     /// <remarks>
-    /// <para>Доставит пробный вебхук типа payout. Тело репетиции несёт `"test": true` (внутри подписи) и заголовок `X-Webhook-Test: true`, а `sequence` в нём всегда 0. Боевое событие этих признаков НЕ несёт никогда: обработчик обязан игнорировать тело с `test: true`, даже если подпись верна.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_url</c>, <c>webhook.test_failed</c>.</para>
+    /// <para>Delivers a sample webhook of type payout. The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_url</c>, <c>webhook.test_failed</c>.</para>
     /// </remarks>
-    /// <param name="urlCallback">Куда отправить пробное тело</param>
-    /// <param name="currency">Валюта в теле</param>
-    /// <param name="network">Сеть в теле</param>
-    /// <param name="orderId">Ваш order_id, который попадёт в пробное тело события</param>
-    /// <param name="status">Статус в теле — только те, с которыми боевой вебхук этого вида действительно приходит (кошелёк — только paid); иначе 400 webhook.bad_status. По умолчанию paid (для выплаты — confirmed, для конвертации — completed)</param>
-    /// <param name="uuid">UUID объекта (платежа, кошелька или выплаты), который попадёт в пробное тело события</param>
+    /// <param name="urlCallback">Where to send the sample body</param>
+    /// <param name="currency">Currency in the body</param>
+    /// <param name="network">Network in the body</param>
+    /// <param name="orderId">Your order_id placed in the sample event body</param>
+    /// <param name="status">The status in the body — only those with which a live webhook of this kind actually arrives (wallet — paid only); otherwise 400 webhook.bad_status. Default paid (for a payout — confirmed, for a conversion — completed)</param>
+    /// <param name="uuid">The UUID of the object (payment, wallet or payout) placed in the sample event body</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<TestWebhookKindResult> SendTestPayoutAsync(
@@ -3077,10 +3189,11 @@ public sealed partial class Webhooks : Resource
             options,
             cancellationToken);
 
-    /// <summary>Тестовый вебхук КОНВЕРТАЦИИ</summary>
+    /// <summary>Test CONVERSION webhook</summary>
     /// <remarks>
-    /// <para>Доставит пробный вебхук типа conversion (события `conversion.completed` / `conversion.refunded` по заявкам режима economy; `status` — completed или refunded, по умолчанию completed). Тело репетиции несёт `"test": true` (внутри подписи) и заголовок `X-Webhook-Test: true`, а `sequence` в нём всегда 0. Боевое событие этих признаков НЕ несёт никогда: обработчик обязан игнорировать тело с `test: true`, даже если подпись верна.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_url</c>, <c>webhook.test_failed</c>.</para>
+    /// <para>Delivers a sample webhook of type conversion (the `conversion.completed` / `conversion.refunded` events for economy-mode orders; `status` — completed or refunded, default completed). The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_url</c>, <c>webhook.test_failed</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -3099,17 +3212,18 @@ public sealed partial class Webhooks : Resource
             cancellationToken);
     }
 
-    /// <summary>Тестовый вебхук КОНВЕРТАЦИИ</summary>
+    /// <summary>Test CONVERSION webhook</summary>
     /// <remarks>
-    /// <para>Доставит пробный вебхук типа conversion (события `conversion.completed` / `conversion.refunded` по заявкам режима economy; `status` — completed или refunded, по умолчанию completed). Тело репетиции несёт `"test": true` (внутри подписи) и заголовок `X-Webhook-Test: true`, а `sequence` в нём всегда 0. Боевое событие этих признаков НЕ несёт никогда: обработчик обязан игнорировать тело с `test: true`, даже если подпись верна.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_url</c>, <c>webhook.test_failed</c>.</para>
+    /// <para>Delivers a sample webhook of type conversion (the `conversion.completed` / `conversion.refunded` events for economy-mode orders; `status` — completed or refunded, default completed). The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_url</c>, <c>webhook.test_failed</c>.</para>
     /// </remarks>
-    /// <param name="urlCallback">Куда отправить пробное тело</param>
-    /// <param name="currency">Валюта в теле</param>
-    /// <param name="network">Сеть в теле</param>
-    /// <param name="orderId">Ваш order_id, который попадёт в пробное тело события</param>
-    /// <param name="status">Статус в теле — только те, с которыми боевой вебхук этого вида действительно приходит (кошелёк — только paid); иначе 400 webhook.bad_status. По умолчанию paid (для выплаты — confirmed, для конвертации — completed)</param>
-    /// <param name="uuid">UUID объекта (платежа, кошелька или выплаты), который попадёт в пробное тело события</param>
+    /// <param name="urlCallback">Where to send the sample body</param>
+    /// <param name="currency">Currency in the body</param>
+    /// <param name="network">Network in the body</param>
+    /// <param name="orderId">Your order_id placed in the sample event body</param>
+    /// <param name="status">The status in the body — only those with which a live webhook of this kind actually arrives (wallet — paid only); otherwise 400 webhook.bad_status. Default paid (for a payout — confirmed, for a conversion — completed)</param>
+    /// <param name="uuid">The UUID of the object (payment, wallet or payout) placed in the sample event body</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<TestWebhookKindResult> SendTestConversionAsync(
@@ -3134,10 +3248,11 @@ public sealed partial class Webhooks : Resource
             options,
             cancellationToken);
 
-    /// <summary>Перевыпустить секрет подписи вебхуков</summary>
+    /// <summary>Rotate the webhook signing secret</summary>
     /// <remarks>
-    /// <para>Единственный момент, когда новый секрет показывается. До `previous_secret_valid_until` доставки дополнительно несут `X-Webhook-Signature-Prev` со старым секретом — время докатить замену без потери проверки.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.no_endpoint</c>, <c>webhook.rotation_in_overlap</c>.</para>
+    /// <para>The only time the new secret is shown. Until `previous_secret_valid_until`, deliveries additionally carry `X-Webhook-Signature-Prev` signed with the old secret — time to roll out the change without losing verification.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.no_endpoint</c>, <c>webhook.rotation_in_overlap</c>.</para>
     /// </remarks>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -3150,10 +3265,11 @@ public sealed partial class Webhooks : Resource
             options,
             cancellationToken);
 
-    /// <summary>Включить или выключить доставку вебхуков</summary>
+    /// <summary>Enable or disable webhook delivery</summary>
     /// <remarks>
-    /// <para>Выключенный эндпоинт перестаёт получать доставки: новые события по этому проекту в очередь не ставятся, а уже стоящие в очереди отменяются (статус `cancelled`) и после включения сами не уходят. Нужен, когда приёмник выведен из эксплуатации, — иначе каждое событие ретраилось бы ~3 суток и уходило в dead-letter бессрочно. Секрет и URL сохраняются: включение возвращает всё как было. Эндпоинт, у которого 3 суток подряд не прошла ни одна попытка, выключается автоматически — очередь отменяется, владельцу магазина уходит письмо; после починки приёмника включите его этой ручкой.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.no_active</c>, <c>webhook.no_endpoint</c>.</para>
+    /// <para>A disabled endpoint stops receiving deliveries: new events for this project are not queued, and those already queued are cancelled (status `cancelled`) and are not sent automatically after re-enabling. Needed when a receiver is decommissioned — otherwise every event would be retried for ~3 days and end up in the dead-letter queue indefinitely. The secret and URL are kept: enabling restores everything as it was. An endpoint for which not a single attempt has succeeded for 3 days in a row is disabled automatically — its queue is cancelled and the store owner gets an email; after fixing the receiver, enable it with this endpoint.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.no_active</c>, <c>webhook.no_endpoint</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -3172,12 +3288,13 @@ public sealed partial class Webhooks : Resource
             cancellationToken);
     }
 
-    /// <summary>Включить или выключить доставку вебхуков</summary>
+    /// <summary>Enable or disable webhook delivery</summary>
     /// <remarks>
-    /// <para>Выключенный эндпоинт перестаёт получать доставки: новые события по этому проекту в очередь не ставятся, а уже стоящие в очереди отменяются (статус `cancelled`) и после включения сами не уходят. Нужен, когда приёмник выведен из эксплуатации, — иначе каждое событие ретраилось бы ~3 суток и уходило в dead-letter бессрочно. Секрет и URL сохраняются: включение возвращает всё как было. Эндпоинт, у которого 3 суток подряд не прошла ни одна попытка, выключается автоматически — очередь отменяется, владельцу магазина уходит письмо; после починки приёмника включите его этой ручкой.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.no_active</c>, <c>webhook.no_endpoint</c>.</para>
+    /// <para>A disabled endpoint stops receiving deliveries: new events for this project are not queued, and those already queued are cancelled (status `cancelled`) and are not sent automatically after re-enabling. Needed when a receiver is decommissioned — otherwise every event would be retried for ~3 days and end up in the dead-letter queue indefinitely. The secret and URL are kept: enabling restores everything as it was. An endpoint for which not a single attempt has succeeded for 3 days in a row is disabled automatically — its queue is cancelled and the store owner gets an email; after fixing the receiver, enable it with this endpoint.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.no_active</c>, <c>webhook.no_endpoint</c>.</para>
     /// </remarks>
-    /// <param name="active">true — доставка возобновляется, false — прекращается (очередь по этому проекту больше не наполняется).</param>
+    /// <param name="active">true — delivery resumes, false — it stops (the queue for this project is no longer filled).</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<SetWebhookActiveResult> SetActiveAsync(
@@ -3193,7 +3310,7 @@ public sealed partial class Webhooks : Resource
             cancellationToken);
 }
 
-/// <summary>Настройки магазина: допуск сумм, скидки, автовозвраты, валюты, авто-вывод.</summary>
+/// <summary>Store settings: amount tolerance, discounts, auto-refunds, currencies, auto-withdrawal.</summary>
 public sealed partial class Settings : Resource
 {
     /// <summary>Bind the namespace to a transport.</summary>
@@ -3203,10 +3320,11 @@ public sealed partial class Settings : Resource
     {
     }
 
-    /// <summary>Настроить допуск недо/переплаты</summary>
+    /// <summary>Configure underpayment/overpayment tolerance</summary>
     /// <remarks>
-    /// <para>«Точность платежей»: `enabled` + `accuracy_percent` 1–5. В пределах допуска платёж считается оплаченным. Выключено — нужна точная сумма.</para>
-    /// <para>Errors: <c>accuracy.out_of_range</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>"Payment accuracy": `enabled` + `accuracy_percent` 1–5. Within the tolerance a payment counts as paid. Disabled — the exact amount is required.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>accuracy.out_of_range</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -3225,13 +3343,14 @@ public sealed partial class Settings : Resource
             cancellationToken);
     }
 
-    /// <summary>Настроить допуск недо/переплаты</summary>
+    /// <summary>Configure underpayment/overpayment tolerance</summary>
     /// <remarks>
-    /// <para>«Точность платежей»: `enabled` + `accuracy_percent` 1–5. В пределах допуска платёж считается оплаченным. Выключено — нужна точная сумма.</para>
-    /// <para>Errors: <c>accuracy.out_of_range</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>"Payment accuracy": `enabled` + `accuracy_percent` 1–5. Within the tolerance a payment counts as paid. Disabled — the exact amount is required.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>accuracy.out_of_range</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="enabled">Включить/выключить допуск</param>
-    /// <param name="accuracyPercent">Допуск в процентах, 1–5. Обязателен при enabled: true; при enabled: false игнорируется (сбрасывается в 0). Кэп 5 %</param>
+    /// <param name="enabled">Enable/disable the tolerance</param>
+    /// <param name="accuracyPercent">Tolerance in percent, 1–5. Required when enabled: true; ignored (reset to 0) when enabled: false. Capped at 5 %</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<AccuracyResult> SetAccuracyAsync(
@@ -3248,9 +3367,10 @@ public sealed partial class Settings : Resource
             options,
             cancellationToken);
 
-    /// <summary>Прочитать допуск сумм</summary>
+    /// <summary>Read the amount tolerance</summary>
     /// <remarks>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -3263,10 +3383,11 @@ public sealed partial class Settings : Resource
             options,
             cancellationToken);
 
-    /// <summary>Настроить автовозвраты</summary>
+    /// <summary>Configure auto-refunds</summary>
     /// <remarks>
-    /// <para>`overpay` — авто-возврат излишка переплаты; `underpay` — авто-возврат при истёкшей недоплате. Оба по умолчанию ВКЛ. Возврат идёт на адрес плательщика (EVM/Tron/TON/Solana; на Bitcoin/UTXO — вручную).</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>`overpay` — auto-refund of the overpaid excess; `underpay` — auto-refund of an expired underpayment. Both are ON by default. The refund goes to the payer's address (EVM/Tron/TON/Solana; on Bitcoin/UTXO — manually).</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -3285,13 +3406,14 @@ public sealed partial class Settings : Resource
             cancellationToken);
     }
 
-    /// <summary>Настроить автовозвраты</summary>
+    /// <summary>Configure auto-refunds</summary>
     /// <remarks>
-    /// <para>`overpay` — авто-возврат излишка переплаты; `underpay` — авто-возврат при истёкшей недоплате. Оба по умолчанию ВКЛ. Возврат идёт на адрес плательщика (EVM/Tron/TON/Solana; на Bitcoin/UTXO — вручную).</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>`overpay` — auto-refund of the overpaid excess; `underpay` — auto-refund of an expired underpayment. Both are ON by default. The refund goes to the payer's address (EVM/Tron/TON/Solana; on Bitcoin/UTXO — manually).</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="overpay">Возвращать излишек при переплате (paid_over)</param>
-    /// <param name="underpay">Возвращать средства при истёкшей недоплате (wrong_amount)</param>
+    /// <param name="overpay">Refund the excess of an overpayment (paid_over)</param>
+    /// <param name="underpay">Refund the funds of an expired underpayment (wrong_amount)</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<SetAutoRefundRequest> SetAutoRefundAsync(
@@ -3308,9 +3430,10 @@ public sealed partial class Settings : Resource
             options,
             cancellationToken);
 
-    /// <summary>Прочитать настройку автовозвратов</summary>
+    /// <summary>Read the auto-refund settings</summary>
     /// <remarks>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -3323,10 +3446,11 @@ public sealed partial class Settings : Resource
             options,
             cancellationToken);
 
-    /// <summary>Скидка/наценка на способ оплаты</summary>
+    /// <summary>Discount/surcharge for a payment method</summary>
     /// <remarks>
-    /// <para>Положительный `discount_percent` — скидка плательщику за оплату этой монетой; отрицательный — наценка. Пустая `currency` задаёт правило по умолчанию для всех монет, пустая `network` — для любой сети выбранной монеты. В ответе — сохранённое правило в КАНОНИЧЕСКОМ виде (символ монеты в верхнем регистре, сеть в нижнем).</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>discount.network_required</c>, <c>discount.out_of_range</c>, <c>discount.unsupported_network</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
+    /// <para>A positive `discount_percent` is a discount to the payer for paying with this coin; a negative one is a surcharge. An empty `currency` sets the default rule for all coins, an empty `network` — for any network of the chosen coin. The response contains the saved rule in CANONICAL form (coin symbol uppercase, network lowercase).</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>discount.network_required</c>, <c>discount.out_of_range</c>, <c>discount.unsupported_network</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -3345,14 +3469,15 @@ public sealed partial class Settings : Resource
             cancellationToken);
     }
 
-    /// <summary>Скидка/наценка на способ оплаты</summary>
+    /// <summary>Discount/surcharge for a payment method</summary>
     /// <remarks>
-    /// <para>Положительный `discount_percent` — скидка плательщику за оплату этой монетой; отрицательный — наценка. Пустая `currency` задаёт правило по умолчанию для всех монет, пустая `network` — для любой сети выбранной монеты. В ответе — сохранённое правило в КАНОНИЧЕСКОМ виде (символ монеты в верхнем регистре, сеть в нижнем).</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>discount.network_required</c>, <c>discount.out_of_range</c>, <c>discount.unsupported_network</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
+    /// <para>A positive `discount_percent` is a discount to the payer for paying with this coin; a negative one is a surcharge. An empty `currency` sets the default rule for all coins, an empty `network` — for any network of the chosen coin. The response contains the saved rule in CANONICAL form (coin symbol uppercase, network lowercase).</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>discount.network_required</c>, <c>discount.out_of_range</c>, <c>discount.unsupported_network</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
     /// </remarks>
-    /// <param name="discountPercent">Процент, от -99 до 99. Плюс — скидка, минус — наценка</param>
-    /// <param name="currency">Валюта. Пусто = глобальный дефолт для всех монет</param>
-    /// <param name="network">Сеть. Пусто = любая сеть данной валюты</param>
+    /// <param name="discountPercent">Percent, from -99 to 99. Plus — a discount, minus — a surcharge</param>
+    /// <param name="currency">Currency. Empty = the global default for all coins</param>
+    /// <param name="network">Network. Empty = any network of the given currency</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<PaymentDiscountRule> SetDiscountAsync(
@@ -3371,10 +3496,11 @@ public sealed partial class Settings : Resource
             options,
             cancellationToken);
 
-    /// <summary>Список скидок/наценок</summary>
+    /// <summary>List discounts/surcharges</summary>
     /// <remarks>
-    /// <para>Настроенные правила: `items` (по одному на пару «монета+сеть») + блок `paginate` (`total`, `per_page`, `offset`, `has_pages`). Поля правила — те же, что отдаёт `/v1/payment/discount/set`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Configured rules: `items` (one per coin+network pair) plus a `paginate` block (`total`, `per_page`, `offset`, `has_pages`). Rule fields are the same as returned by `/v1/payment/discount/set`.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -3393,13 +3519,14 @@ public sealed partial class Settings : Resource
             cancellationToken);
     }
 
-    /// <summary>Список скидок/наценок</summary>
+    /// <summary>List discounts/surcharges</summary>
     /// <remarks>
-    /// <para>Настроенные правила: `items` (по одному на пару «монета+сеть») + блок `paginate` (`total`, `per_page`, `offset`, `has_pages`). Поля правила — те же, что отдаёт `/v1/payment/discount/set`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Configured rules: `items` (one per coin+network pair) plus a `paginate` block (`total`, `per_page`, `offset`, `has_pages`). Rule fields are the same as returned by `/v1/payment/discount/set`.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="limit">Размер страницы, 1–100; вне диапазона — 25.</param>
-    /// <param name="offset">Смещение от начала списка.</param>
+    /// <param name="limit">Page size, 1–100; out of range — 25.</param>
+    /// <param name="offset">Offset from the start of the list.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public PagePromise<PaymentDiscountRule> ListDiscountsAsync(
@@ -3416,10 +3543,11 @@ public sealed partial class Settings : Resource
             options,
             cancellationToken);
 
-    /// <summary>Лог запросов вашего ключа</summary>
+    /// <summary>Request log for your key</summary>
     /// <remarks>
-    /// <para>Дата, метод с путём, код ответа, длительность и IP — по вашему мерчанту и только по нему. Строки живут 90 дней (`retention_days` в ответе). Строка запроса (query) НЕ хранится: в ней ездят идентификаторы того, что фильтровали, а вторая копия чужих платёжных идентификаторов — это обязательство, а не удобство. `to` включает день целиком.</para>
-    /// <para>Errors: <c>apilog.bad_date</c>, <c>apilog.bad_status</c>, <c>apilog.count</c>, <c>apilog.disabled</c>, <c>apilog.list</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Date, method with path, response code, duration and IP — for your merchant and only for it. Rows are kept for 90 days (`retention_days` in the response). The query string is NOT stored: it carries identifiers of what was filtered, and a second copy of someone else's payment identifiers is a liability, not a convenience. `to` includes the whole day.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>apilog.bad_date</c>, <c>apilog.bad_status</c>, <c>apilog.count</c>, <c>apilog.disabled</c>, <c>apilog.list</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -3438,17 +3566,18 @@ public sealed partial class Settings : Resource
             cancellationToken);
     }
 
-    /// <summary>Лог запросов вашего ключа</summary>
+    /// <summary>Request log for your key</summary>
     /// <remarks>
-    /// <para>Дата, метод с путём, код ответа, длительность и IP — по вашему мерчанту и только по нему. Строки живут 90 дней (`retention_days` в ответе). Строка запроса (query) НЕ хранится: в ней ездят идентификаторы того, что фильтровали, а вторая копия чужих платёжных идентификаторов — это обязательство, а не удобство. `to` включает день целиком.</para>
-    /// <para>Errors: <c>apilog.bad_date</c>, <c>apilog.bad_status</c>, <c>apilog.count</c>, <c>apilog.disabled</c>, <c>apilog.list</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Date, method with path, response code, duration and IP — for your merchant and only for it. Rows are kept for 90 days (`retention_days` in the response). The query string is NOT stored: it carries identifiers of what was filtered, and a second copy of someone else's payment identifiers is a liability, not a convenience. `to` includes the whole day.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>apilog.bad_date</c>, <c>apilog.bad_status</c>, <c>apilog.count</c>, <c>apilog.disabled</c>, <c>apilog.list</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="from">Начало периода, YYYY-MM-DD, включительно.</param>
-    /// <param name="limit">Размер страницы, 1..200; по умолчанию 20.</param>
-    /// <param name="page">Страница, с 1.</param>
-    /// <param name="q">Подстрока по «МЕТОД путь» — то, что человек видит в таблице.</param>
-    /// <param name="status">Точный код ответа; 0 — все.</param>
-    /// <param name="to">Конец периода, YYYY-MM-DD, ВКЛЮЧИТЕЛЬНО (день целиком).</param>
+    /// <param name="from">Start of the period, YYYY-MM-DD, inclusive.</param>
+    /// <param name="limit">Page size, 1..200; default 20.</param>
+    /// <param name="page">Page, starting from 1.</param>
+    /// <param name="q">A substring of "METHOD path" — what a person sees in the table.</param>
+    /// <param name="status">The exact response code; 0 — all.</param>
+    /// <param name="to">End of the period, YYYY-MM-DD, INCLUSIVE (the whole day).</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<APILogResult> ListApiLogAsync(
@@ -3473,10 +3602,11 @@ public sealed partial class Settings : Resource
             options,
             cancellationToken);
 
-    /// <summary>Авто-конвертация выручки: текущий приказ</summary>
+    /// <summary>Revenue auto-conversion: current order</summary>
     /// <remarks>
-    /// <para>`configured:false` — приказа нет, остальные поля тогда пустые/умолчания. `min_usd_cents` — пол одной конвертации: ниже него спред стоит дороже, чем сводить.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>autoconvert.disabled</c>, <c>autoconvert.scan</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>`configured:false` — there is no order; the other fields are then empty/defaults. `min_usd_cents` — the floor for a single conversion: below it the spread costs more than the conversion is worth.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>autoconvert.disabled</c>, <c>autoconvert.scan</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -3489,10 +3619,11 @@ public sealed partial class Settings : Resource
             options,
             cancellationToken);
 
-    /// <summary>Авто-конвертация выручки: задать приказ</summary>
+    /// <summary>Revenue auto-conversion: set the order</summary>
     /// <remarks>
-    /// <para>Сводит перечисленные монеты в `target` фоновым сводом, не в момент зачисления депозита. ⚠ ИСТОЧНИКИ — ПО МОНЕТЕ, А НЕ ПО ПАРЕ «МОНЕТА+СЕТЬ»: обязательства мерчанта ведутся по активу, и у принимающего USDT в Tron и в BSC баланс USDT ОДИН — включить свод для одной пары и не включить для второй нечего. Целевая монета проверяется на возможность ликвидации ЗДЕСЬ, при сохранении: отказ в момент выбора можно исправить, отказ через неделю в фоне — это выручка, которая молча не сводилась. В ответе — СОХРАНЁННЫЙ приказ: монеты, которые свод не примет (сама цель, дубли), из него убраны.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>autoconvert.bad_floor</c>, <c>autoconvert.disabled</c>, <c>autoconvert.no_target</c>, <c>autoconvert.scan</c>, <c>autoconvert.source_unsupported</c>, <c>autoconvert.target_unsupported</c>, <c>autoconvert.upsert</c>, <c>autoconvert.vanished</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.invalid_mode</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>treasury.no_ccy_map</c>.</para>
+    /// <para>Converts the listed coins into `target` in a background sweep, not at the moment a deposit is credited. ⚠ SOURCES ARE PER COIN, NOT PER COIN+NETWORK PAIR: merchant liabilities are tracked per asset, and a merchant accepting USDT on Tron and on BSC has ONE USDT balance — there is nothing to enable the sweep for one pair and not the other. The target coin is checked for liquidity HERE, on save: a rejection at selection time can be fixed, a rejection a week later in the background is revenue that silently was not converted. The response contains the SAVED order: coins the sweep will not accept (the target itself, duplicates) are removed from it.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>autoconvert.bad_floor</c>, <c>autoconvert.disabled</c>, <c>autoconvert.no_target</c>, <c>autoconvert.scan</c>, <c>autoconvert.source_unsupported</c>, <c>autoconvert.target_unsupported</c>, <c>autoconvert.upsert</c>, <c>autoconvert.vanished</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.invalid_mode</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>treasury.no_ccy_map</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -3511,16 +3642,17 @@ public sealed partial class Settings : Resource
             cancellationToken);
     }
 
-    /// <summary>Авто-конвертация выручки: задать приказ</summary>
+    /// <summary>Revenue auto-conversion: set the order</summary>
     /// <remarks>
-    /// <para>Сводит перечисленные монеты в `target` фоновым сводом, не в момент зачисления депозита. ⚠ ИСТОЧНИКИ — ПО МОНЕТЕ, А НЕ ПО ПАРЕ «МОНЕТА+СЕТЬ»: обязательства мерчанта ведутся по активу, и у принимающего USDT в Tron и в BSC баланс USDT ОДИН — включить свод для одной пары и не включить для второй нечего. Целевая монета проверяется на возможность ликвидации ЗДЕСЬ, при сохранении: отказ в момент выбора можно исправить, отказ через неделю в фоне — это выручка, которая молча не сводилась. В ответе — СОХРАНЁННЫЙ приказ: монеты, которые свод не примет (сама цель, дубли), из него убраны.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>autoconvert.bad_floor</c>, <c>autoconvert.disabled</c>, <c>autoconvert.no_target</c>, <c>autoconvert.scan</c>, <c>autoconvert.source_unsupported</c>, <c>autoconvert.target_unsupported</c>, <c>autoconvert.upsert</c>, <c>autoconvert.vanished</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.invalid_mode</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>treasury.no_ccy_map</c>.</para>
+    /// <para>Converts the listed coins into `target` in a background sweep, not at the moment a deposit is credited. ⚠ SOURCES ARE PER COIN, NOT PER COIN+NETWORK PAIR: merchant liabilities are tracked per asset, and a merchant accepting USDT on Tron and on BSC has ONE USDT balance — there is nothing to enable the sweep for one pair and not the other. The target coin is checked for liquidity HERE, on save: a rejection at selection time can be fixed, a rejection a week later in the background is revenue that silently was not converted. The response contains the SAVED order: coins the sweep will not accept (the target itself, duplicates) are removed from it.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>autoconvert.bad_floor</c>, <c>autoconvert.disabled</c>, <c>autoconvert.no_target</c>, <c>autoconvert.scan</c>, <c>autoconvert.source_unsupported</c>, <c>autoconvert.target_unsupported</c>, <c>autoconvert.upsert</c>, <c>autoconvert.vanished</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.invalid_mode</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>, <c>treasury.no_ccy_map</c>.</para>
     /// </remarks>
-    /// <param name="target">Монета, в которую сводится выручка (стейбл). Проверяется на возможность ликвидации при сохранении.</param>
-    /// <param name="enabled">Выключатель приказа целиком. Не передан — считается включённым.</param>
-    /// <param name="minAmount">Пол одной конвертации в долларах, десятичной строкой; пусто — умолчание процесса ($10). Ниже него спред съедает больше, чем сводит.</param>
-    /// <param name="mode">Режим зачисления: "economy" — заявка в партию казначейской ликвидации, зачисляется факт исполнения (комиссия минимальная); "instant" — мгновенно по спред-курсу. Не передан — instant: автообмен включают ради мгновенного зачисления, а ждать партию — осознанный выбор. Иное значение — 400 request.invalid_mode.</param>
-    /// <param name="sources">Монеты, которые сводить. Пусто — приказ есть, но не включён ни для чего.</param>
+    /// <param name="target">The coin revenue is converted into (a stablecoin). Checked for liquidity on save.</param>
+    /// <param name="enabled">The master switch for the whole order. If omitted, it is considered enabled.</param>
+    /// <param name="minAmount">The floor for a single conversion in dollars, as a decimal string; empty — the process default ($10). Below it the spread eats more than the conversion is worth.</param>
+    /// <param name="mode">The crediting mode: "economy" — an order in a treasury liquidation batch, the actual execution is credited (minimal fee); "instant" — immediately at the spread rate. Omitted — instant: auto-exchange is enabled for instant crediting, and waiting for a batch is a deliberate choice. Any other value — 400 request.invalid_mode.</param>
+    /// <param name="sources">The coins to convert. Empty — the order exists but is not enabled for anything.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<AutoConvertResult> SetAutoConvertAsync(
@@ -3543,10 +3675,11 @@ public sealed partial class Settings : Resource
             options,
             cancellationToken);
 
-    /// <summary>Настроить принимаемые валюты магазина</summary>
+    /// <summary>Configure the store's accepted currencies</summary>
     /// <remarks>
-    /// <para>Задаёт, какие валюты/сети магазин принимает.</para>
-    /// <para>Errors: <c>accepted.no_network</c>, <c>accepted.unknown_method</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
+    /// <para>Sets which currencies/networks the store accepts.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>accepted.no_network</c>, <c>accepted.unknown_method</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -3565,12 +3698,13 @@ public sealed partial class Settings : Resource
             cancellationToken);
     }
 
-    /// <summary>Настроить принимаемые валюты магазина</summary>
+    /// <summary>Configure the store's accepted currencies</summary>
     /// <remarks>
-    /// <para>Задаёт, какие валюты/сети магазин принимает.</para>
-    /// <para>Errors: <c>accepted.no_network</c>, <c>accepted.unknown_method</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
+    /// <para>Sets which currencies/networks the store accepts.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>accepted.no_network</c>, <c>accepted.unknown_method</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
     /// </remarks>
-    /// <param name="accepted">Полный список пар валюта+сеть, которыми разрешено платить; пустой список — принимать всё из каталога.</param>
+    /// <param name="accepted">The full list of currency+network pairs allowed for payment; an empty list — accept everything in the catalog.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<AcceptedSetResult> SetAcceptedCurrenciesAsync(
@@ -3585,9 +3719,10 @@ public sealed partial class Settings : Resource
             options,
             cancellationToken);
 
-    /// <summary>Список принимаемых валют</summary>
+    /// <summary>List accepted currencies</summary>
     /// <remarks>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -3606,12 +3741,13 @@ public sealed partial class Settings : Resource
             cancellationToken);
     }
 
-    /// <summary>Список принимаемых валют</summary>
+    /// <summary>List accepted currencies</summary>
     /// <remarks>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="limit">Размер страницы, 1–100; вне диапазона — 25.</param>
-    /// <param name="offset">Смещение от начала списка.</param>
+    /// <param name="limit">Page size, 1–100; out of range — 25.</param>
+    /// <param name="offset">Offset from the start of the list.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public PagePromise<AcceptedConfiguredMethod> ListAcceptedCurrenciesAsync(
@@ -3628,10 +3764,11 @@ public sealed partial class Settings : Resource
             options,
             cancellationToken);
 
-    /// <summary>Кто платит сетевую комиссию выплаты</summary>
+    /// <summary>Who pays the payout network fee</summary>
     /// <remarks>
-    /// <para>`fee_on_recipient: true` — комиссию сети платит получатель (ему приходит сумма минус комиссия).</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>`fee_on_recipient: true` — the network fee is paid by the recipient (they receive the amount minus the fee).</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -3650,12 +3787,13 @@ public sealed partial class Settings : Resource
             cancellationToken);
     }
 
-    /// <summary>Кто платит сетевую комиссию выплаты</summary>
+    /// <summary>Who pays the payout network fee</summary>
     /// <remarks>
-    /// <para>`fee_on_recipient: true` — комиссию сети платит получатель (ему приходит сумма минус комиссия).</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>`fee_on_recipient: true` — the network fee is paid by the recipient (they receive the amount minus the fee).</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="feeOnRecipient">true — сетевую комиссию платит получатель (получает меньше); false — комиссию несёт мерчант</param>
+    /// <param name="feeOnRecipient">true — the network fee is paid by the recipient (who receives less); false — the merchant bears the fee</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<SetPayoutFeeRequest> SetPayoutFeeConfigAsync(
@@ -3670,9 +3808,10 @@ public sealed partial class Settings : Resource
             options,
             cancellationToken);
 
-    /// <summary>Прочитать настройку комиссии выплат</summary>
+    /// <summary>Read the payout fee setting</summary>
     /// <remarks>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -3685,10 +3824,11 @@ public sealed partial class Settings : Resource
             options,
             cancellationToken);
 
-    /// <summary>Кто платит нашу комиссию при возврате</summary>
+    /// <summary>Who pays our fee on a refund</summary>
     /// <remarks>
-    /// <para>`fee_on_customer: true` — при возврате нашу комиссию несёт клиент (возврат за вычетом комиссии); false — несёт мерчант.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>`fee_on_customer: true` — on a refund our fee is borne by the customer (refund minus the fee); false — borne by the merchant.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -3707,12 +3847,13 @@ public sealed partial class Settings : Resource
             cancellationToken);
     }
 
-    /// <summary>Кто платит нашу комиссию при возврате</summary>
+    /// <summary>Who pays our fee on a refund</summary>
     /// <remarks>
-    /// <para>`fee_on_customer: true` — при возврате нашу комиссию несёт клиент (возврат за вычетом комиссии); false — несёт мерчант.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>`fee_on_customer: true` — on a refund our fee is borne by the customer (refund minus the fee); false — borne by the merchant.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="feeOnCustomer">true — клиент получает net (комиссию платит клиент); false — мерчант платит комиссию, клиент получает gross</param>
+    /// <param name="feeOnCustomer">true — the customer receives net (the customer pays the fee); false — the merchant pays the fee, the customer receives gross</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<SetRefundFeeRequest> SetRefundFeeConfigAsync(
@@ -3727,9 +3868,10 @@ public sealed partial class Settings : Resource
             options,
             cancellationToken);
 
-    /// <summary>Прочитать настройку комиссии возврата</summary>
+    /// <summary>Read the refund fee setting</summary>
     /// <remarks>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -3742,10 +3884,11 @@ public sealed partial class Settings : Resource
             options,
             cancellationToken);
 
-    /// <summary>Кто платит нашу комиссию при приёме платежа</summary>
+    /// <summary>Who pays our fee when accepting a payment</summary>
     /// <remarks>
-    /// <para>`payer_pays_percent: 0` — комиссию платит мерчант (по умолчанию); `100` — платит покупатель: счёт выставляется с наценкой, и мерчант получает ровно ту сумму, которую назвал. Промежуточные значения делят комиссию. Действует на счета, созданные ПОСЛЕ изменения; параметр `subtract` в самом счёте перекрывает эту настройку.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_fee_bearer</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>`payer_pays_percent: 0` — the fee is paid by the merchant (default); `100` — paid by the buyer: the invoice is issued with a markup, and the merchant receives exactly the amount they specified. Intermediate values split the fee. Applies to invoices created AFTER the change; the `subtract` parameter of an invoice overrides this setting.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_fee_bearer</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -3764,12 +3907,13 @@ public sealed partial class Settings : Resource
             cancellationToken);
     }
 
-    /// <summary>Кто платит нашу комиссию при приёме платежа</summary>
+    /// <summary>Who pays our fee when accepting a payment</summary>
     /// <remarks>
-    /// <para>`payer_pays_percent: 0` — комиссию платит мерчант (по умолчанию); `100` — платит покупатель: счёт выставляется с наценкой, и мерчант получает ровно ту сумму, которую назвал. Промежуточные значения делят комиссию. Действует на счета, созданные ПОСЛЕ изменения; параметр `subtract` в самом счёте перекрывает эту настройку.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_fee_bearer</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>`payer_pays_percent: 0` — the fee is paid by the merchant (default); `100` — paid by the buyer: the invoice is issued with a markup, and the merchant receives exactly the amount they specified. Intermediate values split the fee. Applies to invoices created AFTER the change; the `subtract` parameter of an invoice overrides this setting.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_fee_bearer</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="payerPaysPercent">Доля НАШЕЙ комиссии, которую платит покупатель: 0 — платит мерчант (как сейчас), 100 — платит покупатель, счёт выставляется с наценкой. Действует на счета, созданные ПОСЛЕ изменения.</param>
+    /// <param name="payerPaysPercent">The share of OUR fee paid by the buyer: 0 — the merchant pays (as now), 100 — the buyer pays, the invoice is issued with a markup. Applies to invoices created AFTER the change.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<SetPaymentFeeRequest> SetPaymentFeeConfigAsync(
@@ -3784,10 +3928,11 @@ public sealed partial class Settings : Resource
             options,
             cancellationToken);
 
-    /// <summary>Прочитать, кто платит комиссию за приём</summary>
+    /// <summary>Read who pays the acceptance fee</summary>
     /// <remarks>
-    /// <para>Также возвращает ваш тариф: `fee_percent` — ставка, которую зафиксирует СЛЕДУЮЩИЙ созданный счёт; `fee_fixed_usd` — фиксированный сбор с платежа, USD строкой ("0.30"; прежнее `fee_fixed_usd_cents` — то же в центах числом, устарело); `fee_individual: true` — тариф назначен вам индивидуально, false — действует тариф платформы.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Also returns your pricing: `fee_percent` — the rate the NEXT created invoice will lock in; `fee_fixed_usd` — the fixed per-payment fee, USD as a string ("0.30"; the former `fee_fixed_usd_cents` is the same in cents as a number, deprecated); `fee_individual: true` — the pricing is assigned to you individually, false — the platform pricing applies.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -3800,10 +3945,11 @@ public sealed partial class Settings : Resource
             options,
             cancellationToken);
 
-    /// <summary>Настроить авто-вывод</summary>
+    /// <summary>Configure auto-withdrawal</summary>
     /// <remarks>
-    /// <para>Автоматически выводить поступления на заданный адрес.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>autowithdraw.bad_min</c>, <c>autowithdraw.missing</c>, <c>autowithdraw.network_required</c>, <c>autowithdraw.unsupported_network</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.address_network_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_memo</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
+    /// <para>Automatically withdraw incoming funds to a given address.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>autowithdraw.bad_min</c>, <c>autowithdraw.missing</c>, <c>autowithdraw.network_required</c>, <c>autowithdraw.unsupported_network</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.address_network_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_memo</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -3822,15 +3968,16 @@ public sealed partial class Settings : Resource
             cancellationToken);
     }
 
-    /// <summary>Настроить авто-вывод</summary>
+    /// <summary>Configure auto-withdrawal</summary>
     /// <remarks>
-    /// <para>Автоматически выводить поступления на заданный адрес.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>autowithdraw.bad_min</c>, <c>autowithdraw.missing</c>, <c>autowithdraw.network_required</c>, <c>autowithdraw.unsupported_network</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.address_network_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_memo</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
+    /// <para>Automatically withdraw incoming funds to a given address.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>autowithdraw.bad_min</c>, <c>autowithdraw.missing</c>, <c>autowithdraw.network_required</c>, <c>autowithdraw.unsupported_network</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payout.address_network_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_memo</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
     /// </remarks>
-    /// <param name="address">Адрес назначения (внешний кошелёк мерчанта).</param>
-    /// <param name="currency">Актив, который выводить автоматически.</param>
-    /// <param name="network">Сеть адреса назначения.</param>
-    /// <param name="minAmount">Порог: вывод срабатывает, когда доступный баланс актива не меньше этой суммы; пусто — сетевой минимум.</param>
+    /// <param name="address">Destination address (the merchant's external wallet).</param>
+    /// <param name="currency">The asset to withdraw automatically.</param>
+    /// <param name="network">The destination address network.</param>
+    /// <param name="minAmount">Threshold: the withdrawal triggers when the asset's available balance is at least this amount; empty — the network minimum.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<AutoWithdrawListResult> SetAutoWithdrawRuleAsync(
@@ -3851,9 +3998,10 @@ public sealed partial class Settings : Resource
             options,
             cancellationToken);
 
-    /// <summary>Список правил авто-вывода</summary>
+    /// <summary>List auto-withdrawal rules</summary>
     /// <remarks>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -3866,9 +4014,10 @@ public sealed partial class Settings : Resource
             options,
             cancellationToken);
 
-    /// <summary>Удалить правило авто-вывода</summary>
+    /// <summary>Delete an auto-withdrawal rule</summary>
     /// <remarks>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -3887,11 +4036,12 @@ public sealed partial class Settings : Resource
             cancellationToken);
     }
 
-    /// <summary>Удалить правило авто-вывода</summary>
+    /// <summary>Delete an auto-withdrawal rule</summary>
     /// <remarks>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="currency">Актив, автовывод которого выключить.</param>
+    /// <param name="currency">The asset whose auto-withdrawal to disable.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<AutoWithdrawListResult> DeleteAutoWithdrawRuleAsync(
@@ -3906,10 +4056,11 @@ public sealed partial class Settings : Resource
             options,
             cancellationToken);
 
-    /// <summary>Авто-конверт волатильных монет в USDT (VRCS)</summary>
+    /// <summary>Auto-convert volatile coins to USDT (VRCS)</summary>
     /// <remarks>
-    /// <para>Включает автоматическую конвертацию поступающих волатильных монет в стейбл USDT.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>vrcs.read</c>.</para>
+    /// <para>Enables automatic conversion of incoming volatile coins into the USDT stablecoin.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>vrcs.read</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -3928,12 +4079,13 @@ public sealed partial class Settings : Resource
             cancellationToken);
     }
 
-    /// <summary>Авто-конверт волатильных монет в USDT (VRCS)</summary>
+    /// <summary>Auto-convert volatile coins to USDT (VRCS)</summary>
     /// <remarks>
-    /// <para>Включает автоматическую конвертацию поступающих волатильных монет в стейбл USDT.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>vrcs.read</c>.</para>
+    /// <para>Enables automatic conversion of incoming volatile coins into the USDT stablecoin.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>vrcs.read</c>.</para>
     /// </remarks>
-    /// <param name="enabled">true — включить автоконвертацию волатильных поступлений в USDT, false — выключить; без поля — только прочитать текущее состояние.</param>
+    /// <param name="enabled">true — enable auto-conversion of volatile incoming funds to USDT, false — disable it; without the field — only read the current state.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<VRCSResult> ConfigureVrcsAsync(
@@ -3949,7 +4101,7 @@ public sealed partial class Settings : Resource
             cancellationToken);
 }
 
-/// <summary>Ротация ключей и IP-allowlist API.</summary>
+/// <summary>Key rotation and the API IP allowlist.</summary>
 public sealed partial class ApiAllowlist : Resource
 {
     /// <summary>Bind the namespace to a transport.</summary>
@@ -3959,9 +4111,10 @@ public sealed partial class ApiAllowlist : Resource
     {
     }
 
-    /// <summary>Список разрешённых IP</summary>
+    /// <summary>List allowed IPs</summary>
     /// <remarks>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -3974,9 +4127,10 @@ public sealed partial class ApiAllowlist : Resource
             options,
             cancellationToken);
 
-    /// <summary>Добавить IP в allowlist</summary>
+    /// <summary>Add an IP to the allowlist</summary>
     /// <remarks>
-    /// <para>Errors: <c>apiallow.bad_cidr</c>, <c>apiallow.too_many</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Not available to CLI keys: call it with the integration key.</para>
+    /// <para>Errors: <c>apiallow.bad_cidr</c>, <c>apiallow.too_many</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -3995,11 +4149,12 @@ public sealed partial class ApiAllowlist : Resource
             cancellationToken);
     }
 
-    /// <summary>Добавить IP в allowlist</summary>
+    /// <summary>Add an IP to the allowlist</summary>
     /// <remarks>
-    /// <para>Errors: <c>apiallow.bad_cidr</c>, <c>apiallow.too_many</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Not available to CLI keys: call it with the integration key.</para>
+    /// <para>Errors: <c>apiallow.bad_cidr</c>, <c>apiallow.too_many</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="cidr">IP или подсеть в CIDR (203.0.113.7 или 203.0.113.0/24).</param>
+    /// <param name="cidr">An IP or a CIDR subnet (203.0.113.7 or 203.0.113.0/24).</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<APIAllowListResult> AddEntryAsync(
@@ -4014,9 +4169,10 @@ public sealed partial class ApiAllowlist : Resource
             options,
             cancellationToken);
 
-    /// <summary>Удалить IP из allowlist</summary>
+    /// <summary>Remove an IP from the allowlist</summary>
     /// <remarks>
-    /// <para>Errors: <c>apiallow.last_entry</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>postgres.lock_pool_busy</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Not available to CLI keys: call it with the integration key.</para>
+    /// <para>Errors: <c>apiallow.last_entry</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>postgres.lock_pool_busy</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -4035,11 +4191,12 @@ public sealed partial class ApiAllowlist : Resource
             cancellationToken);
     }
 
-    /// <summary>Удалить IP из allowlist</summary>
+    /// <summary>Remove an IP from the allowlist</summary>
     /// <remarks>
-    /// <para>Errors: <c>apiallow.last_entry</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>postgres.lock_pool_busy</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Not available to CLI keys: call it with the integration key.</para>
+    /// <para>Errors: <c>apiallow.last_entry</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>postgres.lock_pool_busy</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="cidr">IP или подсеть в CIDR (203.0.113.7 или 203.0.113.0/24).</param>
+    /// <param name="cidr">An IP or a CIDR subnet (203.0.113.7 or 203.0.113.0/24).</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<APIAllowListResult> RemoveEntryAsync(
@@ -4054,10 +4211,11 @@ public sealed partial class ApiAllowlist : Resource
             options,
             cancellationToken);
 
-    /// <summary>Вкл/выкл IP-allowlist</summary>
+    /// <summary>Enable/disable the IP allowlist</summary>
     /// <remarks>
-    /// <para>Когда включён — запросы с IP не из списка отклоняются.</para>
-    /// <para>Errors: <c>apiallow.empty</c>, <c>apiallow.platform_unidentifiable</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>postgres.lock_pool_busy</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>When enabled, requests from IPs not on the list are rejected.</para>
+    /// <para>Not available to CLI keys: call it with the integration key.</para>
+    /// <para>Errors: <c>apiallow.empty</c>, <c>apiallow.platform_unidentifiable</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>postgres.lock_pool_busy</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -4076,12 +4234,13 @@ public sealed partial class ApiAllowlist : Resource
             cancellationToken);
     }
 
-    /// <summary>Вкл/выкл IP-allowlist</summary>
+    /// <summary>Enable/disable the IP allowlist</summary>
     /// <remarks>
-    /// <para>Когда включён — запросы с IP не из списка отклоняются.</para>
-    /// <para>Errors: <c>apiallow.empty</c>, <c>apiallow.platform_unidentifiable</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>postgres.lock_pool_busy</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>When enabled, requests from IPs not on the list are rejected.</para>
+    /// <para>Not available to CLI keys: call it with the integration key.</para>
+    /// <para>Errors: <c>apiallow.empty</c>, <c>apiallow.platform_unidentifiable</c>, <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>postgres.lock_pool_busy</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="enabled">true — принимать API-вызовы только с адресов из списка; false — список хранится, но не применяется.</param>
+    /// <param name="enabled">true — accept API calls only from addresses on the list; false — the list is kept but not enforced.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<APIAllowListResult> SetEnabledAsync(
@@ -4097,7 +4256,7 @@ public sealed partial class ApiAllowlist : Resource
             cancellationToken);
 }
 
-/// <summary>Реферальная программа.</summary>
+/// <summary>Referral program.</summary>
 public sealed partial class Referrals : Resource
 {
     /// <summary>Bind the namespace to a transport.</summary>
@@ -4107,10 +4266,11 @@ public sealed partial class Referrals : Resource
     {
     }
 
-    /// <summary>Реферальная информация</summary>
+    /// <summary>Referral information</summary>
     /// <remarks>
-    /// <para>Ваш реферальный код, приглашённые и начисления.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Your referral code, invitees and earnings.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -4124,7 +4284,7 @@ public sealed partial class Referrals : Resource
             cancellationToken);
 }
 
-/// <summary>PDF-документы операций: чеки, счета, отчёты за период.</summary>
+/// <summary>PDF documents for operations: receipts, invoices, period reports.</summary>
 public sealed partial class Documents : Resource
 {
     /// <summary>Bind the namespace to a transport.</summary>
@@ -4134,16 +4294,16 @@ public sealed partial class Documents : Resource
     {
     }
 
-    /// <summary>PDF-документ операции (по подписанной ссылке)</summary>
+    /// <summary>Operation PDF document (via a signed link)</summary>
     /// <remarks>
-    /// <para>Отдаёт фирменный PDF: чек платежа (`kind=payment`), чек выплаты или возврата (`kind=payout`), счёт (`kind=invoice`), плакат ссылки (`kind=paylink`), справку о реквизитах (`kind=wallet`), сплит-расчёт (`kind=split`), чек перевода (`kind=transfer`), чек конвертации (`kind=conversion`). Ссылку НЕ нужно строить самим: готовая приходит в `document_url` соответствующих ответов — подпись в `sig` и есть доступ, API-ключ не нужен. ⚠ Ссылка ЖИВЁТ ОГРАНИЧЕННО (`exp` в query, по умолчанию 30 суток): скачанный PDF-файл — документ навсегда, а просроченная ссылка отвечает 403 `document.link_expired` — возьмите свежую из любого свежего ответа info/history той же операции. `?lang=` — один из 41 языка (en по умолчанию; полный список — в ошибке `document.unknown_lang`). Ответ — `application/pdf`; документ отражает текущий статус операции. На самом PDF ссылок нет — документы не раскрывают путь к себе при пересылке.</para>
+    /// <para>Returns a branded PDF: payment receipt (`kind=payment`), payout or refund receipt (`kind=payout`), invoice (`kind=invoice`), link poster (`kind=paylink`), payment details certificate (`kind=wallet`), split settlement (`kind=split`), transfer receipt (`kind=transfer`), conversion receipt (`kind=conversion`). You do NOT need to build the link yourself: a ready one comes in `document_url` of the corresponding responses — the signature in `sig` is the access grant, no API key needed. ⚠ The link has A LIMITED LIFETIME (`exp` in the query, 30 days by default): a downloaded PDF file is a document forever, while an expired link responds 403 `document.link_expired` — take a fresh one from any fresh info/history response for the same operation. `?lang=` — one of 41 languages (en by default; the full list is in the `document.unknown_lang` error). The response is `application/pdf`; the document reflects the current status of the operation. The PDF itself contains no links — documents do not reveal their own URL when forwarded.</para>
     /// <para>Errors: <c>document.bad_id</c>, <c>document.bad_signature</c>, <c>document.disabled</c>, <c>document.encode_failed</c>, <c>document.link_expired</c>, <c>document.not_found</c>, <c>document.render_failed</c>, <c>document.render_rejected</c>, <c>document.render_unavailable</c>, <c>document.unknown_kind</c>, <c>document.unknown_lang</c>, <c>document.wallet_abandoned</c>, <c>document.wallet_blocked</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.not_found</c>, <c>paylink.not_found</c>, <c>payment.not_found</c>, <c>payout.not_found</c>, <c>report.too_large</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>wallet.static_disabled</c>, <c>wallet.static_not_found</c>.</para>
     /// </remarks>
     /// <param name="kind"><c>kind</c> path parameter.</param>
     /// <param name="id"><c>id</c> path parameter.</param>
-    /// <param name="exp">Срок действия ссылки (unix-время) из document_url.</param>
-    /// <param name="sig">Подпись ссылки из document_url.</param>
-    /// <param name="lang">Язык документа (по умолчанию en); список — document.Languages.</param>
+    /// <param name="exp">The link expiry (Unix time) from document_url.</param>
+    /// <param name="sig">The link signature from document_url.</param>
+    /// <param name="lang">Document language (en by default); the list is document.Languages.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<FileResult> GetSignedAsync(
@@ -4171,12 +4331,13 @@ public sealed partial class Documents : Resource
                 new("lang", lang),
             ]);
 
-    /// <summary>Справка о балансе (PDF)</summary>
+    /// <summary>Balance certificate (PDF)</summary>
     /// <remarks>
-    /// <para>Фирменная PDF-справка: available-балансы мерчанта по валютам на момент формирования, со штампом. Для контрагентов и бухгалтерии. `?lang=` — 41 язык (en по умолчанию). Ответ — `application/pdf`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>document.balance_unavailable</c>, <c>document.disabled</c>, <c>document.encode_failed</c>, <c>document.render_failed</c>, <c>document.render_rejected</c>, <c>document.render_unavailable</c>, <c>document.unknown_lang</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>report.too_large</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>A branded PDF certificate: the merchant's available balances per currency at the time of generation, with a stamp. For counterparties and accounting. `?lang=` — 41 languages (en by default). The response is `application/pdf`.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>document.balance_unavailable</c>, <c>document.disabled</c>, <c>document.encode_failed</c>, <c>document.render_failed</c>, <c>document.render_rejected</c>, <c>document.render_unavailable</c>, <c>document.unknown_lang</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>report.too_large</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="lang">Язык документа (по умолчанию en); список — document.Languages.</param>
+    /// <param name="lang">Document language (en by default); the list is document.Languages.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<FileResult> GetBalanceAsync(
@@ -4193,15 +4354,16 @@ public sealed partial class Documents : Resource
                 new("lang", lang),
             ]);
 
-    /// <summary>Отчёт о комиссиях за период (PDF)</summary>
+    /// <summary>Fee report for a period (PDF)</summary>
     /// <remarks>
-    /// <para>Сколько удержано за период: комиссия сервиса с каждого зачтённого платежа и сетевые комиссии выплат/возвратов, с итогами по валютам. `?from=YYYY-MM-DD&amp;to=YYYY-MM-DD` (включительно, максимум год; по умолчанию — текущий месяц), `?lang=` — 41 язык (en по умолчанию). Ответ — `application/pdf`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>document.disabled</c>, <c>document.encode_failed</c>, <c>document.fees_unavailable</c>, <c>document.render_failed</c>, <c>document.render_rejected</c>, <c>document.render_unavailable</c>, <c>document.unknown_lang</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payment.not_found</c>, <c>payout.not_found</c>, <c>report.too_large</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>statement.bad_from</c>, <c>statement.bad_range</c>, <c>statement.bad_to</c>, <c>statement.range_too_long</c>.</para>
+    /// <para>How much was withheld over the period: the service fee on each credited payment and the network fees of payouts/refunds, with totals per currency. `?from=YYYY-MM-DD&amp;to=YYYY-MM-DD` (inclusive, at most one year; defaults to the current month), `?lang=` — 41 languages (en by default). The response is `application/pdf`.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>document.disabled</c>, <c>document.encode_failed</c>, <c>document.fees_unavailable</c>, <c>document.render_failed</c>, <c>document.render_rejected</c>, <c>document.render_unavailable</c>, <c>document.unknown_lang</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payment.not_found</c>, <c>payout.not_found</c>, <c>report.too_large</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>statement.bad_from</c>, <c>statement.bad_range</c>, <c>statement.bad_to</c>, <c>statement.range_too_long</c>.</para>
     /// </remarks>
-    /// <param name="from">Начало периода, YYYY-MM-DD (по умолчанию — первое число текущего месяца).</param>
-    /// <param name="to">Конец периода включительно, YYYY-MM-DD (по умолчанию — сегодня); период — до года.</param>
-    /// <param name="lang">Язык документа (по умолчанию en); список — document.Languages.</param>
-    /// <param name="format">Формат файла: pdf (по умолчанию) или csv.</param>
+    /// <param name="from">Start of the period, YYYY-MM-DD (defaults to the first day of the current month).</param>
+    /// <param name="to">End of the period, inclusive, YYYY-MM-DD (defaults to today); the period is up to one year.</param>
+    /// <param name="lang">Document language (en by default); the list is document.Languages.</param>
+    /// <param name="format">File format: pdf (default) or csv.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<FileResult> GetFeesAsync(
@@ -4224,15 +4386,16 @@ public sealed partial class Documents : Resource
                 new("format", format),
             ]);
 
-    /// <summary>Выписка по счёту (PDF)</summary>
+    /// <summary>Account statement (PDF)</summary>
     /// <remarks>
-    /// <para>ВСЕ движения available-баланса за период — включая комиссии, доли сплитов и внутренние переводы, которых нет в отчёте по операциям. Приход/расход помечены, итоги по валютам. Нужен АКТ СВЕРКИ (с сальдо на начало и конец периода)? Закажите тот же отчёт фоном — `POST /v1/documents/jobs` с `kind=ledger`: сальдо требует агрегата по всей истории и потому считается только в фоновой задаче, не в синхронной ручке. `?from&amp;to` как у отчёта, `?lang=` — 41 язык (en по умолчанию). Ответ — `application/pdf`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>document.disabled</c>, <c>document.encode_failed</c>, <c>document.ledger_unavailable</c>, <c>document.render_failed</c>, <c>document.render_rejected</c>, <c>document.render_unavailable</c>, <c>document.unknown_lang</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>report.too_large</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>statement.bad_from</c>, <c>statement.bad_range</c>, <c>statement.bad_to</c>, <c>statement.range_too_long</c>.</para>
+    /// <para>ALL movements of the available balance over the period — including fees, split shares and internal transfers that are not in the operations report. Credits/debits are marked, with totals per currency. Need a RECONCILIATION STATEMENT (with opening and closing balances for the period)? Order the same report in the background — `POST /v1/documents/jobs` with `kind=ledger`: the balances require an aggregate over the whole history and are therefore computed only in a background job, not in a synchronous endpoint. `?from&amp;to` as in the report, `?lang=` — 41 languages (en by default). The response is `application/pdf`.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>document.disabled</c>, <c>document.encode_failed</c>, <c>document.ledger_unavailable</c>, <c>document.render_failed</c>, <c>document.render_rejected</c>, <c>document.render_unavailable</c>, <c>document.unknown_lang</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>report.too_large</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>statement.bad_from</c>, <c>statement.bad_range</c>, <c>statement.bad_to</c>, <c>statement.range_too_long</c>.</para>
     /// </remarks>
-    /// <param name="from">Начало периода, YYYY-MM-DD (по умолчанию — первое число текущего месяца).</param>
-    /// <param name="to">Конец периода включительно, YYYY-MM-DD (по умолчанию — сегодня); период — до года.</param>
-    /// <param name="lang">Язык документа (по умолчанию en); список — document.Languages.</param>
-    /// <param name="format">Формат файла: pdf (по умолчанию) или csv.</param>
+    /// <param name="from">Start of the period, YYYY-MM-DD (defaults to the first day of the current month).</param>
+    /// <param name="to">End of the period, inclusive, YYYY-MM-DD (defaults to today); the period is up to one year.</param>
+    /// <param name="lang">Document language (en by default); the list is document.Languages.</param>
+    /// <param name="format">File format: pdf (default) or csv.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<FileResult> GetLedgerAsync(
@@ -4255,13 +4418,14 @@ public sealed partial class Documents : Resource
                 new("format", format),
             ]);
 
-    /// <summary>Справка о сплит-расчёте платежа (PDF)</summary>
+    /// <summary>Payment split settlement certificate (PDF)</summary>
     /// <remarks>
-    /// <para>Как распределился конкретный платёж между получателями: доли, суммы, статусы. `?uuid=&lt;UUID платежа&gt;`, `?lang=` — 41 язык (en по умолчанию). На самом документе напечатана подписанная публичная ссылка — её можно переслать партнёру. 404 `document.no_split`, если платёж ничего не разводил.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>document.bad_id</c>, <c>document.disabled</c>, <c>document.encode_failed</c>, <c>document.no_split</c>, <c>document.render_failed</c>, <c>document.render_rejected</c>, <c>document.render_unavailable</c>, <c>document.unknown_lang</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payment.not_found</c>, <c>payout.not_found</c>, <c>report.too_large</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>How a specific payment was distributed between recipients: shares, amounts, statuses. `?uuid=&lt;payment UUID&gt;`, `?lang=` — 41 languages (en by default). A signed public link is printed on the document itself — it can be forwarded to a partner. 404 `document.no_split` if the payment was not split.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>document.bad_id</c>, <c>document.disabled</c>, <c>document.encode_failed</c>, <c>document.no_split</c>, <c>document.render_failed</c>, <c>document.render_rejected</c>, <c>document.render_unavailable</c>, <c>document.unknown_lang</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payment.not_found</c>, <c>payout.not_found</c>, <c>report.too_large</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="uuid">UUID платежа.</param>
-    /// <param name="lang">Язык документа (по умолчанию en); список — document.Languages.</param>
+    /// <param name="uuid">The payment UUID.</param>
+    /// <param name="lang">Document language (en by default); the list is document.Languages.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<FileResult> GetSplitAsync(
@@ -4280,10 +4444,11 @@ public sealed partial class Documents : Resource
                 new("lang", lang),
             ]);
 
-    /// <summary>Крипточек (PDF, на предъявителя)</summary>
+    /// <summary>Crypto cheque (PDF, bearer)</summary>
     /// <remarks>
-    /// <para>Печатный чек выплатной ссылки: сумма, срок и QR получения. Передайте `claim_token` из ответа создания ссылки — он хранится только хешем и повторно НЕ выдаётся, поэтому чек можно напечатать только пока токен у вас. ⚠ Документ — деньги: любой, у кого он есть, может получить средства. Ответ — `application/pdf`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cheque.token_required</c>, <c>document.disabled</c>, <c>document.encode_failed</c>, <c>document.render_failed</c>, <c>document.render_rejected</c>, <c>document.render_unavailable</c>, <c>document.unknown_lang</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payoutlink.disabled</c>, <c>payoutlink.not_found</c>, <c>report.too_large</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>A printable cheque for a payout link: the amount, the expiry and the claim QR code. Pass the `claim_token` from the link creation response — it is stored only as a hash and is NOT issued again, so the cheque can only be printed while you still have the token. ⚠ The document is money: anyone who has it can claim the funds. The response is `application/pdf`.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cheque.token_required</c>, <c>cli.permission_denied</c>, <c>document.disabled</c>, <c>document.encode_failed</c>, <c>document.render_failed</c>, <c>document.render_rejected</c>, <c>document.render_unavailable</c>, <c>document.unknown_lang</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payoutlink.disabled</c>, <c>payoutlink.not_found</c>, <c>report.too_large</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -4302,13 +4467,14 @@ public sealed partial class Documents : Resource
             cancellationToken);
     }
 
-    /// <summary>Крипточек (PDF, на предъявителя)</summary>
+    /// <summary>Crypto cheque (PDF, bearer)</summary>
     /// <remarks>
-    /// <para>Печатный чек выплатной ссылки: сумма, срок и QR получения. Передайте `claim_token` из ответа создания ссылки — он хранится только хешем и повторно НЕ выдаётся, поэтому чек можно напечатать только пока токен у вас. ⚠ Документ — деньги: любой, у кого он есть, может получить средства. Ответ — `application/pdf`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cheque.token_required</c>, <c>document.disabled</c>, <c>document.encode_failed</c>, <c>document.render_failed</c>, <c>document.render_rejected</c>, <c>document.render_unavailable</c>, <c>document.unknown_lang</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payoutlink.disabled</c>, <c>payoutlink.not_found</c>, <c>report.too_large</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>A printable cheque for a payout link: the amount, the expiry and the claim QR code. Pass the `claim_token` from the link creation response — it is stored only as a hash and is NOT issued again, so the cheque can only be printed while you still have the token. ⚠ The document is money: anyone who has it can claim the funds. The response is `application/pdf`.</para>
+    /// <para>Requires role: Finance when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cheque.token_required</c>, <c>cli.permission_denied</c>, <c>document.disabled</c>, <c>document.encode_failed</c>, <c>document.render_failed</c>, <c>document.render_rejected</c>, <c>document.render_unavailable</c>, <c>document.unknown_lang</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payoutlink.disabled</c>, <c>payoutlink.not_found</c>, <c>report.too_large</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="claimToken">Секрет получения из ответа создания выплатной ссылки. Хранится только хешем и повторно не выдаётся — чек можно напечатать, лишь пока токен у вас.</param>
-    /// <param name="lang">Язык документа — один из 41 поддерживаемого кода (en по умолчанию); полный список — в ошибке document.unknown_lang.</param>
+    /// <param name="claimToken">The claim secret from the payout link creation response. Stored only as a hash and not issued again — the cheque can be printed only while you still have the token.</param>
+    /// <param name="lang">Document language — one of the 41 supported codes (en by default); the full list is in the document.unknown_lang error.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<FileResult> GetPayoutLinkChequeAsync(
@@ -4325,15 +4491,16 @@ public sealed partial class Documents : Resource
             options,
             cancellationToken);
 
-    /// <summary>Отчёт по операциям за период (PDF)</summary>
+    /// <summary>Operations report for a period (PDF)</summary>
     /// <remarks>
-    /// <para>Фирменный PDF-отчёт: платежи, выплаты и возвраты мерчанта за период, с итогами по валютам. `?from=YYYY-MM-DD&amp;to=YYYY-MM-DD` (включительно, максимум год; по умолчанию — текущий месяц), `?lang=` — 41 язык (en по умолчанию). Ответ — `application/pdf`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>document.disabled</c>, <c>document.encode_failed</c>, <c>document.render_failed</c>, <c>document.render_rejected</c>, <c>document.render_unavailable</c>, <c>document.unknown_lang</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payment.not_found</c>, <c>payout.not_found</c>, <c>report.too_large</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>statement.bad_from</c>, <c>statement.bad_range</c>, <c>statement.bad_to</c>, <c>statement.range_too_long</c>, <c>statement.unavailable</c>.</para>
+    /// <para>A branded PDF report: the merchant's payments, payouts and refunds for the period, with totals per currency. `?from=YYYY-MM-DD&amp;to=YYYY-MM-DD` (inclusive, at most one year; defaults to the current month), `?lang=` — 41 languages (en by default). The response is `application/pdf`.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>document.disabled</c>, <c>document.encode_failed</c>, <c>document.render_failed</c>, <c>document.render_rejected</c>, <c>document.render_unavailable</c>, <c>document.unknown_lang</c>, <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payment.not_found</c>, <c>payout.not_found</c>, <c>report.too_large</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>statement.bad_from</c>, <c>statement.bad_range</c>, <c>statement.bad_to</c>, <c>statement.range_too_long</c>, <c>statement.unavailable</c>.</para>
     /// </remarks>
-    /// <param name="from">Начало периода, YYYY-MM-DD (по умолчанию — первое число текущего месяца).</param>
-    /// <param name="to">Конец периода включительно, YYYY-MM-DD (по умолчанию — сегодня); период — до года.</param>
-    /// <param name="lang">Язык документа (по умолчанию en); список — document.Languages.</param>
-    /// <param name="format">Формат файла: pdf (по умолчанию) или csv.</param>
+    /// <param name="from">Start of the period, YYYY-MM-DD (defaults to the first day of the current month).</param>
+    /// <param name="to">End of the period, inclusive, YYYY-MM-DD (defaults to today); the period is up to one year.</param>
+    /// <param name="lang">Document language (en by default); the list is document.Languages.</param>
+    /// <param name="format">File format: pdf (default) or csv.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<FileResult> GetStatementAsync(
@@ -4356,14 +4523,15 @@ public sealed partial class Documents : Resource
                 new("format", format),
             ]);
 
-    /// <summary>Ведомость массовой операции (PDF)</summary>
+    /// <summary>Batch operation register (PDF)</summary>
     /// <remarks>
-    /// <para>Итоги батча (`/v1/*/batch`) одним документом: сколько строк, сколько прошло и упало, каждая строка с получателем, суммой, статусом и машинным кодом причины отказа — тем же, что вернул бы одиночный вызов. `?uuid=&lt;UUID батча&gt;`, `?lang=` — 41 язык. Ответ — `application/pdf`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>batch.disabled</c>, <c>batch.not_found</c>, <c>document.bad_id</c>, <c>document.batch_unavailable</c>, <c>document.disabled</c>, <c>document.encode_failed</c>, <c>document.render_failed</c>, <c>document.render_rejected</c>, <c>document.render_unavailable</c>, <c>document.unknown_lang</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>report.too_large</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>The results of a batch (`/v1/*/batch`) in one document: how many rows, how many succeeded and failed, each row with the recipient, amount, status and the machine code of the rejection reason — the same one a single call would return. `?uuid=&lt;batch UUID&gt;`, `?lang=` — 41 languages. The response is `application/pdf`.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>batch.disabled</c>, <c>batch.not_found</c>, <c>cli.permission_denied</c>, <c>document.bad_id</c>, <c>document.batch_unavailable</c>, <c>document.disabled</c>, <c>document.encode_failed</c>, <c>document.render_failed</c>, <c>document.render_rejected</c>, <c>document.render_unavailable</c>, <c>document.unknown_lang</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>report.too_large</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="uuid">UUID батча.</param>
-    /// <param name="lang">Язык документа (по умолчанию en); список — document.Languages.</param>
-    /// <param name="format">Формат файла: pdf (по умолчанию) или csv.</param>
+    /// <param name="uuid">The batch UUID.</param>
+    /// <param name="lang">Document language (en by default); the list is document.Languages.</param>
+    /// <param name="format">File format: pdf (default) or csv.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<FileResult> GetBatchAsync(
@@ -4384,16 +4552,17 @@ public sealed partial class Documents : Resource
                 new("format", format),
             ]);
 
-    /// <summary>Отчёт о сборах платёжной ссылки (PDF)</summary>
+    /// <summary>Payment link collections report (PDF)</summary>
     /// <remarks>
-    /// <para>Сколько собрала конкретная платёжная ссылка: каждый порождённый платёж строкой, итог по валютам (только зачтённые). Для донатов и сборов. `?uuid=&lt;UUID ссылки&gt;`, `?from&amp;to` (включительно, максимум год; по умолчанию — текущий месяц), `?lang=`. Ответ — `application/pdf`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>document.bad_id</c>, <c>document.disabled</c>, <c>document.encode_failed</c>, <c>document.render_failed</c>, <c>document.render_rejected</c>, <c>document.render_unavailable</c>, <c>document.unknown_lang</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>paylink.disabled</c>, <c>paylink.not_found</c>, <c>report.too_large</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>statement.bad_from</c>, <c>statement.bad_range</c>, <c>statement.bad_to</c>, <c>statement.range_too_long</c>.</para>
+    /// <para>How much a specific payment link has collected: each resulting payment as a row, totals per currency (credited only). For donations and fundraising. `?uuid=&lt;link UUID&gt;`, `?from&amp;to` (inclusive, at most one year; defaults to the current month), `?lang=`. The response is `application/pdf`.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>document.bad_id</c>, <c>document.disabled</c>, <c>document.encode_failed</c>, <c>document.render_failed</c>, <c>document.render_rejected</c>, <c>document.render_unavailable</c>, <c>document.unknown_lang</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>paylink.disabled</c>, <c>paylink.not_found</c>, <c>report.too_large</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>statement.bad_from</c>, <c>statement.bad_range</c>, <c>statement.bad_to</c>, <c>statement.range_too_long</c>.</para>
     /// </remarks>
-    /// <param name="uuid">UUID платёжной ссылки.</param>
-    /// <param name="from">Начало периода, YYYY-MM-DD (по умолчанию — первое число текущего месяца).</param>
-    /// <param name="to">Конец периода включительно, YYYY-MM-DD (по умолчанию — сегодня); период — до года.</param>
-    /// <param name="lang">Язык документа (по умолчанию en); список — document.Languages.</param>
-    /// <param name="format">Формат файла: pdf (по умолчанию) или csv.</param>
+    /// <param name="uuid">The payment link UUID.</param>
+    /// <param name="from">Start of the period, YYYY-MM-DD (defaults to the first day of the current month).</param>
+    /// <param name="to">End of the period, inclusive, YYYY-MM-DD (defaults to today); the period is up to one year.</param>
+    /// <param name="lang">Document language (en by default); the list is document.Languages.</param>
+    /// <param name="format">File format: pdf (default) or csv.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<FileResult> GetPaymentLinkAsync(
@@ -4418,16 +4587,17 @@ public sealed partial class Documents : Resource
                 new("format", format),
             ]);
 
-    /// <summary>Выписка по статическому кошельку (PDF)</summary>
+    /// <summary>Static wallet statement (PDF)</summary>
     /// <remarks>
-    /// <para>Движения, порождённые конкретным статик-кошельком (депозиты клиента на постоянный адрес), с реквизитами кошелька в шапке и итогами по валютам. `?uuid=&lt;UUID кошелька&gt;`, `?from&amp;to`, `?lang=`. Ответ — `application/pdf`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>document.bad_id</c>, <c>document.disabled</c>, <c>document.encode_failed</c>, <c>document.ledger_unavailable</c>, <c>document.render_failed</c>, <c>document.render_rejected</c>, <c>document.render_unavailable</c>, <c>document.unknown_lang</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>report.too_large</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>statement.bad_from</c>, <c>statement.bad_range</c>, <c>statement.bad_to</c>, <c>statement.range_too_long</c>, <c>wallet.static_disabled</c>, <c>wallet.static_not_found</c>.</para>
+    /// <para>Movements produced by a specific static wallet (customer deposits to a permanent address), with the wallet details in the header and totals per currency. `?uuid=&lt;wallet UUID&gt;`, `?from&amp;to`, `?lang=`. The response is `application/pdf`.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>document.bad_id</c>, <c>document.disabled</c>, <c>document.encode_failed</c>, <c>document.ledger_unavailable</c>, <c>document.render_failed</c>, <c>document.render_rejected</c>, <c>document.render_unavailable</c>, <c>document.unknown_lang</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>report.too_large</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>statement.bad_from</c>, <c>statement.bad_range</c>, <c>statement.bad_to</c>, <c>statement.range_too_long</c>, <c>wallet.static_disabled</c>, <c>wallet.static_not_found</c>.</para>
     /// </remarks>
-    /// <param name="uuid">UUID статического кошелька.</param>
-    /// <param name="from">Начало периода, YYYY-MM-DD (по умолчанию — первое число текущего месяца).</param>
-    /// <param name="to">Конец периода включительно, YYYY-MM-DD (по умолчанию — сегодня); период — до года.</param>
-    /// <param name="lang">Язык документа (по умолчанию en); список — document.Languages.</param>
-    /// <param name="format">Формат файла: pdf (по умолчанию) или csv.</param>
+    /// <param name="uuid">The static wallet UUID.</param>
+    /// <param name="from">Start of the period, YYYY-MM-DD (defaults to the first day of the current month).</param>
+    /// <param name="to">End of the period, inclusive, YYYY-MM-DD (defaults to today); the period is up to one year.</param>
+    /// <param name="lang">Document language (en by default); the list is document.Languages.</param>
+    /// <param name="format">File format: pdf (default) or csv.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<FileResult> GetWalletStatementAsync(
@@ -4452,15 +4622,16 @@ public sealed partial class Documents : Resource
                 new("format", format),
             ]);
 
-    /// <summary>Отчёт о реферальных начислениях (PDF)</summary>
+    /// <summary>Referral earnings report (PDF)</summary>
     /// <remarks>
-    /// <para>Начисления реферальной программы за период: каждая награда строкой (когда, за кого, сколько), итог по валютам. `?from&amp;to`, `?lang=`. Ответ — `application/pdf`.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>document.disabled</c>, <c>document.encode_failed</c>, <c>document.render_failed</c>, <c>document.render_rejected</c>, <c>document.render_unavailable</c>, <c>document.unknown_lang</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>referral.disabled</c>, <c>report.too_large</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>statement.bad_from</c>, <c>statement.bad_range</c>, <c>statement.bad_to</c>, <c>statement.range_too_long</c>.</para>
+    /// <para>Referral program earnings for the period: each reward as a row (when, for whom, how much), totals per currency. `?from&amp;to`, `?lang=`. The response is `application/pdf`.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>document.disabled</c>, <c>document.encode_failed</c>, <c>document.render_failed</c>, <c>document.render_rejected</c>, <c>document.render_unavailable</c>, <c>document.unknown_lang</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>referral.disabled</c>, <c>report.too_large</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>statement.bad_from</c>, <c>statement.bad_range</c>, <c>statement.bad_to</c>, <c>statement.range_too_long</c>.</para>
     /// </remarks>
-    /// <param name="from">Начало периода, YYYY-MM-DD (по умолчанию — первое число текущего месяца).</param>
-    /// <param name="to">Конец периода включительно, YYYY-MM-DD (по умолчанию — сегодня); период — до года.</param>
-    /// <param name="lang">Язык документа (по умолчанию en); список — document.Languages.</param>
-    /// <param name="format">Формат файла: pdf (по умолчанию) или csv.</param>
+    /// <param name="from">Start of the period, YYYY-MM-DD (defaults to the first day of the current month).</param>
+    /// <param name="to">End of the period, inclusive, YYYY-MM-DD (defaults to today); the period is up to one year.</param>
+    /// <param name="lang">Document language (en by default); the list is document.Languages.</param>
+    /// <param name="format">File format: pdf (default) or csv.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<FileResult> GetReferralsAsync(
@@ -4483,10 +4654,11 @@ public sealed partial class Documents : Resource
                 new("format", format),
             ]);
 
-    /// <summary>Заказать тяжёлый отчёт (фоновая генерация)</summary>
+    /// <summary>Order a heavy report (background generation)</summary>
     /// <remarks>
-    /// <para>Синхронные отчётные ручки ограничены по объёму; отчёт за большой период закажите фоном: `kind` — `statement`/`fees`/`ledger`, период — до двух лет. Задача попадает в очередь и собирается в течение суток (обычно — минуты); статус — `POST /v1/documents/jobs/info`, готовый файл — `GET /v1/documents/jobs/file`. Повторный заказ с теми же параметрами при живой задаче возвращает её же. `format` — `pdf` (по умолчанию) или `csv`: CSV собирается БЕЗ вёрстки (для тяжёлой квартальной выписки — ноль нагрузки на рендер, грузится в Excel/1С). Квоты: не больше 3 задач в работе и 20 за сутки. Готовый отчёт хранится 7 суток, затем удаляется — скачайте и храните файл у себя.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>document.bad_format</c>, <c>document.bad_kind</c>, <c>document.daily_quota</c>, <c>document.jobs_disabled</c>, <c>document.too_many_jobs</c>, <c>document.unknown_lang</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>report.crashed</c>, <c>report.expired</c>, <c>report.too_large</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>statement.bad_from</c>, <c>statement.bad_range</c>, <c>statement.bad_to</c>, <c>statement.range_too_long</c>.</para>
+    /// <para>Synchronous report endpoints are limited in volume; order a report for a long period in the background: `kind` — `statement`/`fees`/`ledger`, period — up to two years. The job is queued and built within a day (usually minutes); status — `POST /v1/documents/jobs/info`, the finished file — `GET /v1/documents/jobs/file`. Ordering again with the same parameters while a job is alive returns that job. `format` — `pdf` (default) or `csv`: CSV is built WITHOUT layout (for a heavy quarterly statement — zero rendering load, imports into Excel/1C). Quotas: at most 3 jobs in progress and 20 per day. A finished report is kept for 7 days and then deleted — download it and keep the file yourself.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>document.bad_format</c>, <c>document.bad_kind</c>, <c>document.daily_quota</c>, <c>document.jobs_disabled</c>, <c>document.too_many_jobs</c>, <c>document.unknown_lang</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>report.crashed</c>, <c>report.expired</c>, <c>report.too_large</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>statement.bad_from</c>, <c>statement.bad_range</c>, <c>statement.bad_to</c>, <c>statement.range_too_long</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -4505,16 +4677,17 @@ public sealed partial class Documents : Resource
             cancellationToken);
     }
 
-    /// <summary>Заказать тяжёлый отчёт (фоновая генерация)</summary>
+    /// <summary>Order a heavy report (background generation)</summary>
     /// <remarks>
-    /// <para>Синхронные отчётные ручки ограничены по объёму; отчёт за большой период закажите фоном: `kind` — `statement`/`fees`/`ledger`, период — до двух лет. Задача попадает в очередь и собирается в течение суток (обычно — минуты); статус — `POST /v1/documents/jobs/info`, готовый файл — `GET /v1/documents/jobs/file`. Повторный заказ с теми же параметрами при живой задаче возвращает её же. `format` — `pdf` (по умолчанию) или `csv`: CSV собирается БЕЗ вёрстки (для тяжёлой квартальной выписки — ноль нагрузки на рендер, грузится в Excel/1С). Квоты: не больше 3 задач в работе и 20 за сутки. Готовый отчёт хранится 7 суток, затем удаляется — скачайте и храните файл у себя.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>document.bad_format</c>, <c>document.bad_kind</c>, <c>document.daily_quota</c>, <c>document.jobs_disabled</c>, <c>document.too_many_jobs</c>, <c>document.unknown_lang</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>report.crashed</c>, <c>report.expired</c>, <c>report.too_large</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>statement.bad_from</c>, <c>statement.bad_range</c>, <c>statement.bad_to</c>, <c>statement.range_too_long</c>.</para>
+    /// <para>Synchronous report endpoints are limited in volume; order a report for a long period in the background: `kind` — `statement`/`fees`/`ledger`, period — up to two years. The job is queued and built within a day (usually minutes); status — `POST /v1/documents/jobs/info`, the finished file — `GET /v1/documents/jobs/file`. Ordering again with the same parameters while a job is alive returns that job. `format` — `pdf` (default) or `csv`: CSV is built WITHOUT layout (for a heavy quarterly statement — zero rendering load, imports into Excel/1C). Quotas: at most 3 jobs in progress and 20 per day. A finished report is kept for 7 days and then deleted — download it and keep the file yourself.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>document.bad_format</c>, <c>document.bad_kind</c>, <c>document.daily_quota</c>, <c>document.jobs_disabled</c>, <c>document.too_many_jobs</c>, <c>document.unknown_lang</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>report.crashed</c>, <c>report.expired</c>, <c>report.too_large</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>statement.bad_from</c>, <c>statement.bad_range</c>, <c>statement.bad_to</c>, <c>statement.range_too_long</c>.</para>
     /// </remarks>
-    /// <param name="kind">Вид отчёта: statement (операции), fees (комиссии) или ledger (движения баланса).</param>
-    /// <param name="format">Формат файла: pdf (по умолчанию) или csv. CSV собирается без вёрстки — для тяжёлых выписок дешевле и грузится в Excel/1С.</param>
-    /// <param name="from">Начало периода, YYYY-MM-DD (по умолчанию — первое число текущего месяца).</param>
-    /// <param name="lang">Язык документа (по умолчанию en).</param>
-    /// <param name="to">Конец периода включительно, YYYY-MM-DD (по умолчанию — сегодня). Период — до двух лет.</param>
+    /// <param name="kind">Report kind: statement (operations), fees (fees) or ledger (balance movements).</param>
+    /// <param name="format">File format: pdf (default) or csv. CSV is built without layout — cheaper for heavy statements and imports into Excel/1C.</param>
+    /// <param name="from">Start of the period, YYYY-MM-DD (defaults to the first day of the current month).</param>
+    /// <param name="lang">Document language (en by default).</param>
+    /// <param name="to">End of the period, inclusive, YYYY-MM-DD (defaults to today). The period is up to two years.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<DocumentJobAccepted> CreateJobAsync(
@@ -4537,10 +4710,11 @@ public sealed partial class Documents : Resource
             options,
             cancellationToken);
 
-    /// <summary>Статус фонового отчёта</summary>
+    /// <summary>Background report status</summary>
     /// <remarks>
-    /// <para>Статусы: `queued` → `processing` → `done` (в `file` — ссылка скачивания, размер, число строк и срок хранения) или `failed` (в `error` — машинный `code` и человекочитаемый `message`; например `report.too_large` — период надо разбить). `expired` — срок хранения вышел, закажите отчёт заново.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>document.bad_job_id</c>, <c>document.job_not_found</c>, <c>document.jobs_disabled</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>report.crashed</c>, <c>report.expired</c>, <c>report.too_large</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Statuses: `queued` → `processing` → `done` (`file` contains the download link, size, row count and retention period) or `failed` (`error` contains a machine `code` and a human-readable `message`; e.g. `report.too_large` — the period must be split). `expired` — the retention period is over, order the report again.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>document.bad_job_id</c>, <c>document.job_not_found</c>, <c>document.jobs_disabled</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>report.crashed</c>, <c>report.expired</c>, <c>report.too_large</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -4559,12 +4733,13 @@ public sealed partial class Documents : Resource
             cancellationToken);
     }
 
-    /// <summary>Статус фонового отчёта</summary>
+    /// <summary>Background report status</summary>
     /// <remarks>
-    /// <para>Статусы: `queued` → `processing` → `done` (в `file` — ссылка скачивания, размер, число строк и срок хранения) или `failed` (в `error` — машинный `code` и человекочитаемый `message`; например `report.too_large` — период надо разбить). `expired` — срок хранения вышел, закажите отчёт заново.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>document.bad_job_id</c>, <c>document.job_not_found</c>, <c>document.jobs_disabled</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>report.crashed</c>, <c>report.expired</c>, <c>report.too_large</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// <para>Statuses: `queued` → `processing` → `done` (`file` contains the download link, size, row count and retention period) or `failed` (`error` contains a machine `code` and a human-readable `message`; e.g. `report.too_large` — the period must be split). `expired` — the retention period is over, order the report again.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>document.bad_job_id</c>, <c>document.job_not_found</c>, <c>document.jobs_disabled</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>report.crashed</c>, <c>report.expired</c>, <c>report.too_large</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
-    /// <param name="jobId">Идентификатор задачи из ответа создания.</param>
+    /// <param name="jobId">The job id from the creation response.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<DocumentJobView> GetJobAsync(
@@ -4579,12 +4754,13 @@ public sealed partial class Documents : Resource
             options,
             cancellationToken);
 
-    /// <summary>Скачать готовый фоновый отчёт (PDF)</summary>
+    /// <summary>Download a finished background report (PDF)</summary>
     /// <remarks>
-    /// <para>`?job_id=&lt;UUID задачи&gt;`. Отдаёт `application/pdf` под тем же ключом мерчанта — публичных ссылок на файл не существует. 409 `document.job_not_ready`, пока задача в работе; 404 `document.job_expired`, когда срок хранения вышел.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>document.bad_job_id</c>, <c>document.job_expired</c>, <c>document.job_failed</c>, <c>document.job_not_found</c>, <c>document.job_not_ready</c>, <c>document.jobs_disabled</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>report.crashed</c>, <c>report.too_large</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>s3.bad_endpoint</c>, <c>s3.not_found</c>, <c>s3.request</c>, <c>s3.unavailable</c>.</para>
+    /// <para>`?job_id=&lt;job UUID&gt;`. Returns `application/pdf` under the same merchant key — public links to the file do not exist. 409 `document.job_not_ready` while the job is in progress; 404 `document.job_expired` once the retention period is over.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>document.bad_job_id</c>, <c>document.job_expired</c>, <c>document.job_failed</c>, <c>document.job_not_found</c>, <c>document.job_not_ready</c>, <c>document.jobs_disabled</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>report.crashed</c>, <c>report.too_large</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>s3.bad_endpoint</c>, <c>s3.not_found</c>, <c>s3.request</c>, <c>s3.unavailable</c>.</para>
     /// </remarks>
-    /// <param name="jobId">Идентификатор задачи из ответа POST /v1/documents/jobs.</param>
+    /// <param name="jobId">The job id from the POST /v1/documents/jobs response.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<FileResult> DownloadJobFileAsync(
@@ -4661,7 +4837,7 @@ public sealed partial class Documents : Resource
     }
 }
 
-/// <summary>Эндпоинты для страницы оплаты — работают без секрета.</summary>
+/// <summary>Endpoints for the payment page — they work without the secret.</summary>
 public sealed partial class Checkout : Resource
 {
     /// <summary>Bind the namespace to a transport.</summary>
@@ -4671,9 +4847,9 @@ public sealed partial class Checkout : Resource
     {
     }
 
-    /// <summary>Состояние анкеты (для плательщика)</summary>
+    /// <summary>Questionnaire status (for the payer)</summary>
     /// <remarks>
-    /// <para>Публично, по токену из ссылки. Возвращает только статус — ни причины, ни классификации.</para>
+    /// <para>Public, by the token from the link. Returns only the status — neither the reason nor the classification.</para>
     /// <para>Errors: <c>aml.sof_not_found</c>, <c>internal</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>.</para>
     /// </remarks>
     /// <param name="token"><c>token</c> path parameter.</param>
@@ -4693,9 +4869,9 @@ public sealed partial class Checkout : Resource
                 ["token"] = token,
             });
 
-    /// <summary>Плательщик присылает происхождение средств</summary>
+    /// <summary>The payer submits the source of funds</summary>
     /// <remarks>
-    /// <para>Публично, по токену из ссылки. Приём анкеты **не гарантирует** разблокировку средств: она даёт основание пересмотреть решение, и только.</para>
+    /// <para>Public, by the token from the link. Accepting the questionnaire **does not guarantee** that the funds are unblocked: it provides grounds to reconsider the decision, nothing more.</para>
     /// <para>Errors: <c>aml.sof_closed</c>, <c>aml.sof_empty</c>, <c>aml.sof_not_found</c>, <c>aml.sof_too_large</c>, <c>aml.sof_unavailable</c>, <c>internal</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="token"><c>token</c> path parameter.</param>
@@ -4721,15 +4897,15 @@ public sealed partial class Checkout : Resource
             });
     }
 
-    /// <summary>Плательщик присылает происхождение средств</summary>
+    /// <summary>The payer submits the source of funds</summary>
     /// <remarks>
-    /// <para>Публично, по токену из ссылки. Приём анкеты **не гарантирует** разблокировку средств: она даёт основание пересмотреть решение, и только.</para>
+    /// <para>Public, by the token from the link. Accepting the questionnaire **does not guarantee** that the funds are unblocked: it provides grounds to reconsider the decision, nothing more.</para>
     /// <para>Errors: <c>aml.sof_closed</c>, <c>aml.sof_empty</c>, <c>aml.sof_not_found</c>, <c>aml.sof_too_large</c>, <c>aml.sof_unavailable</c>, <c>internal</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
     /// </remarks>
     /// <param name="token"><c>token</c> path parameter.</param>
-    /// <param name="origin">Откуда средства.</param>
-    /// <param name="contact">Как связаться для уточнений.</param>
-    /// <param name="evidence">Чем подтверждается: ссылки на выписки, идентификаторы транзакций.</param>
+    /// <param name="origin">Where the funds come from.</param>
+    /// <param name="contact">How to get in touch for clarifications.</param>
+    /// <param name="evidence">What supports it: links to statements, transaction ids.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<SoFSubmitted> SubmitSourceOfFundsAsync(
@@ -4750,9 +4926,9 @@ public sealed partial class Checkout : Resource
             options,
             cancellationToken);
 
-    /// <summary>Конфиг платёжной ссылки (для страницы)</summary>
+    /// <summary>Payment link configuration (for the page)</summary>
     /// <remarks>
-    /// <para>Публично: заголовок/описание/режим суммы/валюта — чтобы отрисовать страницу доната.</para>
+    /// <para>Public: title/description/amount mode/currency — to render the donation page.</para>
     /// <para>Errors: <c>internal</c>, <c>paylink.bad_id</c>, <c>paylink.disabled</c>, <c>paylink.not_found</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>.</para>
     /// </remarks>
     /// <param name="id"><c>id</c> path parameter.</param>
@@ -4772,9 +4948,9 @@ public sealed partial class Checkout : Resource
                 ["id"] = id,
             });
 
-    /// <summary>Оплатить по ссылке (создать платёж)</summary>
+    /// <summary>Pay via a link (create a payment)</summary>
     /// <remarks>
-    /// <para>Публично: клиент вводит сумму (для open/range) и, если валюта не закреплена, выбирает валюту/сеть. Создаётся свежий инвойс — в ответе обычный объект платежа с `uuid` и `url` страницы оплаты.</para>
+    /// <para>Public: the customer enters an amount (for open/range) and, if the currency is not pinned, picks the currency/network. A fresh invoice is created — the response is a regular payment object with `uuid` and the payment page `url`.</para>
     /// <para>Errors: <c>internal</c>, <c>merchant.not_found</c>, <c>paylink.above_max</c>, <c>paylink.amount_required</c>, <c>paylink.bad_bounds</c>, <c>paylink.bad_id</c>, <c>paylink.bad_mode</c>, <c>paylink.below_min</c>, <c>paylink.disabled</c>, <c>paylink.not_found</c>, <c>paylink.not_positive</c>, <c>paylink.order_id_invalid</c>, <c>paylink.order_id_too_long</c>, <c>paylink.rate_limited</c>, <c>paylink.unavailable</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
     /// </remarks>
     /// <param name="id"><c>id</c> path parameter.</param>
@@ -4800,17 +4976,17 @@ public sealed partial class Checkout : Resource
             });
     }
 
-    /// <summary>Оплатить по ссылке (создать платёж)</summary>
+    /// <summary>Pay via a link (create a payment)</summary>
     /// <remarks>
-    /// <para>Публично: клиент вводит сумму (для open/range) и, если валюта не закреплена, выбирает валюту/сеть. Создаётся свежий инвойс — в ответе обычный объект платежа с `uuid` и `url` страницы оплаты.</para>
+    /// <para>Public: the customer enters an amount (for open/range) and, if the currency is not pinned, picks the currency/network. A fresh invoice is created — the response is a regular payment object with `uuid` and the payment page `url`.</para>
     /// <para>Errors: <c>internal</c>, <c>merchant.not_found</c>, <c>paylink.above_max</c>, <c>paylink.amount_required</c>, <c>paylink.bad_bounds</c>, <c>paylink.bad_id</c>, <c>paylink.bad_mode</c>, <c>paylink.below_min</c>, <c>paylink.disabled</c>, <c>paylink.not_found</c>, <c>paylink.not_positive</c>, <c>paylink.order_id_invalid</c>, <c>paylink.order_id_too_long</c>, <c>paylink.rate_limited</c>, <c>paylink.unavailable</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
     /// </remarks>
     /// <param name="id"><c>id</c> path parameter.</param>
-    /// <param name="amount">Сумма, которую ввёл покупатель, в валюте цены ссылки; обязательна для open и range, для fixed игнорируется</param>
-    /// <param name="currency">Валюта расчёта — монета, которой платит покупатель; нужна, только если ссылка не закрепила pinned_currency</param>
-    /// <param name="network">Сеть расчёта; нужна, только если ссылка не закрепила pinned_network</param>
-    /// <param name="orderId">Номер заказа магазина из встроенного виджета (data-oblodai-order-id); переносится на счёт и в вебхук для сопоставления с заказом; не ключ идемпотентности</param>
-    /// <param name="payerEmail">Email покупателя — на него автоматически уйдёт чек после оплаты</param>
+    /// <param name="amount">The amount the buyer entered, in the link's price currency; required for open and range, ignored for fixed</param>
+    /// <param name="currency">The settlement currency — the coin the buyer pays with; needed only if the link did not pin pinned_currency</param>
+    /// <param name="network">The settlement network; needed only if the link did not pin pinned_network</param>
+    /// <param name="orderId">The store's order number from the embedded widget (data-oblodai-order-id); carried over to the invoice and the webhook for matching with the order; not an idempotency key</param>
+    /// <param name="payerEmail">The buyer's email — a receipt is sent to it automatically after payment</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<PublicPaymentView> PaymentLinkAsync(
@@ -4835,14 +5011,14 @@ public sealed partial class Checkout : Resource
             options,
             cancellationToken);
 
-    /// <summary>Список валют и сетей</summary>
+    /// <summary>List currencies and networks</summary>
     /// <remarks>
-    /// <para>Публичный справочник. Возвращает два списка, и путать их не надо:</para>
+    /// <para>A public reference. It returns two lists, and they must not be confused:</para>
     /// <para>
-    /// - `currencies` — в чём можно **получать**: монеты и их сети (плюс флаги доступности приёма и выплаты).
-    /// - `pricing_currencies` — в чём можно **назначать цену** (`currency` при создании платежа): те же монеты **плюс 45 фиатных валют** (`{"symbol":"EUR","decimals":2,"fiat":true}`) — USD, EUR, GBP, RUB, UAH, PLN, CZK, TRY, CNY, INR, BRL, CAD, AUD, CHF, AED, ZAR, MXN, IDR, THB, VND, NGN, JPY, KRW, SGD, HKD, NZD, SEK, NOK, DKK, ILS, SAR, PHP, MYR, TWD, PKR, LKR, MMK, BDT, ARS, GEL, HUF, BMD, BHD, KWD, CLP. Число знаков после запятой у каждой в поле `decimals` (обычно 2; у JPY/KRW/VND/CLP — 0, у BHD/KWD — 3) — берите его из ответа, не хардкодьте. У фиата нет сетей и никогда не будет: в нём можно оценить счёт, но нельзя его получить.
+    /// - `currencies` — what you can **receive**: coins and their networks (plus flags for whether accepting and payouts are available).
+    /// - `pricing_currencies` — what you can **set a price in** (`currency` when creating a payment): the same coins **plus 45 fiat currencies** (`{"symbol":"EUR","decimals":2,"fiat":true}`) — USD, EUR, GBP, RUB, UAH, PLN, CZK, TRY, CNY, INR, BRL, CAD, AUD, CHF, AED, ZAR, MXN, IDR, THB, VND, NGN, JPY, KRW, SGD, HKD, NZD, SEK, NOK, DKK, ILS, SAR, PHP, MYR, TWD, PKR, LKR, MMK, BDT, ARS, GEL, HUF, BMD, BHD, KWD, CLP. The number of decimal places of each is in the `decimals` field (usually 2; JPY/KRW/VND/CLP — 0, BHD/KWD — 3) — take it from the response, do not hardcode it. Fiat has no networks and never will: you can price an invoice in it, but you cannot receive it.
     /// </para>
-    /// <para>Тенге, сом и сум пока не поддерживаются — источник курсов не котирует в них крипту напрямую, а выводить курс перемножением двух других мы не будем.</para>
+    /// <para>The tenge, som and sum are not supported yet — the rate source does not quote crypto in them directly, and we will not derive a rate by multiplying two others.</para>
     /// <para>Errors: <c>internal</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>.</para>
     /// </remarks>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -4856,9 +5032,9 @@ public sealed partial class Checkout : Resource
             options,
             cancellationToken);
 
-    /// <summary>Публичный статус платежа (страница оплаты)</summary>
+    /// <summary>Public payment status (payment page)</summary>
     /// <remarks>
-    /// <para>Без секрета — можно опрашивать прямо из браузера. Содержит `amount_remaining` для подсказки «доплатите X».</para>
+    /// <para>No secret — can be polled directly from the browser. Contains `amount_remaining` for a "pay X more" hint.</para>
     /// <para>Errors: <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>onramp.bad_json</c>, <c>onramp.in_flight</c>, <c>onramp.no_assets</c>, <c>onramp.no_live_key</c>, <c>onramp.no_test_key</c>, <c>onramp.read</c>, <c>onramp.request</c>, <c>onramp.suppresses</c>, <c>onramp.tx_not_found</c>, <c>onramp.unreachable</c>, <c>onramp.upstream_http</c>, <c>pay.bad_uuid</c>, <c>payment.not_found</c>, <c>rates.deviation</c>, <c>rates.fiat_pay_asset</c>, <c>rates.no_pay_asset</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>rates.unavailable</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>.</para>
     /// </remarks>
     /// <param name="id"><c>id</c> path parameter.</param>
@@ -4878,9 +5054,9 @@ public sealed partial class Checkout : Resource
                 ["id"] = id,
             });
 
-    /// <summary>Выбрать валюту и сеть для валюто-агностичной ссылки</summary>
+    /// <summary>Choose the currency and network for a currency-agnostic link</summary>
     /// <remarks>
-    /// <para>Клиент выбирает `currency` + `network`; после этого фиксируется курс и выделяется адрес.</para>
+    /// <para>The customer picks `currency` + `network`; after that the rate is locked in and an address is allocated.</para>
     /// <para>Errors: <c>internal</c>, <c>invoice.address_failed</c>, <c>invoice.address_taken</c>, <c>invoice.corrupt_pay_asset</c>, <c>invoice.expired</c>, <c>invoice.fiat_pay_asset</c>, <c>invoice.no_pay_asset</c>, <c>invoice.not_selectable</c>, <c>invoice.quote_failed</c>, <c>invoice.surcharge_asset</c>, <c>merchant.acceptance_blocked</c>, <c>onramp.suppresses</c>, <c>pay.bad_uuid</c>, <c>pay.below_minimum</c>, <c>pay.discount_unavailable</c>, <c>pay.method_not_accepted</c>, <c>pay.minimum_unavailable</c>, <c>pay.not_selectable</c>, <c>pay.surcharge_unavailable</c>, <c>pay.surcharge_unknown</c>, <c>payment.not_found</c>, <c>payment.unsupported_network</c>, <c>rates.deviation</c>, <c>rates.fiat_pay_asset</c>, <c>rates.no_pay_asset</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>rates.unavailable</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
     /// </remarks>
     /// <param name="id"><c>id</c> path parameter.</param>
@@ -4906,14 +5082,14 @@ public sealed partial class Checkout : Resource
             });
     }
 
-    /// <summary>Выбрать валюту и сеть для валюто-агностичной ссылки</summary>
+    /// <summary>Choose the currency and network for a currency-agnostic link</summary>
     /// <remarks>
-    /// <para>Клиент выбирает `currency` + `network`; после этого фиксируется курс и выделяется адрес.</para>
+    /// <para>The customer picks `currency` + `network`; after that the rate is locked in and an address is allocated.</para>
     /// <para>Errors: <c>internal</c>, <c>invoice.address_failed</c>, <c>invoice.address_taken</c>, <c>invoice.corrupt_pay_asset</c>, <c>invoice.expired</c>, <c>invoice.fiat_pay_asset</c>, <c>invoice.no_pay_asset</c>, <c>invoice.not_selectable</c>, <c>invoice.quote_failed</c>, <c>invoice.surcharge_asset</c>, <c>merchant.acceptance_blocked</c>, <c>onramp.suppresses</c>, <c>pay.bad_uuid</c>, <c>pay.below_minimum</c>, <c>pay.discount_unavailable</c>, <c>pay.method_not_accepted</c>, <c>pay.minimum_unavailable</c>, <c>pay.not_selectable</c>, <c>pay.surcharge_unavailable</c>, <c>pay.surcharge_unknown</c>, <c>payment.not_found</c>, <c>payment.unsupported_network</c>, <c>rates.deviation</c>, <c>rates.fiat_pay_asset</c>, <c>rates.no_pay_asset</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>rates.unavailable</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unknown_currency</c>.</para>
     /// </remarks>
     /// <param name="id"><c>id</c> path parameter.</param>
-    /// <param name="currency">Выбранная валюта оплаты.</param>
-    /// <param name="network">Выбранная сеть.</param>
+    /// <param name="currency">The chosen payment currency.</param>
+    /// <param name="network">The chosen network.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<PublicPaymentView> SelectMethodAsync(
@@ -4932,9 +5108,9 @@ public sealed partial class Checkout : Resource
             options,
             cancellationToken);
 
-    /// <summary>Оплатить фиатом: открыть покупку криптовалюты картой</summary>
+    /// <summary>Pay with fiat: open a card purchase of crypto</summary>
     /// <remarks>
-    /// <para>Покупатель без криптовалюты платит картой стороннему рампу, а тот шлёт монеты прямо на депозитный адрес этого счёта. Ответ — ПОДПИСАННАЯ ссылка на виджет: подпись покрывает адрес получения и тег, поэтому переписать их в браузере нельзя. `url` пустой, когда покупка уже идёт (смотрите `status`) — второй виджет означал бы второе списание по одному заказу. `fiat_amount` — оценка: у рампов нет режима «зафиксировать сумму получения», сумму фиата мы считаем обратным ходом из их котировки и с запасом. Кнопку показывать только когда `GET /v1/pay/{id}` вернул `fiat_purchase_available: true`.</para>
+    /// <para>A buyer without crypto pays by card to a third-party on-ramp, which sends the coins straight to this invoice's deposit address. The response is a SIGNED widget link: the signature covers the receiving address and tag, so they cannot be rewritten in the browser. `url` is empty when a purchase is already in progress (see `status`) — a second widget would mean a second charge for one order. `fiat_amount` is an estimate: on-ramps have no "fix the received amount" mode, so we compute the fiat amount backwards from their quote, with a margin. Show the button only when `GET /v1/pay/{id}` returned `fiat_purchase_available: true`.</para>
     /// <para>Errors: <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>onramp.admit</c>, <c>onramp.advance</c>, <c>onramp.asset_unsupported</c>, <c>onramp.bad_ed25519</c>, <c>onramp.bad_invoice</c>, <c>onramp.bad_json</c>, <c>onramp.bad_quote</c>, <c>onramp.bad_status</c>, <c>onramp.bad_target</c>, <c>onramp.captured</c>, <c>onramp.disabled</c>, <c>onramp.force_completed</c>, <c>onramp.invoice_not_found</c>, <c>onramp.invoice_not_payable</c>, <c>onramp.money_already_landed</c>, <c>onramp.no_address</c>, <c>onramp.no_assets</c>, <c>onramp.no_covering_quote</c>, <c>onramp.no_ed25519</c>, <c>onramp.no_live_key</c>, <c>onramp.no_method</c>, <c>onramp.no_quote</c>, <c>onramp.no_test_key</c>, <c>onramp.not_found</c>, <c>onramp.nothing_owed</c>, <c>onramp.open</c>, <c>onramp.open_conflict</c>, <c>onramp.owner_required</c>, <c>onramp.read</c>, <c>onramp.request</c>, <c>onramp.status_reason</c>, <c>onramp.target</c>, <c>onramp.target_required</c>, <c>onramp.terminal</c>, <c>onramp.token</c>, <c>onramp.too_large</c>, <c>onramp.tx_not_found</c>, <c>onramp.unreachable</c>, <c>onramp.unsigned</c>, <c>onramp.upstream_http</c>, <c>pay.bad_uuid</c>, <c>payment.not_found</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>.</para>
     /// </remarks>
     /// <param name="id"><c>id</c> path parameter.</param>
@@ -4954,9 +5130,9 @@ public sealed partial class Checkout : Resource
                 ["id"] = id,
             });
 
-    /// <summary>Статус карточной покупки по счёту</summary>
+    /// <summary>Status of the card purchase for an invoice</summary>
     /// <remarks>
-    /// <para>Что стало с покупкой: `new`, `pending`, `paid`, `completed`, `failed`, `canceled`, плюс `reason` — дословная причина отказа провайдера, когда она есть. Пустой `status` = живой покупки нет. Счёт при этом закрывают ДЕНЬГИ В ЦЕПОЧКЕ, а не этот статус.</para>
+    /// <para>What happened to the purchase: `new`, `pending`, `paid`, `completed`, `failed`, `canceled`, plus `reason` — the provider's verbatim rejection reason, when there is one. An empty `status` = no live purchase. The invoice, however, is closed by the MONEY ON CHAIN, not by this status.</para>
     /// <para>Errors: <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>onramp.status_reason</c>, <c>pay.bad_uuid</c>, <c>payment.not_found</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>.</para>
     /// </remarks>
     /// <param name="id"><c>id</c> path parameter.</param>
@@ -4976,9 +5152,9 @@ public sealed partial class Checkout : Resource
                 ["id"] = id,
             });
 
-    /// <summary>QR-код адреса оплаты</summary>
+    /// <summary>Payment address QR code</summary>
     /// <remarks>
-    /// <para>PNG-картинка с QR того адреса (и суммы), которые уже вернул `GET /v1/pay/{id}`. Без ключа — её грузит браузер покупателя.</para>
+    /// <para>A PNG image with the QR code of the address (and amount) already returned by `GET /v1/pay/{id}`. No key — the buyer's browser loads it.</para>
     /// <para>Errors: <c>internal</c>, <c>invoice.corrupt_pay_asset</c>, <c>pay.bad_uuid</c>, <c>payment.not_found</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>.</para>
     /// </remarks>
     /// <param name="id"><c>id</c> path parameter.</param>
@@ -4999,7 +5175,7 @@ public sealed partial class Checkout : Resource
             });
 }
 
-/// <summary>Dev-store: тестовые деньги, симуляция депозитов и повтор вебхуков.</summary>
+/// <summary>Dev store: test money, simulated deposits and webhook replay.</summary>
 public sealed partial class Sandbox : Resource
 {
     /// <summary>Bind the namespace to a transport.</summary>
@@ -5009,9 +5185,9 @@ public sealed partial class Sandbox : Resource
     {
     }
 
-    /// <summary>Создать (или вернуть) dev-store мерчанта</summary>
+    /// <summary>Create (or return) the merchant's dev store</summary>
     /// <remarks>
-    /// <para>Идемпотентно: у мерчанта максимум один dev-store, повторный вызов возвращает существующий. Тестовый ключ возвращается каждый раз — он не защищает ничего, кроме тестовых денег. Вызывается под онбординг-гейтом кабинета, не HMAC-ключом.</para>
+    /// <para>Idempotent: a merchant has at most one dev store, a repeated call returns the existing one. The test key is returned every time — it protects nothing but test money. Called behind the dashboard onboarding gate, not with the HMAC key.</para>
     /// <para>Errors: <c>admin.bad_nonce</c>, <c>admin.bad_operator</c>, <c>admin.bad_signature</c>, <c>admin.bad_timestamp</c>, <c>admin.disabled</c>, <c>admin.journal_unavailable</c>, <c>admin.replayed</c>, <c>admin.stale_signature</c>, <c>admin.unauthorized</c>, <c>internal</c>, <c>merchant.already_sandbox</c>, <c>merchant.bad_id</c>, <c>merchant.email_taken</c>, <c>merchant.not_found</c>, <c>merchant.project_mismatch</c>, <c>merchant.project_not_found</c>, <c>merchant.public_id_collision</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>request.unreadable</c>.</para>
     /// </remarks>
     /// <param name="id"><c>id</c> path parameter.</param>
@@ -5031,10 +5207,11 @@ public sealed partial class Sandbox : Resource
                 ["id"] = id,
             });
 
-    /// <summary>Кран: пополнить тестовый баланс</summary>
+    /// <summary>Faucet: top up the test balance</summary>
     /// <remarks>
-    /// <para>Только для тестового ключа dev-store. Начисляет тестовые деньги, чтобы гонять выплаты/возвраты, а не только приём.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>sandbox.amount_too_large</c>, <c>sandbox.bad_amount</c>, <c>sandbox.bad_asset</c>, <c>sandbox.live_key</c>.</para>
+    /// <para>Dev-store test key only. Credits test money so you can exercise payouts/refunds, not just accepting payments.</para>
+    /// <para>Requires role: Admin when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>sandbox.amount_too_large</c>, <c>sandbox.bad_amount</c>, <c>sandbox.bad_asset</c>, <c>sandbox.live_key</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -5068,13 +5245,14 @@ public sealed partial class Sandbox : Resource
             cancellationToken);
     }
 
-    /// <summary>Кран: пополнить тестовый баланс</summary>
+    /// <summary>Faucet: top up the test balance</summary>
     /// <remarks>
-    /// <para>Только для тестового ключа dev-store. Начисляет тестовые деньги, чтобы гонять выплаты/возвраты, а не только приём.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>sandbox.amount_too_large</c>, <c>sandbox.bad_amount</c>, <c>sandbox.bad_asset</c>, <c>sandbox.live_key</c>.</para>
+    /// <para>Dev-store test key only. Credits test money so you can exercise payouts/refunds, not just accepting payments.</para>
+    /// <para>Requires role: Admin when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>sandbox.amount_too_large</c>, <c>sandbox.bad_amount</c>, <c>sandbox.bad_asset</c>, <c>sandbox.live_key</c>.</para>
     /// </remarks>
-    /// <param name="amount">Сумма тестовых денег, строкой; потолок 1000000 за вызов.</param>
-    /// <param name="asset">Актив пополнения (USDT, BTC, …).</param>
+    /// <param name="amount">The amount of test money, as a string; capped at 1000000 per call.</param>
+    /// <param name="asset">Deposit asset (USDT, BTC, …).</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<FaucetResult> FaucetAsync(
@@ -5091,10 +5269,11 @@ public sealed partial class Sandbox : Resource
             options,
             cancellationToken);
 
-    /// <summary>Симулировать он-чейн депозит</summary>
+    /// <summary>Simulate an on-chain deposit</summary>
     /// <remarks>
-    /// <para>Проводит синтетический платёж через настоящий пайплайн зачисления. `amount` пустой — оплатить ровно сколько нужно; `confirmations` меньше требуемого — проверка перехода pending→confirmed (повторите тот же `txid` с большим числом); тот же `txid` повторно — проверка вашей идемпотентности.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>deposit.generation_stale</c>, <c>internal</c>, <c>invoice.bad_deposit</c>, <c>invoice.corrupt_pay_asset</c>, <c>invoice.deposit_asset_mismatch</c>, <c>invoice.generation_stale</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.not_found</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.approver_is_creator</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.cap_unpriceable</c>, <c>payout.convert_bad_amount</c>, <c>payout.convert_frozen</c>, <c>payout.convert_idempotency_conflict</c>, <c>payout.convert_insufficient</c>, <c>payout.convert_no_rate</c>, <c>payout.convert_same_asset</c>, <c>payout.convert_unsupported</c>, <c>payout.daily_cap</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.illegal_transition</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.not_pending</c>, <c>payout.reference_collision</c>, <c>postgres.lock_pool_busy</c>, <c>rates.deviation</c>, <c>rates.fiat_pay_asset</c>, <c>rates.no_pay_asset</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>rates.unavailable</c>, <c>refund.destination_internal</c>, <c>refund.dust</c>, <c>refund.exceeds_excess</c>, <c>refund.exceeds_refundable</c>, <c>refund.fence_check</c>, <c>refund.from_currency_personal_account</c>, <c>refund.nothing_to_refund</c>, <c>refund.omnibus_destination</c>, <c>refund.paid_internally</c>, <c>refund.reference_collision</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>sandbox.bad_amount</c>, <c>sandbox.bad_invoice</c>, <c>sandbox.invoice_not_found</c>, <c>sandbox.live_key</c>, <c>treasury.no_ccy_map</c>, <c>wallet.static_not_found</c>.</para>
+    /// <para>Runs a synthetic payment through the real crediting pipeline. Empty `amount` — pay exactly the amount due; `confirmations` below the required number — tests the pending→confirmed transition (repeat the same `txid` with a higher number); the same `txid` again — tests your idempotency.</para>
+    /// <para>Requires role: Admin when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>deposit.generation_stale</c>, <c>internal</c>, <c>invoice.bad_deposit</c>, <c>invoice.corrupt_pay_asset</c>, <c>invoice.deposit_asset_mismatch</c>, <c>invoice.generation_stale</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.not_found</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.approver_is_creator</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.cap_unpriceable</c>, <c>payout.convert_bad_amount</c>, <c>payout.convert_frozen</c>, <c>payout.convert_idempotency_conflict</c>, <c>payout.convert_insufficient</c>, <c>payout.convert_no_rate</c>, <c>payout.convert_same_asset</c>, <c>payout.convert_unsupported</c>, <c>payout.daily_cap</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.illegal_transition</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.not_pending</c>, <c>payout.reference_collision</c>, <c>postgres.lock_pool_busy</c>, <c>rates.deviation</c>, <c>rates.fiat_pay_asset</c>, <c>rates.no_pay_asset</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>rates.unavailable</c>, <c>refund.destination_internal</c>, <c>refund.dust</c>, <c>refund.exceeds_excess</c>, <c>refund.exceeds_refundable</c>, <c>refund.fence_check</c>, <c>refund.from_currency_personal_account</c>, <c>refund.nothing_to_refund</c>, <c>refund.omnibus_destination</c>, <c>refund.paid_internally</c>, <c>refund.reference_collision</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>sandbox.bad_amount</c>, <c>sandbox.bad_invoice</c>, <c>sandbox.invoice_not_found</c>, <c>sandbox.live_key</c>, <c>treasury.no_ccy_map</c>, <c>wallet.static_not_found</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -5113,15 +5292,16 @@ public sealed partial class Sandbox : Resource
             cancellationToken);
     }
 
-    /// <summary>Симулировать он-чейн депозит</summary>
+    /// <summary>Simulate an on-chain deposit</summary>
     /// <remarks>
-    /// <para>Проводит синтетический платёж через настоящий пайплайн зачисления. `amount` пустой — оплатить ровно сколько нужно; `confirmations` меньше требуемого — проверка перехода pending→confirmed (повторите тот же `txid` с большим числом); тот же `txid` повторно — проверка вашей идемпотентности.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>deposit.generation_stale</c>, <c>internal</c>, <c>invoice.bad_deposit</c>, <c>invoice.corrupt_pay_asset</c>, <c>invoice.deposit_asset_mismatch</c>, <c>invoice.generation_stale</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.not_found</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.approver_is_creator</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.cap_unpriceable</c>, <c>payout.convert_bad_amount</c>, <c>payout.convert_frozen</c>, <c>payout.convert_idempotency_conflict</c>, <c>payout.convert_insufficient</c>, <c>payout.convert_no_rate</c>, <c>payout.convert_same_asset</c>, <c>payout.convert_unsupported</c>, <c>payout.daily_cap</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.illegal_transition</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.not_pending</c>, <c>payout.reference_collision</c>, <c>postgres.lock_pool_busy</c>, <c>rates.deviation</c>, <c>rates.fiat_pay_asset</c>, <c>rates.no_pay_asset</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>rates.unavailable</c>, <c>refund.destination_internal</c>, <c>refund.dust</c>, <c>refund.exceeds_excess</c>, <c>refund.exceeds_refundable</c>, <c>refund.fence_check</c>, <c>refund.from_currency_personal_account</c>, <c>refund.nothing_to_refund</c>, <c>refund.omnibus_destination</c>, <c>refund.paid_internally</c>, <c>refund.reference_collision</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>sandbox.bad_amount</c>, <c>sandbox.bad_invoice</c>, <c>sandbox.invoice_not_found</c>, <c>sandbox.live_key</c>, <c>treasury.no_ccy_map</c>, <c>wallet.static_not_found</c>.</para>
+    /// <para>Runs a synthetic payment through the real crediting pipeline. Empty `amount` — pay exactly the amount due; `confirmations` below the required number — tests the pending→confirmed transition (repeat the same `txid` with a higher number); the same `txid` again — tests your idempotency.</para>
+    /// <para>Requires role: Admin when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>compliance.blocked</c>, <c>compliance.blocked_address</c>, <c>compliance.blocklist_unavailable</c>, <c>compliance.no_destination</c>, <c>compliance.no_network</c>, <c>compliance.sanctioned_address</c>, <c>compliance.sanctions_unavailable</c>, <c>deposit.generation_stale</c>, <c>internal</c>, <c>invoice.bad_deposit</c>, <c>invoice.corrupt_pay_asset</c>, <c>invoice.deposit_asset_mismatch</c>, <c>invoice.generation_stale</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>onramp.suppresses</c>, <c>payment.not_found</c>, <c>payout.above_limit</c>, <c>payout.address_network_mismatch</c>, <c>payout.amount_below_fee</c>, <c>payout.approver_is_creator</c>, <c>payout.asset_mismatch</c>, <c>payout.bad_address</c>, <c>payout.bad_amount</c>, <c>payout.bad_memo</c>, <c>payout.bad_owner_kind</c>, <c>payout.cap_unpriceable</c>, <c>payout.convert_bad_amount</c>, <c>payout.convert_frozen</c>, <c>payout.convert_idempotency_conflict</c>, <c>payout.convert_insufficient</c>, <c>payout.convert_no_rate</c>, <c>payout.convert_same_asset</c>, <c>payout.convert_unsupported</c>, <c>payout.daily_cap</c>, <c>payout.destination_not_activated</c>, <c>payout.duplicate_reference</c>, <c>payout.fee_asset_mismatch</c>, <c>payout.freeze_unknown</c>, <c>payout.frozen</c>, <c>payout.funds_maturing</c>, <c>payout.funds_settling</c>, <c>payout.illegal_transition</c>, <c>payout.insufficient_funds</c>, <c>payout.memo_conflict</c>, <c>payout.memo_required</c>, <c>payout.memo_too_long</c>, <c>payout.merchant_frozen</c>, <c>payout.no_destination</c>, <c>payout.no_owner</c>, <c>payout.not_found</c>, <c>payout.not_pending</c>, <c>payout.reference_collision</c>, <c>postgres.lock_pool_busy</c>, <c>rates.deviation</c>, <c>rates.fiat_pay_asset</c>, <c>rates.no_pay_asset</c>, <c>rates.no_source</c>, <c>rates.non_positive</c>, <c>rates.stale_rate</c>, <c>rates.unavailable</c>, <c>refund.destination_internal</c>, <c>refund.dust</c>, <c>refund.exceeds_excess</c>, <c>refund.exceeds_refundable</c>, <c>refund.fence_check</c>, <c>refund.from_currency_personal_account</c>, <c>refund.nothing_to_refund</c>, <c>refund.omnibus_destination</c>, <c>refund.paid_internally</c>, <c>refund.reference_collision</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>sandbox.bad_amount</c>, <c>sandbox.bad_invoice</c>, <c>sandbox.invoice_not_found</c>, <c>sandbox.live_key</c>, <c>treasury.no_ccy_map</c>, <c>wallet.static_not_found</c>.</para>
     /// </remarks>
-    /// <param name="invoiceId">UUID тестового счёта, который «оплачивается».</param>
-    /// <param name="amount">Сумма в валюте счёта; пусто — оплатить ровно сколько нужно, иное — способ получить недо/переплату.</param>
-    /// <param name="confirmations">С каким числом подтверждений пришёл депозит; 0 — полностью подтверждён; меньше требуемого — способ проверить переход pending→confirmed (повторите тот же txid с большим числом).</param>
-    /// <param name="txid">Повтор того же txid проверяет вашу идемпотентность; пусто — новый txid.</param>
+    /// <param name="invoiceId">The UUID of the test invoice being "paid".</param>
+    /// <param name="amount">The amount in the invoice currency; empty — pay exactly the amount due, anything else — a way to produce an under/overpayment.</param>
+    /// <param name="confirmations">The number of confirmations the deposit arrived with; 0 — fully confirmed; fewer than required — a way to test the pending→confirmed transition (repeat the same txid with a higher number).</param>
+    /// <param name="txid">Repeating the same txid tests your idempotency; empty — a new txid.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<SimulateDepositResult> SimulateDepositAsync(
@@ -5142,9 +5322,10 @@ public sealed partial class Sandbox : Resource
             options,
             cancellationToken);
 
-    /// <summary>Сбросить dev-store к чистому состоянию</summary>
+    /// <summary>Reset the dev store to a clean state</summary>
     /// <remarks>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>invoice.already_paid</c>, <c>invoice.corrupt_pay_asset</c>, <c>invoice.deposit_pending</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payment.not_found</c>, <c>payout.not_found</c>, <c>payoutlink.not_found</c>, <c>payoutlink.not_funded</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>sandbox.live_key</c>.</para>
+    /// <para>Requires role: Admin when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>invoice.already_paid</c>, <c>invoice.corrupt_pay_asset</c>, <c>invoice.deposit_pending</c>, <c>ledger.account_not_found</c>, <c>ledger.asset_mismatch</c>, <c>ledger.bad_direction</c>, <c>ledger.duplicate_posting</c>, <c>ledger.fiat_asset</c>, <c>ledger.idempotency_conflict</c>, <c>ledger.missing_idempotency_key</c>, <c>ledger.no_lines</c>, <c>ledger.non_positive_amount</c>, <c>ledger.sandbox_live_mix</c>, <c>ledger.unbalanced</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>payment.not_found</c>, <c>payout.not_found</c>, <c>payoutlink.not_found</c>, <c>payoutlink.not_funded</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>sandbox.live_key</c>.</para>
     /// </remarks>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
@@ -5157,12 +5338,13 @@ public sealed partial class Sandbox : Resource
             options,
             cancellationToken);
 
-    /// <summary>Журнал доставок вебхуков dev-store</summary>
+    /// <summary>Dev-store webhook delivery log</summary>
     /// <remarks>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>sandbox.live_key</c>.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>sandbox.live_key</c>.</para>
     /// </remarks>
-    /// <param name="limit">Размер страницы (1–100, по умолчанию 25).</param>
-    /// <param name="offset">Смещение страницы.</param>
+    /// <param name="limit">Page size (1–100, default 25).</param>
+    /// <param name="offset">Page offset.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public PagePromise<SandboxDelivery> ListWebhooksAsync(
@@ -5181,10 +5363,11 @@ public sealed partial class Sandbox : Resource
                 new("offset", offset?.ToString(CultureInfo.InvariantCulture)),
             ]);
 
-    /// <summary>Переотправить доставку вебхука</summary>
+    /// <summary>Resend a webhook delivery</summary>
     /// <remarks>
-    /// <para>Ставит доставку заново в очередь настоящего диспетчера — с его ретраями и подписью, как в проде.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>sandbox.bad_delivery</c>, <c>sandbox.delivery_not_found</c>, <c>sandbox.live_key</c>.</para>
+    /// <para>Re-queues the delivery into the real dispatcher — with its retries and signature, as in production.</para>
+    /// <para>Requires role: Admin when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>sandbox.bad_delivery</c>, <c>sandbox.delivery_not_found</c>, <c>sandbox.live_key</c>.</para>
     /// </remarks>
     /// <param name="request">The request body.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
@@ -5203,12 +5386,13 @@ public sealed partial class Sandbox : Resource
             cancellationToken);
     }
 
-    /// <summary>Переотправить доставку вебхука</summary>
+    /// <summary>Resend a webhook delivery</summary>
     /// <remarks>
-    /// <para>Ставит доставку заново в очередь настоящего диспетчера — с его ретраями и подписью, как в проде.</para>
-    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>sandbox.bad_delivery</c>, <c>sandbox.delivery_not_found</c>, <c>sandbox.live_key</c>.</para>
+    /// <para>Re-queues the delivery into the real dispatcher — with its retries and signature, as in production.</para>
+    /// <para>Requires role: Admin when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>sandbox.bad_delivery</c>, <c>sandbox.delivery_not_found</c>, <c>sandbox.live_key</c>.</para>
     /// </remarks>
-    /// <param name="deliveryId">Идентификатор доставки из GET /v1/sandbox/webhooks.</param>
+    /// <param name="deliveryId">The delivery id from GET /v1/sandbox/webhooks.</param>
     /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
     /// <param name="cancellationToken">Cancels the call.</param>
     public Task<ReplayResult> ReplayWebhookAsync(
@@ -5220,6 +5404,121 @@ public sealed partial class Sandbox : Resource
             {
                 DeliveryId = deliveryId,
             },
+            options,
+            cancellationToken);
+}
+
+/// <summary>Browser login of the `oblodai` CLI (OAuth 2.0 device authorization, RFC 8628) and logout of its key.</summary>
+public sealed partial class CliLogin : Resource
+{
+    /// <summary>Bind the namespace to a transport.</summary>
+    /// <param name="transport">The HTTP engine.</param>
+    public CliLogin(OblodaiTransport transport)
+        : base(transport)
+    {
+    }
+
+    /// <summary>Start a CLI browser login</summary>
+    /// <remarks>
+    /// <para>No key: this is how the CLI gets one. Returns `device_code` (the CLI's polling secret — never show it), `user_code` (`ABCD-EFGH`, shown to the user), `verification_uri` and `verification_uri_complete` (open the latter in the browser), `expires_in` (600) and `interval` (5). The user signs in to the cabinet, checks the device, picks a store and approves; the key gets that member's team role. At most 10 requests per minute per address (`cli.rate_limited`, Retry-After).</para>
+    /// <para>Errors: <c>cli.bad_name</c>, <c>cli.rate_limited</c>, <c>cli.unavailable</c>, <c>internal</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// </remarks>
+    /// <param name="request">The request body.</param>
+    /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    public Task<CLIDeviceAuthorization> StartAsync(
+        CLIDeviceRequest request,
+        RequestOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return RequestAsync<CLIDeviceAuthorization>(
+            Routes.StartCliLogin,
+            request,
+            options,
+            cancellationToken);
+    }
+
+    /// <summary>Start a CLI browser login</summary>
+    /// <remarks>
+    /// <para>No key: this is how the CLI gets one. Returns `device_code` (the CLI's polling secret — never show it), `user_code` (`ABCD-EFGH`, shown to the user), `verification_uri` and `verification_uri_complete` (open the latter in the browser), `expires_in` (600) and `interval` (5). The user signs in to the cabinet, checks the device, picks a store and approves; the key gets that member's team role. At most 10 requests per minute per address (`cli.rate_limited`, Retry-After).</para>
+    /// <para>Errors: <c>cli.bad_name</c>, <c>cli.rate_limited</c>, <c>cli.unavailable</c>, <c>internal</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// </remarks>
+    /// <param name="clientName">The client asking for access (at most 64 characters); shown in the cabinet. Empty — "oblodai".</param>
+    /// <param name="deviceName">The device (at most 100 characters); shown in the cabinet and becomes the key label. Empty — "CLI".</param>
+    /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    public Task<CLIDeviceAuthorization> StartAsync(
+        string? clientName = null,
+        string? deviceName = null,
+        RequestOptions? options = null,
+        CancellationToken cancellationToken = default)
+        => StartAsync(
+            new CLIDeviceRequest
+            {
+                ClientName = clientName,
+                DeviceName = deviceName,
+            },
+            options,
+            cancellationToken);
+
+    /// <summary>Poll a CLI login for its key</summary>
+    /// <remarks>
+    /// <para>Poll with `device_code` every `interval` seconds until it succeeds or fails for good. Errors (400 unless noted): `cli.authorization_pending` — keep polling; `cli.slow_down` — polled too early, the interval grew by 5 seconds (`details.interval`); `cli.access_denied` (403) — denied in the browser; `cli.expired_token` — start over; `cli.invalid_device_code` — unknown, or the key was already handed out. Success returns the CLI key (`public_id`, `secret`, store, `mode`, `role`, `expires_at`) exactly once: the secret is erased on the server as it is handed out, and of two concurrent polls only one gets it.</para>
+    /// <para>Errors: <c>cli.access_denied</c>, <c>cli.authorization_pending</c>, <c>cli.expired_token</c>, <c>cli.invalid_device_code</c>, <c>cli.slow_down</c>, <c>cli.unavailable</c>, <c>internal</c>, <c>merchant.secret_decrypt</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// </remarks>
+    /// <param name="request">The request body.</param>
+    /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    public Task<CLIToken> PollAsync(
+        CLITokenRequest request,
+        RequestOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return RequestAsync<CLIToken>(
+            Routes.PollCliLogin,
+            request,
+            options,
+            cancellationToken);
+    }
+
+    /// <summary>Poll a CLI login for its key</summary>
+    /// <remarks>
+    /// <para>Poll with `device_code` every `interval` seconds until it succeeds or fails for good. Errors (400 unless noted): `cli.authorization_pending` — keep polling; `cli.slow_down` — polled too early, the interval grew by 5 seconds (`details.interval`); `cli.access_denied` (403) — denied in the browser; `cli.expired_token` — start over; `cli.invalid_device_code` — unknown, or the key was already handed out. Success returns the CLI key (`public_id`, `secret`, store, `mode`, `role`, `expires_at`) exactly once: the secret is erased on the server as it is handed out, and of two concurrent polls only one gets it.</para>
+    /// <para>Errors: <c>cli.access_denied</c>, <c>cli.authorization_pending</c>, <c>cli.expired_token</c>, <c>cli.invalid_device_code</c>, <c>cli.slow_down</c>, <c>cli.unavailable</c>, <c>internal</c>, <c>merchant.secret_decrypt</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// </remarks>
+    /// <param name="deviceCode">device_code from POST /v1/cli/device.</param>
+    /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    public Task<CLIToken> PollAsync(
+        string deviceCode,
+        RequestOptions? options = null,
+        CancellationToken cancellationToken = default)
+        => PollAsync(
+            new CLITokenRequest
+            {
+                DeviceCode = deviceCode,
+            },
+            options,
+            cancellationToken);
+
+    /// <summary>Log out: revoke this CLI key</summary>
+    /// <remarks>
+    /// <para>Revokes the CLI key that signs the request; any role may call it. The integration key gets `cli.not_cli_key` (403) — it is rotated in the cabinet, never here.</para>
+    /// <para>Requires role: Viewer when called with a CLI key.</para>
+    /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.not_cli_key</c>, <c>cli.permission_denied</c>, <c>cli.unavailable</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.key_not_found</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>.</para>
+    /// </remarks>
+    /// <param name="options">Per-call options: idempotency key, timeout, retries, extra headers, request id.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    public Task<CLILogoutResult> LogoutCliAsync(
+        RequestOptions? options = null,
+        CancellationToken cancellationToken = default)
+        => RequestAsync<CLILogoutResult>(
+            Routes.LogoutCli,
+            null,
             options,
             cancellationToken);
 }

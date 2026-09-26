@@ -146,7 +146,7 @@ Console.WriteLine($"{deposit.Txid} {deposit.Confirmations}");
 `DownloadAsync`, если у задачи есть файл) — см. ниже.
 
 <!-- sdkgen:methods -->
-16 ресурсов, 120 методов.
+17 ресурсов, 123 метода.
 
 | Ресурс | Методы |
 | --- | --- |
@@ -166,6 +166,7 @@ Console.WriteLine($"{deposit.Txid} {deposit.Confirmations}");
 | `Documents` | `GetSignedAsync` · `GetBalanceAsync` · `GetFeesAsync` · `GetLedgerAsync` · `GetSplitAsync` · `GetPayoutLinkChequeAsync` · `GetStatementAsync` · `GetBatchAsync` · `GetPaymentLinkAsync` · `GetWalletStatementAsync` · `GetReferralsAsync` · `CreateJobAsync` · `GetJobAsync` · `DownloadJobFileAsync` |
 | `Checkout` | `GetSourceOfFundsFormAsync` · `SubmitSourceOfFundsAsync` · `GetPublicPaymentLinkAsync` · `PaymentLinkAsync` · `ListCurrenciesAsync` · `GetAsync` · `SelectMethodAsync` · `StartOnrampAsync` · `GetOnrampAsync` · `GetQrAsync` |
 | `Sandbox` | `OnboardStoreAsync` · `FaucetAsync` · `SimulateDepositAsync` · `ResetAsync` · `ListWebhooksAsync` · `ReplayWebhookAsync` |
+| `CliLogin` | `StartAsync` · `PollAsync` · `LogoutCliAsync` |
 <!-- /sdkgen:methods -->
 
 `Checkout` — сторона плательщика (без ключа). Маршруты документов отвечают вне JSON-конверта и

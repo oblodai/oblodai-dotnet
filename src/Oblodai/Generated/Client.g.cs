@@ -31,53 +31,56 @@ namespace Oblodai;
 /// <summary>The resources of the API, one property per resource of the contract.</summary>
 public sealed partial class OblodaiClient
 {
-    /// <summary>Приём оплаты: создать счёт, узнать статус, история, QR.</summary>
+    /// <summary>Accepting payments: create an invoice, check its status, history, QR code.</summary>
     public Payments Payments { get; private set; } = null!;
 
-    /// <summary>Многоразовые ссылки на оплату: одна ссылка — много платежей.</summary>
+    /// <summary>Reusable payment links: one link, many payments.</summary>
     public PaymentLinks PaymentLinks { get; private set; } = null!;
 
-    /// <summary>Вернуть деньги плательщику (списание с вашего баланса).</summary>
+    /// <summary>Return money to the payer (debited from your balance).</summary>
     public Refunds Refunds { get; private set; } = null!;
 
-    /// <summary>Отправить деньги на адрес (списание с вашего баланса).</summary>
+    /// <summary>Send money to an address (debited from your balance).</summary>
     public Payouts Payouts { get; private set; } = null!;
 
-    /// <summary>Выплата без адреса: получатель сам вводит адрес по секретной ссылке.</summary>
+    /// <summary>Payouts without an address: the recipient enters their own address via a secret link.</summary>
     public PayoutLinks PayoutLinks { get; private set; } = null!;
 
-    /// <summary>Асинхронные батчи: платежи, возвраты, выплаты, переводы пачками.</summary>
+    /// <summary>Asynchronous batches of payments, refunds, payouts and transfers.</summary>
     public Batches Batches { get; private set; } = null!;
 
-    /// <summary>Автоматическое разделение поступлений между получателями.</summary>
+    /// <summary>Automatic splitting of incoming funds between recipients.</summary>
     public Splits Splits { get; private set; } = null!;
 
-    /// <summary>Постоянные (статические) адреса пополнения под клиента.</summary>
+    /// <summary>Permanent (static) deposit addresses assigned to a customer.</summary>
     public Wallets Wallets { get; private set; } = null!;
 
-    /// <summary>Балансы мерчанта и курсы обмена.</summary>
+    /// <summary>Merchant balances and exchange rates.</summary>
     public Account Account { get; private set; } = null!;
 
-    /// <summary>Регистрация endpoint'а для коллбэков, тест и переотправка.</summary>
+    /// <summary>Registering the callback endpoint, test deliveries and resends.</summary>
     public Webhooks Webhooks { get; private set; } = null!;
 
-    /// <summary>Настройки магазина: допуск сумм, скидки, автовозвраты, валюты, авто-вывод.</summary>
+    /// <summary>Store settings: amount tolerance, discounts, auto-refunds, currencies, auto-withdrawal.</summary>
     public Settings Settings { get; private set; } = null!;
 
-    /// <summary>Ротация ключей и IP-allowlist API.</summary>
+    /// <summary>Key rotation and the API IP allowlist.</summary>
     public ApiAllowlist ApiAllowlist { get; private set; } = null!;
 
-    /// <summary>Реферальная программа.</summary>
+    /// <summary>Referral program.</summary>
     public Referrals Referrals { get; private set; } = null!;
 
-    /// <summary>PDF-документы операций: чеки, счета, отчёты за период.</summary>
+    /// <summary>PDF documents for operations: receipts, invoices, period reports.</summary>
     public Documents Documents { get; private set; } = null!;
 
-    /// <summary>Эндпоинты для страницы оплаты — работают без секрета.</summary>
+    /// <summary>Endpoints for the payment page — they work without the secret.</summary>
     public Checkout Checkout { get; private set; } = null!;
 
-    /// <summary>Dev-store: тестовые деньги, симуляция депозитов и повтор вебхуков.</summary>
+    /// <summary>Dev store: test money, simulated deposits and webhook replay.</summary>
     public Sandbox Sandbox { get; private set; } = null!;
+
+    /// <summary>Browser login of the `oblodai` CLI (OAuth 2.0 device authorization, RFC 8628) and logout of its key.</summary>
+    public CliLogin CliLogin { get; private set; } = null!;
 
     private void CreateResources(OblodaiTransport transport)
     {
@@ -97,5 +100,6 @@ public sealed partial class OblodaiClient
         Documents = new Documents(transport);
         Checkout = new Checkout(transport);
         Sandbox = new Sandbox(transport);
+        CliLogin = new CliLogin(transport);
     }
 }

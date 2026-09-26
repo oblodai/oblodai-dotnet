@@ -1351,6 +1351,39 @@ public static class Routes
         Bare: false,
         List: ListKind.None);
 
+    /// <summary><c>POST /v1/cli/device</c> (<c>startCliLogin</c>).</summary>
+    public static readonly RouteSpec StartCliLogin = new(
+        OperationId: "startCliLogin",
+        Method: "POST",
+        Path: "/v1/cli/device",
+        Auth: RouteAuth.Public,
+        Idempotent: false,
+        Safe: false,
+        Bare: false,
+        List: ListKind.None);
+
+    /// <summary><c>POST /v1/cli/token</c> (<c>pollCliLogin</c>).</summary>
+    public static readonly RouteSpec PollCliLogin = new(
+        OperationId: "pollCliLogin",
+        Method: "POST",
+        Path: "/v1/cli/token",
+        Auth: RouteAuth.Public,
+        Idempotent: false,
+        Safe: false,
+        Bare: false,
+        List: ListKind.None);
+
+    /// <summary><c>POST /v1/cli/logout</c> (<c>logoutCli</c>).</summary>
+    public static readonly RouteSpec LogoutCli = new(
+        OperationId: "logoutCli",
+        Method: "POST",
+        Path: "/v1/cli/logout",
+        Auth: RouteAuth.Key,
+        Idempotent: false,
+        Safe: false,
+        Bare: false,
+        List: ListKind.None);
+
     /// <summary>Every route, keyed by <c>operationId</c>.</summary>
     public static IReadOnlyDictionary<string, RouteSpec> All { get; } = new Dictionary<string, RouteSpec>
     {
@@ -1474,5 +1507,8 @@ public static class Routes
         ["sandboxReset"] = SandboxReset,
         ["sandboxListWebhooks"] = SandboxListWebhooks,
         ["sandboxReplayWebhook"] = SandboxReplayWebhook,
+        ["startCliLogin"] = StartCliLogin,
+        ["pollCliLogin"] = PollCliLogin,
+        ["logoutCli"] = LogoutCli,
     };
 }
