@@ -15,7 +15,7 @@ Payments, payouts, payment links, splits, static wallets, webhooks — one API k
 <img src="https://img.shields.io/badge/.NET-8%20%7C%2010-512BD4?style=flat-square" alt=".NET 8 | 10">
 <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-000000?style=flat-square" alt="License: MIT"></a>
 
-[Documentation](https://docs.oblodai.com) · [Dashboard](https://my.oblodai.com) · [Читать по-русски →](README.ru.md)
+[Documentation](https://docs.oblodai.com) · [Dashboard](https://my.oblodai.com) · [Read in Russian →](README.ru.md)
 
 </div>
 
@@ -149,7 +149,7 @@ change, a new one is added to the lock by the generator. Long-running operations
 (and `DownloadAsync` when the job has a file) — see below.
 
 <!-- sdkgen:methods -->
-16 resources, 120 methods.
+17 resources, 123 methods.
 
 | Resource | Methods |
 | --- | --- |
@@ -169,6 +169,7 @@ change, a new one is added to the lock by the generator. Long-running operations
 | `Documents` | `GetSignedAsync` · `GetBalanceAsync` · `GetFeesAsync` · `GetLedgerAsync` · `GetSplitAsync` · `GetPayoutLinkChequeAsync` · `GetStatementAsync` · `GetBatchAsync` · `GetPaymentLinkAsync` · `GetWalletStatementAsync` · `GetReferralsAsync` · `CreateJobAsync` · `GetJobAsync` · `DownloadJobFileAsync` |
 | `Checkout` | `GetSourceOfFundsFormAsync` · `SubmitSourceOfFundsAsync` · `GetPublicPaymentLinkAsync` · `PaymentLinkAsync` · `ListCurrenciesAsync` · `GetAsync` · `SelectMethodAsync` · `StartOnrampAsync` · `GetOnrampAsync` · `GetQrAsync` |
 | `Sandbox` | `OnboardStoreAsync` · `FaucetAsync` · `SimulateDepositAsync` · `ResetAsync` · `ListWebhooksAsync` · `ReplayWebhookAsync` |
+| `CliLogin` | `StartAsync` · `PollAsync` · `LogoutCliAsync` |
 <!-- /sdkgen:methods -->
 
 `Checkout` is the payer-facing side (no credentials). Document routes answer outside the JSON

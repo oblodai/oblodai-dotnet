@@ -31,15 +31,15 @@ namespace Oblodai;
 /// <summary><c>AMLLinkView</c> model.</summary>
 public sealed partial record AMLLinkView : Model
 {
-    /// <summary>До какого момента ссылка действует (UTC).</summary>
+    /// <summary>Until when the link is valid (UTC).</summary>
     [JsonPropertyName("expired_at")]
     public required string ExpiredAt { get; init; }
 
-    /// <summary>Ссылка на анкету — передайте её плательщику.</summary>
+    /// <summary>The questionnaire link — hand it to the payer.</summary>
     [JsonPropertyName("link")]
     public required string Link { get; init; }
 
-    /// <summary>Статус заполнения анкеты.</summary>
+    /// <summary>Questionnaire completion status.</summary>
     [JsonPropertyName("status")]
     public required SoFStatus Status { get; init; }
 }
@@ -47,12 +47,12 @@ public sealed partial record AMLLinkView : Model
 /// <summary><c>AMLLinksRequest</c> model.</summary>
 public sealed partial record AMLLinksRequest : Model
 {
-    /// <summary>Идентификатор заказа мерчанта.</summary>
+    /// <summary>The merchant's order id.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
 
-    /// <summary>Идентификатор платежа. Нужен uuid или order_id; приоритет у uuid.</summary>
+    /// <summary>Payment id. Either uuid or order_id is required; uuid takes precedence.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("uuid")]
     public string? Uuid { get; init; }
@@ -61,7 +61,7 @@ public sealed partial record AMLLinksRequest : Model
 /// <summary><c>AMLLinksResult</c> model.</summary>
 public sealed partial record AMLLinksResult : Model
 {
-    /// <summary>По ссылке на каждый заблокированный депозит платежа; пусто — блокировать нечего.</summary>
+    /// <summary>One link per blocked deposit of the payment; empty — nothing is blocked.</summary>
     [JsonPropertyName("items")]
     public required IReadOnlyList<AMLLinkView> Items { get; init; }
 }
@@ -69,7 +69,7 @@ public sealed partial record AMLLinksResult : Model
 /// <summary><c>APIAllowEnableRequest</c> model.</summary>
 public sealed partial record APIAllowEnableRequest : Model
 {
-    /// <summary>true — принимать API-вызовы только с адресов из списка; false — список хранится, но не применяется.</summary>
+    /// <summary>true — accept API calls only from addresses on the list; false — the list is kept but not enforced.</summary>
     [JsonPropertyName("enabled")]
     public required bool Enabled { get; init; }
 }
@@ -77,7 +77,7 @@ public sealed partial record APIAllowEnableRequest : Model
 /// <summary><c>APIAllowEntryRequest</c> model.</summary>
 public sealed partial record APIAllowEntryRequest : Model
 {
-    /// <summary>IP или подсеть в CIDR (203.0.113.7 или 203.0.113.0/24).</summary>
+    /// <summary>An IP or a CIDR subnet (203.0.113.7 or 203.0.113.0/24).</summary>
     [JsonPropertyName("cidr")]
     public required string Cidr { get; init; }
 }
@@ -85,11 +85,11 @@ public sealed partial record APIAllowEntryRequest : Model
 /// <summary><c>APIAllowListResult</c> model.</summary>
 public sealed partial record APIAllowListResult : Model
 {
-    /// <summary>Применяется ли список: true — вызовы с адресов вне списка получают 403 auth.ip_not_allowed.</summary>
+    /// <summary>Whether the list is enforced: true — calls from addresses outside the list get 403 auth.ip_not_allowed.</summary>
     [JsonPropertyName("enabled")]
     public required bool Enabled { get; init; }
 
-    /// <summary>Разрешённые IP и подсети в CIDR.</summary>
+    /// <summary>Allowed IPs and CIDR subnets.</summary>
     [JsonPropertyName("items")]
     public required IReadOnlyList<string> Items { get; init; }
 }
@@ -97,31 +97,31 @@ public sealed partial record APIAllowListResult : Model
 /// <summary><c>APILogEntry</c> model.</summary>
 public sealed partial record APILogEntry : Model
 {
-    /// <summary>Ключ, которым подписан запрос.</summary>
+    /// <summary>The key the request was signed with.</summary>
     [JsonPropertyName("api_key_id")]
     public required string ApiKeyId { get; init; }
 
-    /// <summary>Когда пришёл запрос (UTC).</summary>
+    /// <summary>When the request arrived (UTC).</summary>
     [JsonPropertyName("created_at")]
     public required string CreatedAt { get; init; }
 
-    /// <summary>Длительность обработки, мс.</summary>
+    /// <summary>Processing duration, ms.</summary>
     [JsonPropertyName("duration_ms")]
     public required long DurationMs { get; init; }
 
-    /// <summary>Адрес клиента.</summary>
+    /// <summary>The customer's address.</summary>
     [JsonPropertyName("ip")]
     public required string Ip { get; init; }
 
-    /// <summary>HTTP-метод.</summary>
+    /// <summary>HTTP method.</summary>
     [JsonPropertyName("method")]
     public required string Method { get; init; }
 
-    /// <summary>Путь запроса.</summary>
+    /// <summary>Request path.</summary>
     [JsonPropertyName("path")]
     public required string Path { get; init; }
 
-    /// <summary>Код ответа.</summary>
+    /// <summary>Response code.</summary>
     [JsonPropertyName("status")]
     public required long Status { get; init; }
 }
@@ -129,32 +129,32 @@ public sealed partial record APILogEntry : Model
 /// <summary><c>APILogRequest</c> model.</summary>
 public sealed partial record APILogRequest : Model
 {
-    /// <summary>Начало периода, YYYY-MM-DD, включительно.</summary>
+    /// <summary>Start of the period, YYYY-MM-DD, inclusive.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("from")]
     public string? From { get; init; }
 
-    /// <summary>Размер страницы, 1..200; по умолчанию 20.</summary>
+    /// <summary>Page size, 1..200; default 20.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("limit")]
     public long? Limit { get; init; }
 
-    /// <summary>Страница, с 1.</summary>
+    /// <summary>Page, starting from 1.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("page")]
     public long? Page { get; init; }
 
-    /// <summary>Подстрока по «МЕТОД путь» — то, что человек видит в таблице.</summary>
+    /// <summary>A substring of "METHOD path" — what a person sees in the table.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("q")]
     public string? Q { get; init; }
 
-    /// <summary>Точный код ответа; 0 — все.</summary>
+    /// <summary>The exact response code; 0 — all.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("status")]
     public long? Status { get; init; }
 
-    /// <summary>Конец периода, YYYY-MM-DD, ВКЛЮЧИТЕЛЬНО (день целиком).</summary>
+    /// <summary>End of the period, YYYY-MM-DD, INCLUSIVE (the whole day).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("to")]
     public string? To { get; init; }
@@ -163,15 +163,15 @@ public sealed partial record APILogRequest : Model
 /// <summary><c>APILogResult</c> model.</summary>
 public sealed partial record APILogResult : Model
 {
-    /// <summary>Строки этой страницы, новые сверху.</summary>
+    /// <summary>The rows of this page, newest first.</summary>
     [JsonPropertyName("items")]
     public required IReadOnlyList<APILogEntry> Items { get; init; }
 
-    /// <summary>Сколько дней лог хранится.</summary>
+    /// <summary>How many days the log is kept.</summary>
     [JsonPropertyName("retention_days")]
     public required long RetentionDays { get; init; }
 
-    /// <summary>Всего строк по фильтру.</summary>
+    /// <summary>Total rows matching the filter.</summary>
     [JsonPropertyName("total")]
     public required long Total { get; init; }
 }
@@ -179,19 +179,19 @@ public sealed partial record APILogResult : Model
 /// <summary><c>AcceptedConfiguredMethod</c> model.</summary>
 public sealed partial record AcceptedConfiguredMethod : Model
 {
-    /// <summary>Можно ли платить этим методом здесь.</summary>
+    /// <summary>Whether this method can be used to pay here.</summary>
     [JsonPropertyName("available")]
     public required bool Available { get; init; }
 
-    /// <summary>Код актива.</summary>
+    /// <summary>Asset code.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Сеть актива.</summary>
+    /// <summary>The asset's network.</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>Почему недоступен: not_served_here — развёртывание не принимает этот метод, unknown_method — метода нет в каталоге; у доступного ключа нет.</summary>
+    /// <summary>Why it is unavailable: not_served_here — the deployment does not accept this method, unknown_method — the method is not in the catalog; an available one has no such key.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("reason")]
     public AcceptedReason? Reason { get; init; }
@@ -200,11 +200,11 @@ public sealed partial record AcceptedConfiguredMethod : Model
 /// <summary><c>AcceptedConfiguredMethodList</c> model.</summary>
 public sealed partial record AcceptedConfiguredMethodList : Model
 {
-    /// <summary>Записи этой страницы.</summary>
+    /// <summary>The records of this page.</summary>
     [JsonPropertyName("items")]
     public required IReadOnlyList<AcceptedConfiguredMethod> Items { get; init; }
 
-    /// <summary>Блок пагинации.</summary>
+    /// <summary>Pagination block.</summary>
     [JsonPropertyName("paginate")]
     public required Pagination Paginate { get; init; }
 }
@@ -212,11 +212,11 @@ public sealed partial record AcceptedConfiguredMethodList : Model
 /// <summary><c>AcceptedMethod</c> model.</summary>
 public sealed partial record AcceptedMethod : Model
 {
-    /// <summary>Код актива.</summary>
+    /// <summary>Asset code.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Сеть актива.</summary>
+    /// <summary>The asset's network.</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 }
@@ -224,7 +224,7 @@ public sealed partial record AcceptedMethod : Model
 /// <summary><c>AcceptedSetRequest</c> model.</summary>
 public sealed partial record AcceptedSetRequest : Model
 {
-    /// <summary>Полный список пар валюта+сеть, которыми разрешено платить; пустой список — принимать всё из каталога.</summary>
+    /// <summary>The full list of currency+network pairs allowed for payment; an empty list — accept everything in the catalog.</summary>
     [JsonPropertyName("accepted")]
     public required IReadOnlyList<AcceptedMethod> Accepted { get; init; }
 }
@@ -232,11 +232,11 @@ public sealed partial record AcceptedSetRequest : Model
 /// <summary><c>AcceptedSetResult</c> model.</summary>
 public sealed partial record AcceptedSetResult : Model
 {
-    /// <summary>Набор сохранён.</summary>
+    /// <summary>The set has been saved.</summary>
     [JsonPropertyName("ok")]
     public required bool Ok { get; init; }
 
-    /// <summary>Сохранённые, но неизвестные каталогу пары — оставлены как были; ключа нет, когда таких нет.</summary>
+    /// <summary>Saved pairs that the catalog does not know — kept as they were; no key when there are none.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("unknown")]
     public IReadOnlyList<AcceptedMethod>? Unknown { get; init; }
@@ -245,11 +245,11 @@ public sealed partial record AcceptedSetResult : Model
 /// <summary><c>AccuracyResult</c> model.</summary>
 public sealed partial record AccuracyResult : Model
 {
-    /// <summary>Допуск в процентах, 1–5; 0 — допуск выключен (нужна точная сумма).</summary>
+    /// <summary>Tolerance in percent, 1–5; 0 — tolerance disabled (the exact amount is required).</summary>
     [JsonPropertyName("accuracy_percent")]
     public required long AccuracyPercent { get; init; }
 
-    /// <summary>Включён ли допуск.</summary>
+    /// <summary>Whether the tolerance is enabled.</summary>
     [JsonPropertyName("enabled")]
     public required bool Enabled { get; init; }
 }
@@ -257,7 +257,7 @@ public sealed partial record AccuracyResult : Model
 /// <summary><c>ApproveRequest</c> model.</summary>
 public sealed partial record ApproveRequest : Model
 {
-    /// <summary>Идентификатор выплаты.</summary>
+    /// <summary>Payout id.</summary>
     [JsonPropertyName("uuid")]
     public required string Uuid { get; init; }
 }
@@ -265,28 +265,28 @@ public sealed partial record ApproveRequest : Model
 /// <summary><c>AutoConvertResult</c> model.</summary>
 public sealed partial record AutoConvertResult : Model
 {
-    /// <summary>Есть ли приказ. false — остальные поля — умолчания формы.</summary>
+    /// <summary>Whether an order exists. false — the other fields are form defaults.</summary>
     [JsonPropertyName("configured")]
     public required bool Configured { get; init; }
 
-    /// <summary>Включён ли приказ.</summary>
+    /// <summary>Whether the order is enabled.</summary>
     [JsonPropertyName("enabled")]
     public required bool Enabled { get; init; }
 
-    /// <summary>Пол одной конвертации в долларах, десятичной строкой (с умолчанием процесса).</summary>
+    /// <summary>The floor for a single conversion in dollars, as a decimal string (with the process default applied).</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("min_amount")]
     public required decimal MinAmount { get; init; }
 
-    /// <summary>Режим зачисления: economy или instant.</summary>
+    /// <summary>The crediting mode: economy or instant.</summary>
     [JsonPropertyName("mode")]
     public required AutoConvertMode Mode { get; init; }
 
-    /// <summary>Монеты, которые сводятся; пусто — [], не null.</summary>
+    /// <summary>The coins being converted; empty — [], not null.</summary>
     [JsonPropertyName("sources")]
     public required IReadOnlyList<string> Sources { get; init; }
 
-    /// <summary>Монета, в которую сводится выручка; пусто без приказа.</summary>
+    /// <summary>The coin revenue is converted into; empty without an order.</summary>
     [JsonPropertyName("target")]
     public required string Target { get; init; }
 }
@@ -294,15 +294,15 @@ public sealed partial record AutoConvertResult : Model
 /// <summary><c>AutoRefundPolicyResult</c> model.</summary>
 public sealed partial record AutoRefundPolicyResult : Model
 {
-    /// <summary>false — политику не задавали, действует умолчание (обе включены).</summary>
+    /// <summary>false — no policy has been set, the default applies (both enabled).</summary>
     [JsonPropertyName("configured")]
     public required bool Configured { get; init; }
 
-    /// <summary>Возвращается ли излишек при переплате (paid_over).</summary>
+    /// <summary>Whether the excess of an overpayment (paid_over) is refunded.</summary>
     [JsonPropertyName("overpay")]
     public required bool Overpay { get; init; }
 
-    /// <summary>Возвращаются ли средства при истёкшей недоплате (wrong_amount).</summary>
+    /// <summary>Whether the funds of an expired underpayment (wrong_amount) are refunded.</summary>
     [JsonPropertyName("underpay")]
     public required bool Underpay { get; init; }
 }
@@ -310,7 +310,7 @@ public sealed partial record AutoRefundPolicyResult : Model
 /// <summary><c>AutoWithdrawDeleteRequest</c> model.</summary>
 public sealed partial record AutoWithdrawDeleteRequest : Model
 {
-    /// <summary>Актив, автовывод которого выключить.</summary>
+    /// <summary>The asset whose auto-withdrawal to disable.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 }
@@ -318,7 +318,7 @@ public sealed partial record AutoWithdrawDeleteRequest : Model
 /// <summary><c>AutoWithdrawListResult</c> model.</summary>
 public sealed partial record AutoWithdrawListResult : Model
 {
-    /// <summary>Правила автовывода, по одному на актив.</summary>
+    /// <summary>Auto-withdrawal rules, one per asset.</summary>
     [JsonPropertyName("items")]
     public required IReadOnlyList<AutoWithdrawRule> Items { get; init; }
 }
@@ -326,20 +326,20 @@ public sealed partial record AutoWithdrawListResult : Model
 /// <summary><c>AutoWithdrawRule</c> model.</summary>
 public sealed partial record AutoWithdrawRule : Model
 {
-    /// <summary>Адрес назначения.</summary>
+    /// <summary>Destination address.</summary>
     [JsonPropertyName("address")]
     public required string Address { get; init; }
 
-    /// <summary>Актив.</summary>
+    /// <summary>Asset.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Порог срабатывания в единицах актива.</summary>
+    /// <summary>The trigger threshold in asset units.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("min_amount")]
     public required decimal MinAmount { get; init; }
 
-    /// <summary>Сеть адреса назначения.</summary>
+    /// <summary>The destination address network.</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 }
@@ -347,20 +347,20 @@ public sealed partial record AutoWithdrawRule : Model
 /// <summary><c>AutoWithdrawSetRequest</c> model.</summary>
 public sealed partial record AutoWithdrawSetRequest : Model
 {
-    /// <summary>Адрес назначения (внешний кошелёк мерчанта).</summary>
+    /// <summary>Destination address (the merchant's external wallet).</summary>
     [JsonPropertyName("address")]
     public required string Address { get; init; }
 
-    /// <summary>Актив, который выводить автоматически.</summary>
+    /// <summary>The asset to withdraw automatically.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Порог: вывод срабатывает, когда доступный баланс актива не меньше этой суммы; пусто — сетевой минимум.</summary>
+    /// <summary>Threshold: the withdrawal triggers when the asset's available balance is at least this amount; empty — the network minimum.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("min_amount")]
     public string? MinAmount { get; init; }
 
-    /// <summary>Сеть адреса назначения.</summary>
+    /// <summary>The destination address network.</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 }
@@ -368,7 +368,7 @@ public sealed partial record AutoWithdrawSetRequest : Model
 /// <summary><c>BalanceResult</c> model.</summary>
 public sealed partial record BalanceResult : Model
 {
-    /// <summary>Балансы владельца.</summary>
+    /// <summary>The owner's balances.</summary>
     [JsonPropertyName("balance")]
     public required MerchantBalances Balance { get; init; }
 }
@@ -376,41 +376,41 @@ public sealed partial record BalanceResult : Model
 /// <summary><c>BatchInfoItem</c> model.</summary>
 public sealed partial record BatchInfoItem : Model
 {
-    /// <summary>Машиночитаемый код ошибки — тот же, что вернул бы одиночный вызов (payment.below_minimum, payout.address_network_mismatch, …); batch.stopped / batch.key_revoked — элемент не выполнялся; только при status «error». Пусто у элементов, завершённых до ввода поля.</summary>
+    /// <summary>The machine-readable error code — the same one a single call would return (payment.below_minimum, payout.address_network_mismatch, …); batch.stopped / batch.key_revoked — the item was not executed; only with status "error". Empty for items completed before the field was introduced.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("error_code")]
     public string? ErrorCode { get; init; }
 
-    /// <summary>HTTP-статус, которым ответил бы одиночный вызов (400, 409, …); отсутствует, если элемент не дошёл до обработчика (batch.stopped, batch.key_revoked).</summary>
+    /// <summary>The HTTP status a single call would have returned (400, 409, …); absent if the item never reached the handler (batch.stopped, batch.key_revoked).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("http_status")]
     public long? HttpStatus { get; init; }
 
-    /// <summary>Порядковый номер элемента в исходном массиве (с нуля).</summary>
+    /// <summary>The item's index in the original array (zero-based).</summary>
     [JsonPropertyName("idx")]
     public required long Idx { get; init; }
 
-    /// <summary>Человекочитаемое сообщение об ошибке; только при status «error».</summary>
+    /// <summary>A human-readable error message; only with status "error".</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("message")]
     public string? Message { get; init; }
 
-    /// <summary>Итог элемента: true при status «done», false при status «error»; отсутствует, пока элемент не обработан.</summary>
+    /// <summary>The item outcome: true with status "done", false with status "error"; absent until the item has been processed.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("ok")]
     public bool? Ok { get; init; }
 
-    /// <summary>order_id элемента, если вы его задавали; присутствует не всегда.</summary>
+    /// <summary>The item's order_id, if you set one; not always present.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
 
-    /// <summary>Результат успешной операции — тот же объект, что вернул бы одиночный вызов; только при status «done».</summary>
+    /// <summary>The result of a successful operation — the same object a single call would return; only with status "done".</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("result")]
     public JsonElement? Result { get; init; }
 
-    /// <summary>Статус элемента: pending | processing | done | error.</summary>
+    /// <summary>Item status: pending | processing | done | error.</summary>
     [JsonPropertyName("status")]
     public required BatchItemStatus Status { get; init; }
 }
@@ -418,16 +418,16 @@ public sealed partial record BatchInfoItem : Model
 /// <summary><c>BatchInfoRequest</c> model.</summary>
 public sealed partial record BatchInfoRequest : Model
 {
-    /// <summary>Идентификатор батча из ответа на submit.</summary>
+    /// <summary>The batch id from the submit response.</summary>
     [JsonPropertyName("batch_id")]
     public required string BatchId { get; init; }
 
-    /// <summary>Сколько элементов вернуть в items (пагинация).</summary>
+    /// <summary>How many items to return in items (pagination).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("limit")]
     public long? Limit { get; init; }
 
-    /// <summary>Смещение по элементам.</summary>
+    /// <summary>Offset in items.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("offset")]
     public long? Offset { get; init; }
@@ -436,43 +436,43 @@ public sealed partial record BatchInfoRequest : Model
 /// <summary><c>BatchInfoResponse</c> model.</summary>
 public sealed partial record BatchInfoResponse : Model
 {
-    /// <summary>Идентификатор батча.</summary>
+    /// <summary>Batch id.</summary>
     [JsonPropertyName("batch_id")]
     public required string BatchId { get; init; }
 
-    /// <summary>Время создания батча (ISO 8601, UTC).</summary>
+    /// <summary>Batch creation time (ISO 8601, UTC).</summary>
     [JsonPropertyName("created_at")]
     public required string CreatedAt { get; init; }
 
-    /// <summary>Завершилось ошибкой (при on_error stop сюда попадают и пропущенные элементы).</summary>
+    /// <summary>Failed (with on_error stop, skipped items are counted here too).</summary>
     [JsonPropertyName("failed")]
     public required long Failed { get; init; }
 
-    /// <summary>Страница элементов с результатом или ошибкой по каждому.</summary>
+    /// <summary>A page of items with the result or error for each.</summary>
     [JsonPropertyName("items")]
     public required IReadOnlyList<BatchInfoItem> Items { get; init; }
 
-    /// <summary>Вид батча: payment | refund | payout | transfer.</summary>
+    /// <summary>Batch kind: payment | refund | payout | transfer.</summary>
     [JsonPropertyName("kind")]
     public required BatchKind Kind { get; init; }
 
-    /// <summary>Режим обработки ошибок, с которым батч был отправлен: continue | stop.</summary>
+    /// <summary>The error handling mode the batch was submitted with: continue | stop.</summary>
     [JsonPropertyName("on_error")]
     public required BatchOnError OnError { get; init; }
 
-    /// <summary>Статус батча: pending | processing | completed | stopped. ТЕРМИНАЛЬНЫЕ — completed И stopped (опрашивайте до одного из них, не только до completed): completed = обработка дошла до конца, stopped = батч с on_error=stop остановился на первой ошибке (остальные элементы пропущены и учтены в failed). Ни один не значит «всё успешно» — смотрите succeeded/failed.</summary>
+    /// <summary>Batch status: pending | processing | completed | stopped. TERMINAL ones are completed AND stopped (poll until either of them, not only completed): completed = processing reached the end, stopped = a batch with on_error=stop halted at the first error (the remaining items were skipped and counted in failed). Neither means "everything succeeded" — check succeeded/failed.</summary>
     [JsonPropertyName("status")]
     public required BatchStatus Status { get; init; }
 
-    /// <summary>Успешно обработано.</summary>
+    /// <summary>Processed successfully.</summary>
     [JsonPropertyName("succeeded")]
     public required long Succeeded { get; init; }
 
-    /// <summary>Всего элементов в батче; считается по всему батчу и от пагинации не зависит.</summary>
+    /// <summary>Total items in the batch; counted over the whole batch, independent of pagination.</summary>
     [JsonPropertyName("total")]
     public required long Total { get; init; }
 
-    /// <summary>Время последнего изменения (ISO 8601, UTC).</summary>
+    /// <summary>Time of the last change (ISO 8601, UTC).</summary>
     [JsonPropertyName("updated_at")]
     public required string UpdatedAt { get; init; }
 }
@@ -480,19 +480,19 @@ public sealed partial record BatchInfoResponse : Model
 /// <summary><c>BatchSubmitResponse</c> model.</summary>
 public sealed partial record BatchSubmitResponse : Model
 {
-    /// <summary>Идентификатор батча — с ним идите в POST /v1/batch/info за статусом и результатами.</summary>
+    /// <summary>The batch id — use it with POST /v1/batch/info to get the status and results.</summary>
     [JsonPropertyName("batch_id")]
     public required string BatchId { get; init; }
 
-    /// <summary>Сколько элементов принято в обработку.</summary>
+    /// <summary>How many items were accepted for processing.</summary>
     [JsonPropertyName("count")]
     public required long Count { get; init; }
 
-    /// <summary>Вид батча: payment | refund | payout | transfer.</summary>
+    /// <summary>Batch kind: payment | refund | payout | transfer.</summary>
     [JsonPropertyName("kind")]
     public required BatchKind Kind { get; init; }
 
-    /// <summary>Стартовый статус — всегда pending.</summary>
+    /// <summary>The initial status — always pending.</summary>
     [JsonPropertyName("status")]
     public required BatchStatus Status { get; init; }
 }
@@ -500,11 +500,11 @@ public sealed partial record BatchSubmitResponse : Model
 /// <summary><c>BlockWalletRequest</c> model.</summary>
 public sealed partial record BlockWalletRequest : Model
 {
-    /// <summary>Адрес статического кошелька</summary>
+    /// <summary>Static wallet address</summary>
     [JsonPropertyName("address")]
     public required string Address { get; init; }
 
-    /// <summary>true — заблокировать (значение по умолчанию, если поле опущено); false — снять блокировку</summary>
+    /// <summary>true — block (the default if the field is omitted); false — lift the block</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("is_force_block")]
     public bool? IsForceBlock { get; init; }
@@ -513,15 +513,15 @@ public sealed partial record BlockWalletRequest : Model
 /// <summary><c>BlockWalletResult</c> model.</summary>
 public sealed partial record BlockWalletResult : Model
 {
-    /// <summary>Адрес кошелька.</summary>
+    /// <summary>Wallet address.</summary>
     [JsonPropertyName("address")]
     public required string Address { get; init; }
 
-    /// <summary>Заблокирован ли кошелёк после вызова.</summary>
+    /// <summary>Whether the wallet is blocked after the call.</summary>
     [JsonPropertyName("blocked")]
     public required bool Blocked { get; init; }
 
-    /// <summary>Идентификатор статического кошелька.</summary>
+    /// <summary>Static wallet id.</summary>
     [JsonPropertyName("uuid")]
     public required string Uuid { get; init; }
 }
@@ -529,16 +529,16 @@ public sealed partial record BlockWalletResult : Model
 /// <summary><c>BlockedRefundRequest</c> model.</summary>
 public sealed partial record BlockedRefundRequest : Model
 {
-    /// <summary>Адрес назначения возврата.</summary>
+    /// <summary>Refund destination address.</summary>
     [JsonPropertyName("address")]
     public required string Address { get; init; }
 
-    /// <summary>Тег/мемо назначения (XRP destination tag, XLM memo id, TON comment). Обязателен для классического адреса на tag/memo-сети, если тег не встроен в X-/M-адрес.</summary>
+    /// <summary>Destination tag/memo (XRP destination tag, XLM memo id, TON comment). Required for a classic address on a tag/memo network unless the tag is embedded in an X-/M-address.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("memo")]
     public string? Memo { get; init; }
 
-    /// <summary>Идентификатор статического кошелька (из ответа /v1/wallet).</summary>
+    /// <summary>The static wallet id (from the /v1/wallet response).</summary>
     [JsonPropertyName("uuid")]
     public required string Uuid { get; init; }
 }
@@ -546,105 +546,203 @@ public sealed partial record BlockedRefundRequest : Model
 /// <summary><c>BlockedRefundResult</c> model.</summary>
 public sealed partial record BlockedRefundResult : Model
 {
-    /// <summary>Адрес получателя.</summary>
+    /// <summary>Recipient address.</summary>
     [JsonPropertyName("address")]
     public required string Address { get; init; }
 
-    /// <summary>Сумма выплаты в валюте currency, списанная с вашего баланса.</summary>
+    /// <summary>The payout amount in currency, debited from your balance.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>true — выплата ждёт подтверждения (внутренние сценарии; по API-ключу всегда false).</summary>
+    /// <summary>true — the payout is awaiting approval (internal scenarios; always false with an API key).</summary>
     [JsonPropertyName("approval_required")]
     public required bool ApprovalRequired { get; init; }
 
-    /// <summary>Удержанная сетевая комиссия, в валюте выплаты. 0 — комиссию поглотил шлюз.</summary>
+    /// <summary>The withheld network fee, in the payout currency. 0 — the gateway absorbed the fee.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("commission")]
     public required decimal Commission { get; init; }
 
-    /// <summary>Время создания (ISO 8601).</summary>
+    /// <summary>Creation time (ISO 8601).</summary>
     [JsonPropertyName("created_at")]
     public required string CreatedAt { get; init; }
 
-    /// <summary>Код валюты выплаты.</summary>
+    /// <summary>Payout currency code.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Подписанная ссылка на PDF-чек этой операции — открывается без API-ключа, можно вложить в письмо или отдать получателю. Пусто, если генерация документов не включена.</summary>
+    /// <summary>A signed link to the PDF receipt of this operation — opens without an API key, can be attached to an email or given to the recipient. Empty if document generation is not enabled.</summary>
     [JsonPropertyName("document_url")]
     public required string DocumentUrl { get; init; }
 
-    /// <summary>Кто заплатил сетевую комиссию: gateway — шлюз поглотил её (commission = 0); merchant — сумма списания увеличена на комиссию, получатель получает запрошенное целиком (is_subtract=true, выплатная ссылка с fee_bearer=merchant); recipient — комиссия удержана из выплаты, получателю приходит меньше запрошенного.</summary>
+    /// <summary>Who paid the network fee: gateway — the gateway absorbed it (commission = 0); merchant — the debit amount was increased by the fee, the recipient gets the full requested amount (is_subtract=true, a payout link with fee_bearer=merchant); recipient — the fee was withheld from the payout, the recipient gets less than requested.</summary>
     [JsonPropertyName("fee_bearer")]
     public required PayoutFeeBearer FeeBearer { get; init; }
 
-    /// <summary>true — статус финальный (confirmed / failed / cancelled).</summary>
+    /// <summary>true — the status is final (confirmed / failed / cancelled).</summary>
     [JsonPropertyName("is_final")]
     public required bool IsFinal { get; init; }
 
-    /// <summary>true — это возврат платежа, а не обычная выплата.</summary>
+    /// <summary>true — this is a payment refund, not a regular payout.</summary>
     [JsonPropertyName("is_refund")]
     public required bool IsRefund { get; init; }
 
-    /// <summary>Тег/мемо назначения, переданный при создании (TON Jetton, memo-биржи). Пусто — без мемо.</summary>
+    /// <summary>The destination tag/memo passed at creation (TON Jetton, exchange memos). Empty — no memo.</summary>
     [JsonPropertyName("memo")]
     public required string Memo { get; init; }
 
-    /// <summary>Сеть блокчейна.</summary>
+    /// <summary>Blockchain network.</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>Ваш номер (reference) выплаты. У возврата — null: возврат не имеет вашего идентификатора, см. payment_order_id.</summary>
+    /// <summary>Your payout number (reference). null for a refund: a refund has no identifier of yours, see payment_order_id.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
 
-    /// <summary>Сколько реально уходит получателю на адрес: amount − commission.</summary>
+    /// <summary>How much actually goes to the recipient's address: amount − commission.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("payer_amount")]
     public required decimal PayerAmount { get; init; }
 
-    /// <summary>Ваш order_id платежа, по которому сделан возврат (null у обычной выплаты). У возврата собственного order_id нет — он приходит null, а сверять возврат с заказом нужно по этому полю.</summary>
+    /// <summary>Your order_id of the payment that was refunded (null for a regular payout). A refund has no order_id of its own — it comes as null, so match a refund to an order by this field.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("payment_order_id")]
     public string? PaymentOrderId { get; init; }
 
-    /// <summary>Идентификатор возвращаемого платежа (null, если это не возврат).</summary>
+    /// <summary>The id of the payment being refunded (null if this is not a refund).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("refund_for")]
     public string? RefundFor { get; init; }
 
-    /// <summary>api (через интеграцию) | manual (из кабинета).</summary>
+    /// <summary>api (via the integration) | manual (from the dashboard).</summary>
     [JsonPropertyName("source")]
     public required PayoutSource Source { get; init; }
 
-    /// <summary>Статус выплаты: pending (создана, ждёт) | approved (одобрена) | awaiting_cosign (ждёт второй подписи) | broadcasting (отправляется) | sent (отправлена, ждёт подтверждений) | confirmed (подтверждена — готово) | failed | cancelled. Значение можно передать обратно в фильтр истории как есть.</summary>
+    /// <summary>Payout status: pending (created, waiting) | approved (approved) | awaiting_cosign (waiting for the second signature) | broadcasting (being broadcast) | sent (sent, awaiting confirmations) | confirmed (confirmed — done) | failed | cancelled. The value can be passed back to the history filter as is.</summary>
     [JsonPropertyName("status")]
     public required PayoutStatus Status { get; init; }
 
-    /// <summary>Хеш транзакции в блокчейне (появляется после отправки).</summary>
+    /// <summary>The blockchain transaction hash (appears after sending).</summary>
     [JsonPropertyName("txid")]
     public required string Txid { get; init; }
 
-    /// <summary>Время последнего изменения (ISO 8601).</summary>
+    /// <summary>Time of the last change (ISO 8601).</summary>
     [JsonPropertyName("updated_at")]
     public required string UpdatedAt { get; init; }
 
-    /// <summary>Идентификатор выплаты.</summary>
+    /// <summary>Payout id.</summary>
     [JsonPropertyName("uuid")]
     public required string Uuid { get; init; }
 
-    /// <summary>Кошелёк, с которого вернули деньги.</summary>
+    /// <summary>The wallet the money was refunded from.</summary>
     [JsonPropertyName("wallet_uuid")]
     public required string WalletUuid { get; init; }
+}
+
+/// <summary><c>CLIDeviceAuthorization</c> model.</summary>
+public sealed partial record CLIDeviceAuthorization : Model
+{
+    /// <summary>The CLI's secret for polling POST /v1/cli/token. Never show it to the user.</summary>
+    [JsonPropertyName("device_code")]
+    public required string DeviceCode { get; init; }
+
+    /// <summary>Seconds until the request expires.</summary>
+    [JsonPropertyName("expires_in")]
+    public required long ExpiresIn { get; init; }
+
+    /// <summary>Seconds to wait between polls; cli.slow_down raises it by 5.</summary>
+    [JsonPropertyName("interval")]
+    public required long Interval { get; init; }
+
+    /// <summary>The code the user confirms in the browser.</summary>
+    [JsonPropertyName("user_code")]
+    public required string UserCode { get; init; }
+
+    /// <summary>The cabinet page where the user enters the code.</summary>
+    [JsonPropertyName("verification_uri")]
+    public required string VerificationUri { get; init; }
+
+    /// <summary>The same page with the code filled in — open this one in the browser.</summary>
+    [JsonPropertyName("verification_uri_complete")]
+    public required string VerificationUriComplete { get; init; }
+}
+
+/// <summary><c>CLIDeviceRequest</c> model.</summary>
+public sealed partial record CLIDeviceRequest : Model
+{
+    /// <summary>The client asking for access (at most 64 characters); shown in the cabinet. Empty — "oblodai".</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyName("client_name")]
+    public string? ClientName { get; init; }
+
+    /// <summary>The device (at most 100 characters); shown in the cabinet and becomes the key label. Empty — "CLI".</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyName("device_name")]
+    public string? DeviceName { get; init; }
+}
+
+/// <summary><c>CLILogoutResult</c> model.</summary>
+public sealed partial record CLILogoutResult : Model
+{
+    /// <summary>The CLI key that was revoked (the one that signed this request).</summary>
+    [JsonPropertyName("public_id")]
+    public required string PublicId { get; init; }
+
+    /// <summary>Always true: the key no longer authenticates.</summary>
+    [JsonPropertyName("revoked")]
+    public required bool Revoked { get; init; }
+}
+
+/// <summary><c>CLIToken</c> model.</summary>
+public sealed partial record CLIToken : Model
+{
+    /// <summary>When the key stops working; log in again after that.</summary>
+    [JsonPropertyName("expires_at")]
+    public required string ExpiresAt { get; init; }
+
+    /// <summary>The key label (device name).</summary>
+    [JsonPropertyName("label")]
+    public required string Label { get; init; }
+
+    /// <summary>The merchant (store) the key acts for.</summary>
+    [JsonPropertyName("merchant_id")]
+    public required string MerchantId { get; init; }
+
+    /// <summary>The store's name at approval time.</summary>
+    [JsonPropertyName("merchant_name")]
+    public required string MerchantName { get; init; }
+
+    /// <summary>live — a production store; test — its sandbox.</summary>
+    [JsonPropertyName("mode")]
+    public required KeyMode Mode { get; init; }
+
+    /// <summary>The CLI key's public id (X-Public-Id).</summary>
+    [JsonPropertyName("public_id")]
+    public required string PublicId { get; init; }
+
+    /// <summary>The team member's role the key acts with (at approval time; the core checks the current one on every call).</summary>
+    [JsonPropertyName("role")]
+    public required Role Role { get; init; }
+
+    /// <summary>The key secret. Returned exactly once — store it now.</summary>
+    [JsonPropertyName("secret")]
+    public required string Secret { get; init; }
+}
+
+/// <summary><c>CLITokenRequest</c> model.</summary>
+public sealed partial record CLITokenRequest : Model
+{
+    /// <summary>device_code from POST /v1/cli/device.</summary>
+    [JsonPropertyName("device_code")]
+    public required string DeviceCode { get; init; }
 }
 
 /// <summary><c>CancelPayoutRequest</c> model.</summary>
 public sealed partial record CancelPayoutRequest : Model
 {
-    /// <summary>Идентификатор выплаты (или возврата) для отмены.</summary>
+    /// <summary>The id of the payout (or refund) to cancel.</summary>
     [JsonPropertyName("uuid")]
     public required string Uuid { get; init; }
 }
@@ -652,17 +750,17 @@ public sealed partial record CancelPayoutRequest : Model
 /// <summary><c>CheckoutConfigRequest</c> model.</summary>
 public sealed partial record CheckoutConfigRequest : Model
 {
-    /// <summary>Слать ли покупателю чек на почту после оплаты. Чек уходит только если покупатель оставил адрес. По умолчанию — да.</summary>
+    /// <summary>Whether to email the buyer a receipt after payment. The receipt is sent only if the buyer left an address. Defaults to yes.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("email_receipts")]
     public bool? EmailReceipts { get; init; }
 
-    /// <summary>Куда вернуть покупателя, если он ушёл с оплаты. Пустая строка — никуда не отправлять. Поле можно не присылать — тогда прежнее значение сохранится. Подставляется только в те счета, где url_return не задан.</summary>
+    /// <summary>Where to send the buyer if they left the payment page. An empty string — do not redirect. The field may be omitted — then the previous value is kept. Applied only to invoices where url_return is not set.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("fail_url")]
     public string? FailUrl { get; init; }
 
-    /// <summary>Куда вернуть покупателя после успешной оплаты. Пустая строка — никуда не отправлять. Поле можно не присылать — тогда прежнее значение сохранится. Подставляется только в те счета, где url_success не задан.</summary>
+    /// <summary>Where to send the buyer after a successful payment. An empty string — do not redirect. The field may be omitted — then the previous value is kept. Applied only to invoices where url_success is not set.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("success_url")]
     public string? SuccessUrl { get; init; }
@@ -671,15 +769,15 @@ public sealed partial record CheckoutConfigRequest : Model
 /// <summary><c>CheckoutConfigView</c> model.</summary>
 public sealed partial record CheckoutConfigView : Model
 {
-    /// <summary>Слать ли покупателю чек на почту после оплаты.</summary>
+    /// <summary>Whether to email the buyer a receipt after payment.</summary>
     [JsonPropertyName("email_receipts")]
     public required bool EmailReceipts { get; init; }
 
-    /// <summary>Куда вернуть покупателя, ушедшего с оплаты; пусто — никуда.</summary>
+    /// <summary>Where to send a buyer who left the payment page; empty — nowhere.</summary>
     [JsonPropertyName("fail_url")]
     public required string FailUrl { get; init; }
 
-    /// <summary>Куда вернуть покупателя после оплаты; пусто — никуда.</summary>
+    /// <summary>Where to send the buyer after payment; empty — nowhere.</summary>
     [JsonPropertyName("success_url")]
     public required string SuccessUrl { get; init; }
 }
@@ -687,16 +785,16 @@ public sealed partial record CheckoutConfigView : Model
 /// <summary><c>ClaimRequest</c> model.</summary>
 public sealed partial record ClaimRequest : Model
 {
-    /// <summary>Адрес получателя в сети выплаты.</summary>
+    /// <summary>The recipient's address on the payout network.</summary>
     [JsonPropertyName("address")]
     public required string Address { get; init; }
 
-    /// <summary>Memo/tag — только для сетей, где он обязателен.</summary>
+    /// <summary>Memo/tag — only for networks where it is required.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("memo")]
     public string? Memo { get; init; }
 
-    /// <summary>Код получения — если отправитель установил его на ссылку. После 10 неверных вводов ссылка запирается.</summary>
+    /// <summary>Claim passcode — if the sender set one on the link. After 10 wrong attempts the link is locked.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("passcode")]
     public string? Passcode { get; init; }
@@ -705,25 +803,25 @@ public sealed partial record ClaimRequest : Model
 /// <summary><c>ConversionEconomyQuote</c> model.</summary>
 public sealed partial record ConversionEconomyQuote : Model
 {
-    /// <summary>Доступен ли режим сейчас.</summary>
+    /// <summary>Whether the mode is available right now.</summary>
     [JsonPropertyName("available")]
     public required bool Available { get; init; }
 
-    /// <summary>Комиссия режима в процентах.</summary>
+    /// <summary>The mode's fee, in percent.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("fee_percent")]
     public required decimal FeePercent { get; init; }
 
-    /// <summary>Гарантированный минимум к получению, в валюте котировки.</summary>
+    /// <summary>The guaranteed minimum to receive, in the quote currency.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("min_out")]
     public required decimal MinOut { get; init; }
 
-    /// <summary>Почему недоступен: no_route; пусто — доступен.</summary>
+    /// <summary>Why it is unavailable: no_route; empty — available.</summary>
     [JsonPropertyName("reason")]
     public required string Reason { get; init; }
 
-    /// <summary>За сколько минут исполняется заявка.</summary>
+    /// <summary>How many minutes the order takes to execute.</summary>
     [JsonPropertyName("window_minutes")]
     public required long WindowMinutes { get; init; }
 }
@@ -731,21 +829,21 @@ public sealed partial record ConversionEconomyQuote : Model
 /// <summary><c>ConversionInstantQuote</c> model.</summary>
 public sealed partial record ConversionInstantQuote : Model
 {
-    /// <summary>Доступен ли режим сейчас.</summary>
+    /// <summary>Whether the mode is available right now.</summary>
     [JsonPropertyName("available")]
     public required bool Available { get; init; }
 
-    /// <summary>Сколько придёт, в валюте котировки.</summary>
+    /// <summary>How much will arrive, in the quote currency.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("estimated_out")]
     public required decimal EstimatedOut { get; init; }
 
-    /// <summary>Комиссия режима в процентах.</summary>
+    /// <summary>The mode's fee, in percent.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("fee_percent")]
     public required decimal FeePercent { get; init; }
 
-    /// <summary>Почему недоступен: frozen, position_cap; пусто — доступен.</summary>
+    /// <summary>Why it is unavailable: frozen, position_cap; empty — available.</summary>
     [JsonPropertyName("reason")]
     public required string Reason { get; init; }
 }
@@ -753,88 +851,88 @@ public sealed partial record ConversionInstantQuote : Model
 /// <summary><c>ConversionModes</c> model.</summary>
 public sealed partial record ConversionModes : Model
 {
-    /// <summary>Конвертация через партию ликвидации.</summary>
+    /// <summary>Conversion via a liquidation batch.</summary>
     [JsonPropertyName("economy")]
     public required ConversionEconomyQuote Economy { get; init; }
 
-    /// <summary>Мгновенная конвертация по спред-курсу.</summary>
+    /// <summary>Instant conversion at the spread rate.</summary>
     [JsonPropertyName("instant")]
     public required ConversionInstantQuote Instant { get; init; }
 }
 
-/// <summary>Приходит, когда конвертация в эконом-режиме исполнена (completed — зачислено) или отменена с возвратом исходной суммы (refunded).</summary>
+/// <summary>Sent when an economy-mode conversion is executed (completed — credited) or cancelled with the source amount returned (refunded).</summary>
 public sealed partial record ConversionWebhook : Model
 {
-    /// <summary>Когда завершена (ISO 8601).</summary>
+    /// <summary>When completed (ISO 8601).</summary>
     [JsonPropertyName("completed_at")]
     public required string CompletedAt { get; init; }
 
-    /// <summary>Когда конвертация принята (ISO 8601).</summary>
+    /// <summary>When the conversion was accepted (ISO 8601).</summary>
     [JsonPropertyName("created_at")]
     public required string CreatedAt { get; init; }
 
-    /// <summary>Подписанная ссылка на PDF-чек конвертации; пусто у возврата и когда документы выключены.</summary>
+    /// <summary>A signed link to the PDF conversion receipt; empty for a refund and when documents are disabled.</summary>
     [JsonPropertyName("document_url")]
     public required string DocumentUrl { get; init; }
 
-    /// <summary>Когда событие произошло, UTC с миллисекундами (ISO 8601).</summary>
+    /// <summary>When the event happened, UTC with milliseconds (ISO 8601).</summary>
     [JsonPropertyName("event_at")]
     public required string EventAt { get; init; }
 
-    /// <summary>Комиссия конвертации, в процентах.</summary>
+    /// <summary>Conversion fee, in percent.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("fee_percent")]
     public required decimal FeePercent { get; init; }
 
-    /// <summary>Из какой валюты.</summary>
+    /// <summary>Source currency.</summary>
     [JsonPropertyName("from")]
     public required string From { get; init; }
 
-    /// <summary>Идентификатор конвертации — тот id, что вернул запрос конвертации.</summary>
+    /// <summary>The conversion id — the id returned by the conversion request.</summary>
     [JsonPropertyName("id")]
     public required string Id { get; init; }
 
-    /// <summary>Всегда true: событие приходит, когда деньги уже зачислены или возвращены.</summary>
+    /// <summary>Always true: the event arrives when the money has already been credited or returned.</summary>
     [JsonPropertyName("is_final")]
     public required bool IsFinal { get; init; }
 
-    /// <summary>Режим: economy (исполнена очередью) | instant.</summary>
+    /// <summary>Mode: economy (executed via the queue) | instant.</summary>
     [JsonPropertyName("mode")]
     public required string Mode { get; init; }
 
-    /// <summary>Причина возврата (market_below_min | window_expired); пусто у completed.</summary>
+    /// <summary>The refund reason (market_below_min | window_expired); empty for completed.</summary>
     [JsonPropertyName("reason")]
     public required string Reason { get; init; }
 
-    /// <summary>Сколько зачислено, в валюте to. Есть только у completed; у refunded поля нет.</summary>
+    /// <summary>How much was credited, in the to currency. Present only for completed; refunded has no such field.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("received")]
     public decimal? Received { get; init; }
 
-    /// <summary>Сколько отдано, в валюте from.</summary>
+    /// <summary>How much was given, in the from currency.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("sent")]
     public required decimal Sent { get; init; }
 
-    /// <summary>Глобальный номер события: в пределах одного объекта больший номер новее, меньший — опоздавшая доставка, её нужно отбросить. У репетиции (test: true) всегда 0.</summary>
+    /// <summary>The global event number: within one object a higher number is newer, a lower one is a late delivery and must be discarded. Always 0 on a rehearsal (test: true).</summary>
     [JsonPropertyName("sequence")]
     public required long Sequence { get; init; }
 
-    /// <summary>completed — зачислено; refunded — исходная сумма возвращена.</summary>
+    /// <summary>completed — credited; refunded — the source amount was returned.</summary>
     [JsonPropertyName("status")]
     public required ConversionWebhookStatus Status { get; init; }
 
-    /// <summary>Есть только у репетиции (/v1/test-webhook/*, /v1/payment/testing-webhook) и всегда true — внутри подписи. Боевое событие этого поля не несёт никогда: тело с test: true обработчик обязан игнорировать, даже если подпись верна.</summary>
+    /// <summary>Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always true — inside the signature. A live event never carries this field: your handler must ignore a body with test: true even if the signature is valid.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("test")]
     public bool? Test { get; init; }
 
-    /// <summary>В какую валюту.</summary>
+    /// <summary>Target currency.</summary>
     [JsonPropertyName("to")]
     public required string To { get; init; }
 
-    /// <summary>Вид события: payment | payout | wallet | conversion — какое тело пришло.</summary>
+    /// <summary>Event kind: payment | payout | wallet | conversion — which body arrived.</summary>
     [JsonPropertyName("type")]
     public required string Type { get; init; }
 }
@@ -842,15 +940,15 @@ public sealed partial record ConversionWebhook : Model
 /// <summary><c>CreateWalletRequest</c> model.</summary>
 public sealed partial record CreateWalletRequest : Model
 {
-    /// <summary>Символ валюты приёма (USDT, BTC, ETH, …)</summary>
+    /// <summary>The symbol of the accepted currency (USDT, BTC, ETH, …)</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Сеть приёма (tron, ethereum, bitcoin, …)</summary>
+    /// <summary>The receiving network (tron, ethereum, bitcoin, …)</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>Ваш идентификатор клиента/заказа. Закрепляет отдельный постоянный адрес за клиентом</summary>
+    /// <summary>Your customer/order identifier. Assigns a dedicated permanent address to the customer</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
@@ -859,11 +957,11 @@ public sealed partial record CreateWalletRequest : Model
 /// <summary><c>CurrenciesResult</c> model.</summary>
 public sealed partial record CurrenciesResult : Model
 {
-    /// <summary>Чем счёт можно оплатить: монеты по сетям.</summary>
+    /// <summary>What the invoice can be paid with: coins by network.</summary>
     [JsonPropertyName("currencies")]
     public required IReadOnlyList<CurrencyEntry> Currencies { get; init; }
 
-    /// <summary>В чём счёт можно выставить: те же монеты и фиат; отсортированы по коду.</summary>
+    /// <summary>What an invoice can be priced in: the same coins plus fiat; sorted by code.</summary>
     [JsonPropertyName("pricing_currencies")]
     public required IReadOnlyList<PricingCurrency> PricingCurrencies { get; init; }
 }
@@ -871,11 +969,11 @@ public sealed partial record CurrenciesResult : Model
 /// <summary><c>CurrencyEntry</c> model.</summary>
 public sealed partial record CurrencyEntry : Model
 {
-    /// <summary>Код валюты.</summary>
+    /// <summary>Currency code.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Знаков после запятой в суммах этой валюты.</summary>
+    /// <summary>Decimal places in amounts of this currency.</summary>
     [JsonPropertyName("decimals")]
     public required long Decimals { get; init; }
 
@@ -887,41 +985,41 @@ public sealed partial record CurrencyEntry : Model
 /// <summary><c>CurrencyNetwork</c> model.</summary>
 public sealed partial record CurrencyNetwork : Model
 {
-    /// <summary>То же, что deposit_available.</summary>
+    /// <summary>The same as deposit_available.</summary>
     [JsonPropertyName("available")]
     public required bool Available { get; init; }
 
-    /// <summary>Номер EVM-сети (EIP-155); только у EVM-сетей.</summary>
+    /// <summary>The EVM chain id (EIP-155); EVM networks only.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("chain_id")]
     public long? ChainId { get; init; }
 
-    /// <summary>Контракт токена; у монеты сети ключа нет.</summary>
+    /// <summary>The token contract; a native coin has no such key.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("contract")]
     public string? Contract { get; init; }
 
-    /// <summary>false — метод показывается на оплате только после явного включения мерчантом.</summary>
+    /// <summary>false — the method is shown at checkout only after the merchant explicitly enables it.</summary>
     [JsonPropertyName("default_offer")]
     public required bool DefaultOffer { get; init; }
 
-    /// <summary>Приём в этой сети работает на этом развёртывании.</summary>
+    /// <summary>Accepting payments on this network works on this deployment.</summary>
     [JsonPropertyName("deposit_available")]
     public required bool DepositAvailable { get; init; }
 
-    /// <summary>native — монета сети, token — токен контракта.</summary>
+    /// <summary>native — the network's native coin, token — a contract token.</summary>
     [JsonPropertyName("kind")]
     public required AssetKind Kind { get; init; }
 
-    /// <summary>Подтверждений до зачисления.</summary>
+    /// <summary>Confirmations until crediting.</summary>
     [JsonPropertyName("min_confirmations")]
     public required long MinConfirmations { get; init; }
 
-    /// <summary>Сеть.</summary>
+    /// <summary>Network.</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>Выплаты в этой сети работают на этом развёртывании.</summary>
+    /// <summary>Payouts on this network work on this deployment.</summary>
     [JsonPropertyName("payout_available")]
     public required bool PayoutAvailable { get; init; }
 }
@@ -929,50 +1027,50 @@ public sealed partial record CurrencyNetwork : Model
 /// <summary><c>DocumentJobAccepted</c> model.</summary>
 public sealed partial record DocumentJobAccepted : Model
 {
-    /// <summary>Когда задача поставлена (UTC).</summary>
+    /// <summary>When the job was queued (UTC).</summary>
     [JsonPropertyName("created_at")]
     public required string CreatedAt { get; init; }
 
-    /// <summary>Почему файла нет; есть у задачи в статусе failed или expired.</summary>
+    /// <summary>Why there is no file; present on a job in status failed or expired.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("error")]
     public DocumentJobError? Error { get; init; }
 
-    /// <summary>Готовый файл; есть у задачи в статусе done.</summary>
+    /// <summary>The finished file; present on a job in status done.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("file")]
     public DocumentJobFile? File { get; init; }
 
-    /// <summary>Формат файла: pdf или csv.</summary>
+    /// <summary>File format: pdf or csv.</summary>
     [JsonPropertyName("format")]
     public required string Format { get; init; }
 
-    /// <summary>Идентификатор задачи.</summary>
+    /// <summary>Job id.</summary>
     [JsonPropertyName("job_id")]
     public required string JobId { get; init; }
 
-    /// <summary>Вид отчёта.</summary>
+    /// <summary>Report kind.</summary>
     [JsonPropertyName("kind")]
     public required DocumentJobKind Kind { get; init; }
 
-    /// <summary>Язык документа.</summary>
+    /// <summary>Document language.</summary>
     [JsonPropertyName("lang")]
     public required string Lang { get; init; }
 
-    /// <summary>Период отчёта.</summary>
+    /// <summary>Report period.</summary>
     [JsonPropertyName("period")]
     public required DocumentJobPeriod Period { get; init; }
 
-    /// <summary>Срок готовности; есть, пока задача в очереди или в работе.</summary>
+    /// <summary>The readiness deadline; present while the job is queued or in progress.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("ready_within")]
     public string? ReadyWithin { get; init; }
 
-    /// <summary>Статус задачи: queued, processing, done, failed или expired.</summary>
+    /// <summary>Job status: queued, processing, done, failed or expired.</summary>
     [JsonPropertyName("status")]
     public required DocumentJobStatus Status { get; init; }
 
-    /// <summary>Когда задача менялась последний раз (UTC).</summary>
+    /// <summary>When the job last changed (UTC).</summary>
     [JsonPropertyName("updated_at")]
     public required string UpdatedAt { get; init; }
 }
@@ -980,11 +1078,11 @@ public sealed partial record DocumentJobAccepted : Model
 /// <summary><c>DocumentJobError</c> model.</summary>
 public sealed partial record DocumentJobError : Model
 {
-    /// <summary>Машинный код отказа.</summary>
+    /// <summary>The machine code of the rejection.</summary>
     [JsonPropertyName("code")]
     public required string Code { get; init; }
 
-    /// <summary>Что случилось и что делать.</summary>
+    /// <summary>What happened and what to do.</summary>
     [JsonPropertyName("message")]
     public required string Message { get; init; }
 }
@@ -992,20 +1090,20 @@ public sealed partial record DocumentJobError : Model
 /// <summary><c>DocumentJobFile</c> model.</summary>
 public sealed partial record DocumentJobFile : Model
 {
-    /// <summary>Путь скачивания (GET под ключом мерчанта).</summary>
+    /// <summary>The download path (GET under the merchant key).</summary>
     [JsonPropertyName("download_url")]
     public required string DownloadUrl { get; init; }
 
-    /// <summary>До какого момента файл хранится (UTC).</summary>
+    /// <summary>Until when the file is kept (UTC).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("expires_at")]
     public string? ExpiresAt { get; init; }
 
-    /// <summary>Строк в отчёте.</summary>
+    /// <summary>Rows in the report.</summary>
     [JsonPropertyName("rows")]
     public required long Rows { get; init; }
 
-    /// <summary>Размер файла в байтах.</summary>
+    /// <summary>File size in bytes.</summary>
     [JsonPropertyName("size_bytes")]
     public required long SizeBytes { get; init; }
 }
@@ -1013,7 +1111,7 @@ public sealed partial record DocumentJobFile : Model
 /// <summary><c>DocumentJobInfoRequest</c> model.</summary>
 public sealed partial record DocumentJobInfoRequest : Model
 {
-    /// <summary>Идентификатор задачи из ответа создания.</summary>
+    /// <summary>The job id from the creation response.</summary>
     [JsonPropertyName("job_id")]
     public required string JobId { get; init; }
 }
@@ -1021,11 +1119,11 @@ public sealed partial record DocumentJobInfoRequest : Model
 /// <summary><c>DocumentJobPeriod</c> model.</summary>
 public sealed partial record DocumentJobPeriod : Model
 {
-    /// <summary>Начало периода, YYYY-MM-DD.</summary>
+    /// <summary>Start of the period, YYYY-MM-DD.</summary>
     [JsonPropertyName("from")]
     public required string From { get; init; }
 
-    /// <summary>Конец периода включительно, YYYY-MM-DD.</summary>
+    /// <summary>End of the period, inclusive, YYYY-MM-DD.</summary>
     [JsonPropertyName("to")]
     public required string To { get; init; }
 }
@@ -1033,26 +1131,26 @@ public sealed partial record DocumentJobPeriod : Model
 /// <summary><c>DocumentJobRequest</c> model.</summary>
 public sealed partial record DocumentJobRequest : Model
 {
-    /// <summary>Формат файла: pdf (по умолчанию) или csv. CSV собирается без вёрстки — для тяжёлых выписок дешевле и грузится в Excel/1С.</summary>
+    /// <summary>File format: pdf (default) or csv. CSV is built without layout — cheaper for heavy statements and imports into Excel/1C.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("format")]
     public string? Format { get; init; }
 
-    /// <summary>Начало периода, YYYY-MM-DD (по умолчанию — первое число текущего месяца).</summary>
+    /// <summary>Start of the period, YYYY-MM-DD (defaults to the first day of the current month).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("from")]
     public string? From { get; init; }
 
-    /// <summary>Вид отчёта: statement (операции), fees (комиссии) или ledger (движения баланса).</summary>
+    /// <summary>Report kind: statement (operations), fees (fees) or ledger (balance movements).</summary>
     [JsonPropertyName("kind")]
     public required DocumentJobKind Kind { get; init; }
 
-    /// <summary>Язык документа (по умолчанию en).</summary>
+    /// <summary>Document language (en by default).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("lang")]
     public string? Lang { get; init; }
 
-    /// <summary>Конец периода включительно, YYYY-MM-DD (по умолчанию — сегодня). Период — до двух лет.</summary>
+    /// <summary>End of the period, inclusive, YYYY-MM-DD (defaults to today). The period is up to two years.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("to")]
     public string? To { get; init; }
@@ -1061,50 +1159,50 @@ public sealed partial record DocumentJobRequest : Model
 /// <summary><c>DocumentJobView</c> model.</summary>
 public sealed partial record DocumentJobView : Model
 {
-    /// <summary>Когда задача поставлена (UTC).</summary>
+    /// <summary>When the job was queued (UTC).</summary>
     [JsonPropertyName("created_at")]
     public required string CreatedAt { get; init; }
 
-    /// <summary>Почему файла нет; есть у задачи в статусе failed или expired.</summary>
+    /// <summary>Why there is no file; present on a job in status failed or expired.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("error")]
     public DocumentJobError? Error { get; init; }
 
-    /// <summary>Готовый файл; есть у задачи в статусе done.</summary>
+    /// <summary>The finished file; present on a job in status done.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("file")]
     public DocumentJobFile? File { get; init; }
 
-    /// <summary>Формат файла: pdf или csv.</summary>
+    /// <summary>File format: pdf or csv.</summary>
     [JsonPropertyName("format")]
     public required string Format { get; init; }
 
-    /// <summary>Идентификатор задачи.</summary>
+    /// <summary>Job id.</summary>
     [JsonPropertyName("job_id")]
     public required string JobId { get; init; }
 
-    /// <summary>Вид отчёта.</summary>
+    /// <summary>Report kind.</summary>
     [JsonPropertyName("kind")]
     public required DocumentJobKind Kind { get; init; }
 
-    /// <summary>Язык документа.</summary>
+    /// <summary>Document language.</summary>
     [JsonPropertyName("lang")]
     public required string Lang { get; init; }
 
-    /// <summary>Период отчёта.</summary>
+    /// <summary>Report period.</summary>
     [JsonPropertyName("period")]
     public required DocumentJobPeriod Period { get; init; }
 
-    /// <summary>Срок готовности; есть, пока задача в очереди или в работе.</summary>
+    /// <summary>The readiness deadline; present while the job is queued or in progress.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("ready_within")]
     public string? ReadyWithin { get; init; }
 
-    /// <summary>Статус задачи: queued, processing, done, failed или expired.</summary>
+    /// <summary>Job status: queued, processing, done, failed or expired.</summary>
     [JsonPropertyName("status")]
     public required DocumentJobStatus Status { get; init; }
 
-    /// <summary>Когда задача менялась последний раз (UTC).</summary>
+    /// <summary>When the job last changed (UTC).</summary>
     [JsonPropertyName("updated_at")]
     public required string UpdatedAt { get; init; }
 }
@@ -1120,31 +1218,36 @@ public sealed partial record Error : Model
 /// <summary><c>ErrorError</c> model.</summary>
 public sealed partial record ErrorError : Model
 {
-    /// <summary>Стабильный машинный код `&lt;область&gt;.&lt;причина&gt;` — единственное поле, по которому можно ветвиться. Список известных кодов — ErrorCode; новые коды добавляются без смены версии, поэтому клиент обязан переживать незнакомый код.</summary>
+    /// <summary>A stable machine code `&lt;area&gt;.&lt;reason&gt;` — the only field you may branch on. The list of known codes is ErrorCode; new codes are added without a version change, so a client must tolerate an unknown code.</summary>
     [JsonPropertyName("code")]
     public required string Code { get; init; }
 
-    /// <summary>Имя поля запроса, к которому относится ошибка, в присланном написании. Отсутствует, если ошибка не про конкретное поле.</summary>
+    /// <summary>Machine-readable facts about this refusal, with keys documented by its code (e.g. `cli.permission_denied` carries `required_role` and `role`). Absent when the code has none.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyName("details")]
+    public IReadOnlyDictionary<string, string>? Details { get; init; }
+
+    /// <summary>The name of the request field the error refers to, spelled as sent. Absent if the error is not about a specific field.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("field")]
     public string? Field { get; init; }
 
-    /// <summary>Человекочитаемое пояснение. Текст не является контрактом и может меняться.</summary>
+    /// <summary>A human-readable explanation. The text is not part of the contract and may change.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("message")]
     public string? Message { get; init; }
 
-    /// <summary>Идентификатор запроса (дублирует X-Request-ID) — приложите его к обращению в поддержку.</summary>
+    /// <summary>The request id (duplicates X-Request-ID) — include it when contacting support.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("request_id")]
     public string? RequestId { get; init; }
 
-    /// <summary>Подсказка, через сколько секунд повторять (дублирует заголовок Retry-After).</summary>
+    /// <summary>A hint of how many seconds to wait before retrying (duplicates the Retry-After header).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("retry_after")]
     public long? RetryAfter { get; init; }
 
-    /// <summary>true — повтор того же запроса без изменений может пройти, когда условие снимется; false — повторять бессмысленно без правки запроса.</summary>
+    /// <summary>true — repeating the same request unchanged may succeed once the condition clears; false — retrying is pointless without changing the request.</summary>
     [JsonPropertyName("retryable")]
     public required bool Retryable { get; init; }
 }
@@ -1152,15 +1255,15 @@ public sealed partial record ErrorError : Model
 /// <summary><c>ExchangeRate</c> model.</summary>
 public sealed partial record ExchangeRate : Model
 {
-    /// <summary>Цена одной единицы from в to, десятичной строкой.</summary>
+    /// <summary>The price of one unit of from in to, as a decimal string.</summary>
     [JsonPropertyName("course")]
     public required string Course { get; init; }
 
-    /// <summary>Исходная валюта.</summary>
+    /// <summary>Source currency.</summary>
     [JsonPropertyName("from")]
     public required string From { get; init; }
 
-    /// <summary>Валюта котировки.</summary>
+    /// <summary>Quote currency.</summary>
     [JsonPropertyName("to")]
     public required string To { get; init; }
 }
@@ -1168,28 +1271,28 @@ public sealed partial record ExchangeRate : Model
 /// <summary><c>ExchangeRatesRequest</c> model.</summary>
 public sealed partial record ExchangeRatesRequest : Model
 {
-    /// <summary>Сумма в currency_from. Вместе с currency_from и currency_to добавляет в ответ блок modes: обе цены конвертации (instant/economy) с доступностью каждого режима</summary>
+    /// <summary>The amount in currency_from. Together with currency_from and currency_to it adds a modes block to the response: both conversion prices (instant/economy) with the availability of each mode</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public decimal? Amount { get; init; }
 
-    /// <summary>Код валюты. Если задан — вернётся курс только по нему. Если пусто или тело {} — по всем валютам</summary>
+    /// <summary>Currency code. If set, only its rate is returned. If empty or the body is {} — rates for all currencies</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("currency_from")]
     public string? CurrencyFrom { get; init; }
 
-    /// <summary>Валюта котировки: по умолчанию USDT; любой прайсинговый актив, включая фиаты с прямым фидом (EUR, RUB, …)</summary>
+    /// <summary>Quote currency: USDT by default; any pricing asset, including fiat currencies with a direct feed (EUR, RUB, …)</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("currency_to")]
     public string? CurrencyTo { get; init; }
 
-    /// <summary>Размер страницы, 1–100; по умолчанию 25</summary>
+    /// <summary>Page size, 1–100; default 25</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("limit")]
     public long? Limit { get; init; }
 
-    /// <summary>Смещение от начала списка; по умолчанию 0</summary>
+    /// <summary>Offset from the start of the list; default 0</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("offset")]
     public long? Offset { get; init; }
@@ -1198,16 +1301,16 @@ public sealed partial record ExchangeRatesRequest : Model
 /// <summary><c>ExchangeRatesResult</c> model.</summary>
 public sealed partial record ExchangeRatesResult : Model
 {
-    /// <summary>Курсы этой страницы.</summary>
+    /// <summary>The rates of this page.</summary>
     [JsonPropertyName("items")]
     public required IReadOnlyList<ExchangeRate> Items { get; init; }
 
-    /// <summary>Квота конвертации в обоих режимах; нет ключа — квоту не просили, она не удалась или пара вне режимов.</summary>
+    /// <summary>The conversion quota in both modes; no key — no quota was requested, it failed, or the pair is outside both modes.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("modes")]
     public ConversionModes? Modes { get; init; }
 
-    /// <summary>Блок пагинации.</summary>
+    /// <summary>Pagination block.</summary>
     [JsonPropertyName("paginate")]
     public required Pagination Paginate { get; init; }
 }
@@ -1215,16 +1318,16 @@ public sealed partial record ExchangeRatesResult : Model
 /// <summary><c>FaucetRequest</c> model.</summary>
 public sealed partial record FaucetRequest : Model
 {
-    /// <summary>Сумма тестовых денег, строкой; потолок 1000000 за вызов.</summary>
+    /// <summary>The amount of test money, as a string; capped at 1000000 per call.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Актив пополнения (USDT, BTC, …).</summary>
+    /// <summary>Deposit asset (USDT, BTC, …).</summary>
     [JsonPropertyName("asset")]
     public required string Asset { get; init; }
 
-    /// <summary>Ключ безопасного повтора; пусто — каждый вызов даёт новое пополнение.</summary>
+    /// <summary>The safe-retry key; empty — every call creates a new top-up.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("idempotency_key")]
     public string? IdempotencyKey { get; init; }
@@ -1233,16 +1336,16 @@ public sealed partial record FaucetRequest : Model
 /// <summary><c>FaucetResult</c> model.</summary>
 public sealed partial record FaucetResult : Model
 {
-    /// <summary>Зачисленная сумма в точности актива.</summary>
+    /// <summary>The credited amount at the asset's precision.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Актив пополнения.</summary>
+    /// <summary>Deposit asset.</summary>
     [JsonPropertyName("asset")]
     public required string Asset { get; init; }
 
-    /// <summary>Журнальная запись пополнения; повтор с тем же idempotency_key возвращает ту же.</summary>
+    /// <summary>The ledger entry of the top-up; a retry with the same idempotency_key returns the same one.</summary>
     [JsonPropertyName("journal_id")]
     public required string JournalId { get; init; }
 }
@@ -1250,27 +1353,27 @@ public sealed partial record FaucetResult : Model
 /// <summary><c>HistoryRequest</c> model.</summary>
 public sealed partial record HistoryRequest : Model
 {
-    /// <summary>Только для /v1/payout/history: true — вместе с выплатами вернуть и возвраты (прежнее поведение ленты без kind). По умолчанию false: возвраты — отдельно, kind=refund.</summary>
+    /// <summary>Only for /v1/payout/history: true — return refunds together with payouts (the former behavior of the feed without kind). Default false: refunds are separate, kind=refund.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("include_refunds")]
     public bool? IncludeRefunds { get; init; }
 
-    /// <summary>Только для /v1/payout/history: payout — обычные выплаты, refund — возвраты; пусто — обычные выплаты (с include_refunds=true — всё вместе).</summary>
+    /// <summary>Only for /v1/payout/history: payout — regular payouts, refund — refunds; empty — regular payouts (with include_refunds=true — everything together).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("kind")]
     public PayoutKind? Kind { get; init; }
 
-    /// <summary>Размер страницы, 1–100; вне диапазона — 25.</summary>
+    /// <summary>Page size, 1–100; out of range — 25.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("limit")]
     public long? Limit { get; init; }
 
-    /// <summary>Смещение от начала списка (новые сверху).</summary>
+    /// <summary>Offset from the start of the list (newest first).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("offset")]
     public long? Offset { get; init; }
 
-    /// <summary>Фильтр по статусу (точное значение из словаря статусов); пусто — все.</summary>
+    /// <summary>Filter by status (an exact value from the status vocabulary); empty — all.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("status")]
     public string? Status { get; init; }
@@ -1279,28 +1382,28 @@ public sealed partial record HistoryRequest : Model
 /// <summary><c>LinkCheckoutRequest</c> model.</summary>
 public sealed partial record LinkCheckoutRequest : Model
 {
-    /// <summary>Сумма, которую ввёл покупатель, в валюте цены ссылки; обязательна для open и range, для fixed игнорируется</summary>
+    /// <summary>The amount the buyer entered, in the link's price currency; required for open and range, ignored for fixed</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public decimal? Amount { get; init; }
 
-    /// <summary>Валюта расчёта — монета, которой платит покупатель; нужна, только если ссылка не закрепила pinned_currency</summary>
+    /// <summary>The settlement currency — the coin the buyer pays with; needed only if the link did not pin pinned_currency</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("currency")]
     public string? Currency { get; init; }
 
-    /// <summary>Сеть расчёта; нужна, только если ссылка не закрепила pinned_network</summary>
+    /// <summary>The settlement network; needed only if the link did not pin pinned_network</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("network")]
     public string? Network { get; init; }
 
-    /// <summary>Номер заказа магазина из встроенного виджета (data-oblodai-order-id); переносится на счёт и в вебхук для сопоставления с заказом; не ключ идемпотентности</summary>
+    /// <summary>The store's order number from the embedded widget (data-oblodai-order-id); carried over to the invoice and the webhook for matching with the order; not an idempotency key</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
 
-    /// <summary>Email покупателя — на него автоматически уйдёт чек после оплаты</summary>
+    /// <summary>The buyer's email — a receipt is sent to it automatically after payment</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("payer_email")]
     public string? PayerEmail { get; init; }
@@ -1309,12 +1412,12 @@ public sealed partial record LinkCheckoutRequest : Model
 /// <summary><c>LookupRequest</c> model.</summary>
 public sealed partial record LookupRequest : Model
 {
-    /// <summary>Ваша ссылка на заказ.</summary>
+    /// <summary>Your order reference.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
 
-    /// <summary>Идентификатор счёта в Oblodai. Нужен uuid или order_id; приоритет у uuid.</summary>
+    /// <summary>The invoice id in Oblodai. Either uuid or order_id is required; uuid takes precedence.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("uuid")]
     public string? Uuid { get; init; }
@@ -1323,11 +1426,11 @@ public sealed partial record LookupRequest : Model
 /// <summary><c>MassPayoutRequest</c> model.</summary>
 public sealed partial record MassPayoutRequest : Model
 {
-    /// <summary>Массив до 100 элементов; поля каждого — как в POST /v1/payout.</summary>
+    /// <summary>An array of up to 100 items; the fields of each are as in POST /v1/payout.</summary>
     [JsonPropertyName("payouts")]
     public required IReadOnlyList<PayoutRequest> Payouts { get; init; }
 
-    /// <summary>Метка происхождения, применяется ко всем элементам без своего source.</summary>
+    /// <summary>The origin label, applied to all items without their own source.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("source")]
     public string? Source { get; init; }
@@ -1336,7 +1439,7 @@ public sealed partial record MassPayoutRequest : Model
 /// <summary><c>MassPayoutResult</c> model.</summary>
 public sealed partial record MassPayoutResult : Model
 {
-    /// <summary>Элементы в порядке запроса.</summary>
+    /// <summary>Items in request order.</summary>
     [JsonPropertyName("items")]
     public required IReadOnlyList<MassPayoutResultItemsItem> Items { get; init; }
 }
@@ -1344,35 +1447,35 @@ public sealed partial record MassPayoutResult : Model
 /// <summary><c>MassPayoutResultItemsItem</c> model.</summary>
 public sealed partial record MassPayoutResultItemsItem : Model
 {
-    /// <summary>Машинный код отказа; есть при ok=false.</summary>
+    /// <summary>The machine code of the rejection; present when ok=false.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("error_code")]
     public string? ErrorCode { get; init; }
 
-    /// <summary>HTTP-статус, которым ответил бы одиночный вызов; есть при ok=false.</summary>
+    /// <summary>The HTTP status a single call would have returned; present when ok=false.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("http_status")]
     public long? HttpStatus { get; init; }
 
-    /// <summary>Номер элемента в запросе.</summary>
+    /// <summary>The item's number in the request.</summary>
     [JsonPropertyName("idx")]
     public required long Idx { get; init; }
 
-    /// <summary>Текст отказа; есть при ok=false.</summary>
+    /// <summary>The rejection text; present when ok=false.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("message")]
     public string? Message { get; init; }
 
-    /// <summary>Элемент выполнен.</summary>
+    /// <summary>The item was executed.</summary>
     [JsonPropertyName("ok")]
     public required bool Ok { get; init; }
 
-    /// <summary>order_id элемента, если он был в запросе.</summary>
+    /// <summary>The item's order_id, if it was in the request.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
 
-    /// <summary>Результат одиночного вызова; есть при ok=true.</summary>
+    /// <summary>The result of a single call; present when ok=true.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("result")]
     public PayoutItem? Result { get; init; }
@@ -1381,17 +1484,17 @@ public sealed partial record MassPayoutResultItemsItem : Model
 /// <summary><c>MerchantBalanceEntry</c> model.</summary>
 public sealed partial record MerchantBalanceEntry : Model
 {
-    /// <summary>Доступно к выводу, десятичной строкой.</summary>
+    /// <summary>Available to withdraw, as a decimal string.</summary>
     [JsonPropertyName("balance")]
     public required string Balance { get; init; }
 
-    /// <summary>Сколько этой монеты сейчас едет через очередь автоконверта (economy); нет ключа — очереди нет.</summary>
+    /// <summary>How much of this coin is currently in transit through the auto-conversion queue (economy); no key — no queue.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("converting")]
     public decimal? Converting { get; init; }
 
-    /// <summary>Символ актива.</summary>
+    /// <summary>Asset symbol.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 }
@@ -1399,7 +1502,7 @@ public sealed partial record MerchantBalanceEntry : Model
 /// <summary><c>MerchantBalances</c> model.</summary>
 public sealed partial record MerchantBalances : Model
 {
-    /// <summary>Доступные балансы по активам.</summary>
+    /// <summary>Available balances per asset.</summary>
     [JsonPropertyName("merchant")]
     public required IReadOnlyList<MerchantBalanceEntry> Merchant { get; init; }
 }
@@ -1407,11 +1510,11 @@ public sealed partial record MerchantBalances : Model
 /// <summary><c>OnboardKey</c> model.</summary>
 public sealed partial record OnboardKey : Model
 {
-    /// <summary>Публичная часть ключа.</summary>
+    /// <summary>The public part of the key.</summary>
     [JsonPropertyName("public_id")]
     public required string PublicId { get; init; }
 
-    /// <summary>Секрет ключа; пусто у повторного ответа песочницы (секрет хэширован).</summary>
+    /// <summary>The key secret; empty in a repeated sandbox response (the secret is hashed).</summary>
     [JsonPropertyName("secret")]
     public required string Secret { get; init; }
 }
@@ -1419,7 +1522,7 @@ public sealed partial record OnboardKey : Model
 /// <summary><c>OnrampIdle</c> model.</summary>
 public sealed partial record OnrampIdle : Model, IOnrampStatusResult
 {
-    /// <summary>Пустая строка: живой он-рамп-сессии по счёту нет.</summary>
+    /// <summary>An empty string: there is no live on-ramp session for the invoice.</summary>
     [JsonPropertyName("status")]
     public required OnrampIdleStatus Status { get; init; }
 }
@@ -1427,19 +1530,19 @@ public sealed partial record OnrampIdle : Model, IOnrampStatusResult
 /// <summary><c>OnrampSessionView</c> model.</summary>
 public sealed partial record OnrampSessionView : Model, IOnrampStatusResult
 {
-    /// <summary>Срок жизни сессии (UTC).</summary>
+    /// <summary>Session lifetime (UTC).</summary>
     [JsonPropertyName("expires_at")]
     public required string ExpiresAt { get; init; }
 
-    /// <summary>Причина отказа провайдера дословно; пусто, если её нет.</summary>
+    /// <summary>The provider's rejection reason, verbatim; empty if there is none.</summary>
     [JsonPropertyName("reason")]
     public required string Reason { get; init; }
 
-    /// <summary>Идентификатор он-рамп-сессии.</summary>
+    /// <summary>On-ramp session id.</summary>
     [JsonPropertyName("session_id")]
     public required string SessionId { get; init; }
 
-    /// <summary>Состояние сессии.</summary>
+    /// <summary>Session state.</summary>
     [JsonPropertyName("status")]
     public required OnrampStatus Status { get; init; }
 }
@@ -1447,37 +1550,37 @@ public sealed partial record OnrampSessionView : Model, IOnrampStatusResult
 /// <summary><c>OnrampStartResponse</c> model.</summary>
 public sealed partial record OnrampStartResponse : Model
 {
-    /// <summary>Срок жизни сессии, RFC3339 (UTC).</summary>
+    /// <summary>Session lifetime, RFC3339 (UTC).</summary>
     [JsonPropertyName("expires_at")]
     public required string ExpiresAt { get; init; }
 
-    /// <summary>Сколько спишется с карты, в целых единицах фиата; пусто, если провайдер суммы не назвал. Оценка: курс и комиссия провайдера двигаются.</summary>
+    /// <summary>How much will be charged to the card, in whole fiat units; empty if the provider did not name an amount. An estimate: the provider's rate and fee move.</summary>
     [JsonPropertyName("fiat_amount")]
     public required string FiatAmount { get; init; }
 
-    /// <summary>Валюта списания.</summary>
+    /// <summary>Debit currency.</summary>
     [JsonPropertyName("fiat_currency")]
     public required string FiatCurrency { get; init; }
 
-    /// <summary>Какой рамп дал лучшую котировку на момент открытия.</summary>
+    /// <summary>Which on-ramp gave the best quote at the time of opening.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("provider")]
     public string? Provider { get; init; }
 
-    /// <summary>Причина отказа провайдера, дословно, когда она есть.</summary>
+    /// <summary>The provider's rejection reason, verbatim, when there is one.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("reason")]
     public string? Reason { get; init; }
 
-    /// <summary>Идентификатор он-рамп-сессии.</summary>
+    /// <summary>On-ramp session id.</summary>
     [JsonPropertyName("session_id")]
     public required string SessionId { get; init; }
 
-    /// <summary>Состояние сессии.</summary>
+    /// <summary>Session state.</summary>
     [JsonPropertyName("status")]
     public required OnrampStatus Status { get; init; }
 
-    /// <summary>Подписанная ссылка на виджет покупки. Пустая, если покупка уже идёт: тогда смотрите status.</summary>
+    /// <summary>A signed link to the purchase widget. Empty if a purchase is already in progress: then check status.</summary>
     [JsonPropertyName("url")]
     public required string Url { get; init; }
 }
@@ -1485,12 +1588,12 @@ public sealed partial record OnrampStartResponse : Model
 /// <summary><c>PageRequest</c> model.</summary>
 public sealed partial record PageRequest : Model
 {
-    /// <summary>Размер страницы, 1–100; вне диапазона — 25.</summary>
+    /// <summary>Page size, 1–100; out of range — 25.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("limit")]
     public long? Limit { get; init; }
 
-    /// <summary>Смещение от начала списка.</summary>
+    /// <summary>Offset from the start of the list.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("offset")]
     public long? Offset { get; init; }
@@ -1499,19 +1602,19 @@ public sealed partial record PageRequest : Model
 /// <summary><c>Pagination</c> model.</summary>
 public sealed partial record Pagination : Model
 {
-    /// <summary>Есть ли записи дальше этой страницы.</summary>
+    /// <summary>Whether there are records beyond this page.</summary>
     [JsonPropertyName("has_pages")]
     public required bool HasPages { get; init; }
 
-    /// <summary>Смещение этой страницы.</summary>
+    /// <summary>The offset of this page.</summary>
     [JsonPropertyName("offset")]
     public required long Offset { get; init; }
 
-    /// <summary>Размер страницы, которую отдали.</summary>
+    /// <summary>The size of the page returned.</summary>
     [JsonPropertyName("per_page")]
     public required long PerPage { get; init; }
 
-    /// <summary>Всего записей по фильтру (на всех страницах).</summary>
+    /// <summary>Total records matching the filter (across all pages).</summary>
     [JsonPropertyName("total")]
     public required long Total { get; init; }
 }
@@ -1519,11 +1622,11 @@ public sealed partial record Pagination : Model
 /// <summary><c>PaySelectRequest</c> model.</summary>
 public sealed partial record PaySelectRequest : Model
 {
-    /// <summary>Выбранная валюта оплаты.</summary>
+    /// <summary>The chosen payment currency.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Выбранная сеть.</summary>
+    /// <summary>The chosen network.</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 }
@@ -1531,22 +1634,22 @@ public sealed partial record PaySelectRequest : Model
 /// <summary><c>PayServiceCommission</c> model.</summary>
 public sealed partial record PayServiceCommission : Model
 {
-    /// <summary>Единица fee_amount: USD у приёма, валюта выплаты у выплаты.</summary>
+    /// <summary>The unit of fee_amount: USD for accepting payments, the payout currency for payouts.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("currency")]
     public string? Currency { get; init; }
 
-    /// <summary>Фиксированная часть комиссии в валюте currency; null — не определилась.</summary>
+    /// <summary>The fixed part of the fee in currency; null — could not be determined.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("fee_amount")]
     public decimal? FeeAmount { get; init; }
 
-    /// <summary>exact — договорная ставка; estimated — оценка по сетевой комиссии.</summary>
+    /// <summary>exact — a contractual rate; estimated — an estimate based on the network fee.</summary>
     [JsonPropertyName("fee_type")]
     public required FeeType FeeType { get; init; }
 
-    /// <summary>Процент комиссии; null — не определился.</summary>
+    /// <summary>The fee percentage; null — could not be determined.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("percent")]
     public string? Percent { get; init; }
@@ -1559,11 +1662,11 @@ public sealed partial record PayServiceEntry : Model
     [JsonPropertyName("commission")]
     public required PayServiceCommission Commission { get; init; }
 
-    /// <summary>Валюта.</summary>
+    /// <summary>Currency.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Метод работает на этом развёртывании.</summary>
+    /// <summary>The method works on this deployment.</summary>
     [JsonPropertyName("is_available")]
     public required bool IsAvailable { get; init; }
 
@@ -1571,7 +1674,7 @@ public sealed partial record PayServiceEntry : Model
     [JsonPropertyName("limit")]
     public required PayServiceLimit Limit { get; init; }
 
-    /// <summary>Сеть.</summary>
+    /// <summary>Network.</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 }
@@ -1579,11 +1682,11 @@ public sealed partial record PayServiceEntry : Model
 /// <summary><c>PayServiceEntryList</c> model.</summary>
 public sealed partial record PayServiceEntryList : Model
 {
-    /// <summary>Записи этой страницы.</summary>
+    /// <summary>The records of this page.</summary>
     [JsonPropertyName("items")]
     public required IReadOnlyList<PayServiceEntry> Items { get; init; }
 
-    /// <summary>Блок пагинации.</summary>
+    /// <summary>Pagination block.</summary>
     [JsonPropertyName("paginate")]
     public required Pagination Paginate { get; init; }
 }
@@ -1591,16 +1694,16 @@ public sealed partial record PayServiceEntryList : Model
 /// <summary><c>PayServiceLimit</c> model.</summary>
 public sealed partial record PayServiceLimit : Model
 {
-    /// <summary>Единица сумм limit; нет ключа — нет и границ в деньгах.</summary>
+    /// <summary>The unit of the limit amounts; no key — no monetary bounds either.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("currency")]
     public string? Currency { get; init; }
 
-    /// <summary>Потолок одной выплаты в USD; "" — потолка нет (у приёма — всегда).</summary>
+    /// <summary>The cap for a single payout in USD; "" — no cap (always so for accepting payments).</summary>
     [JsonPropertyName("max_amount")]
     public required string MaxAmount { get; init; }
 
-    /// <summary>Минимальная сумма в валюте currency: "" — минимума нет, null — не определилась.</summary>
+    /// <summary>The minimum amount in currency: "" — no minimum, null — could not be determined.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("min_amount")]
     public string? MinAmount { get; init; }
@@ -1609,80 +1712,80 @@ public sealed partial record PayServiceLimit : Model
 /// <summary><c>PaymentBatchItem</c> model.</summary>
 public sealed partial record PaymentBatchItem : Model
 {
-    /// <summary>Допуск недо/переплаты, 0–5 %. Перекрывает настройку мерчанта.</summary>
+    /// <summary>Underpayment/overpayment tolerance, 0–5 %. Overrides the merchant setting.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("accuracy_payment_percent")]
     public double? AccuracyPaymentPercent { get; init; }
 
-    /// <summary>Приватные данные мерчанта, эхом в вебхуках (покупателю не видны).</summary>
+    /// <summary>The merchant's private data, echoed in webhooks (not visible to the buyer).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("additional_data")]
     public string? AdditionalData { get; init; }
 
-    /// <summary>Сумма к оплате в валюте currency.</summary>
+    /// <summary>The amount to pay in currency.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Код валюты цены: любой из 23 фиатов (USD, EUR, RUB, …) или любая монета (USDT, BTC, …). У JPY и KRW ноль знаков после запятой.</summary>
+    /// <summary>The price currency code: any of the 23 fiat currencies (USD, EUR, RUB, …) or any coin (USDT, BTC, …). JPY and KRW have zero decimal places.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Разрешить доплату остатка.</summary>
+    /// <summary>Allow paying the remainder.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("is_payment_multiple")]
     public bool? IsPaymentMultiple { get; init; }
 
-    /// <summary>Оживить просроченный счёт по order_id вместо создания нового.</summary>
+    /// <summary>Revive an expired invoice by order_id instead of creating a new one.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("is_refresh")]
     public bool? IsRefresh { get; init; }
 
-    /// <summary>Время жизни счёта в секундах, 300–43200; по умолчанию 3600. Значения вне диапазона обрезаются к ближайшей границе.</summary>
+    /// <summary>Invoice lifetime in seconds, 300–43200; default 3600. Out-of-range values are clamped to the nearest bound.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("lifetime_seconds")]
     public long? LifetimeSeconds { get; init; }
 
-    /// <summary>Сеть расчёта (напр. tron, ethereum). Необязательна — см. режимы выбора валюты и сети.</summary>
+    /// <summary>The settlement network (e.g. tron, ethereum). Optional — see the currency and network selection modes.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("network")]
     public string? Network { get; init; }
 
-    /// <summary>Ссылка мерчанта; ключ идемпотентности. Настоятельно рекомендуется.</summary>
+    /// <summary>The merchant reference; the idempotency key. Strongly recommended.</summary>
     [JsonPropertyName("order_id")]
     public required string OrderId { get; init; }
 
-    /// <summary>Email плательщика. Если задан — после оплаты на него автоматически уходит чек; он же получатель по умолчанию у POST /v1/payment/send-email.</summary>
+    /// <summary>The payer's email. If set, a receipt is sent to it automatically after payment; it is also the default recipient for POST /v1/payment/send-email.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("payer_email")]
     public string? PayerEmail { get; init; }
 
-    /// <summary>Устаревшее: % сетевой наценки на плательщика (0–100); payer-facing наценки настраиваются через discount.</summary>
+    /// <summary>Deprecated: % network surcharge on the payer (0–100); payer-facing surcharges are configured via discount.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("subtract")]
     public long? Subtract { get; init; }
 
-    /// <summary>Тема страницы оплаты: dark | light.</summary>
+    /// <summary>Payment page theme: dark | light.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("theme")]
     public string? Theme { get; init; }
 
-    /// <summary>Валюта расчёта — крипта, которой платят. По умолчанию = currency (только если currency — крипта); при цене в фиате задайте явно либо опустите вместе с network.</summary>
+    /// <summary>The settlement currency — the crypto used to pay. Defaults to currency (only if currency is crypto); for a fiat price set it explicitly or omit it together with network.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("to_currency")]
     public string? ToCurrency { get; init; }
 
-    /// <summary>Индивидуальный webhook для этого счёта. Требует зарегистрированного эндпоинта (POST /v1/webhooks): доставка подписывается его секретом.</summary>
+    /// <summary>A per-invoice webhook. Requires a registered endpoint (POST /v1/webhooks): the delivery is signed with its secret.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("url_callback")]
     public string? UrlCallback { get; init; }
 
-    /// <summary>Ссылка «назад в магазин» на странице оплаты.</summary>
+    /// <summary>The "back to store" link on the payment page.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("url_return")]
     public string? UrlReturn { get; init; }
 
-    /// <summary>Редирект после успешной оплаты.</summary>
+    /// <summary>Redirect after a successful payment.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("url_success")]
     public string? UrlSuccess { get; init; }
@@ -1691,12 +1794,12 @@ public sealed partial record PaymentBatchItem : Model
 /// <summary><c>PaymentBatchRequest</c> model.</summary>
 public sealed partial record PaymentBatchRequest : Model
 {
-    /// <summary>Что делать при ошибке элемента: continue (по умолчанию) — обрабатывать остальные; stop — прекратить обработку после первой ошибки.</summary>
+    /// <summary>What to do when an item fails: continue (default) — process the rest; stop — stop processing after the first error.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("on_error")]
     public BatchOnError? OnError { get; init; }
 
-    /// <summary>Массив от 1 до 5000 элементов — те же поля, что у POST /v1/payment; order_id обязателен у каждого элемента: по нему сопоставляются результаты и он защищает от дублей.</summary>
+    /// <summary>An array of 1 to 5000 items — the same fields as in POST /v1/payment; order_id is required on each item: results are matched by it and it protects against duplicates.</summary>
     [JsonPropertyName("payments")]
     public required IReadOnlyList<PaymentBatchItem> Payments { get; init; }
 }
@@ -1704,15 +1807,15 @@ public sealed partial record PaymentBatchRequest : Model
 /// <summary><c>PaymentDiscountRule</c> model.</summary>
 public sealed partial record PaymentDiscountRule : Model
 {
-    /// <summary>Монета правила. Пусто — правило по умолчанию для всех монет, у которых нет своего.</summary>
+    /// <summary>The rule's coin. Empty — the default rule for all coins that have no rule of their own.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Процент, от -99 до 99. Плюс — скидка плательщику за оплату этой монетой, минус — наценка.</summary>
+    /// <summary>Percent, from -99 to 99. Plus — a discount to the payer for paying with this coin, minus — a surcharge.</summary>
     [JsonPropertyName("discount_percent")]
     public required long DiscountPercent { get; init; }
 
-    /// <summary>Сеть. Пусто — любая сеть этой монеты.</summary>
+    /// <summary>Network. Empty — any network of this coin.</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 }
@@ -1720,11 +1823,11 @@ public sealed partial record PaymentDiscountRule : Model
 /// <summary><c>PaymentDiscountRuleList</c> model.</summary>
 public sealed partial record PaymentDiscountRuleList : Model
 {
-    /// <summary>Записи этой страницы.</summary>
+    /// <summary>The records of this page.</summary>
     [JsonPropertyName("items")]
     public required IReadOnlyList<PaymentDiscountRule> Items { get; init; }
 
-    /// <summary>Блок пагинации.</summary>
+    /// <summary>Pagination block.</summary>
     [JsonPropertyName("paginate")]
     public required Pagination Paginate { get; init; }
 }
@@ -1732,33 +1835,33 @@ public sealed partial record PaymentDiscountRuleList : Model
 /// <summary><c>PaymentFeeResult</c> model.</summary>
 public sealed partial record PaymentFeeResult : Model
 {
-    /// <summary>Разрешён ли мерчанту перенос комиссии на покупателя (решение оператора).</summary>
+    /// <summary>Whether the merchant is allowed to pass the fee on to the buyer (an operator decision).</summary>
     [JsonPropertyName("enabled")]
     public required bool Enabled { get; init; }
 
-    /// <summary>Фиксированная часть комиссии на платёж, USD десятичной строкой.</summary>
+    /// <summary>The fixed part of the fee per payment, USD as a decimal string.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("fee_fixed_usd")]
     public decimal? FeeFixedUsd { get; init; }
 
-    /// <summary>Устарело: та же фиксированная часть целыми центами США числом — читайте fee_fixed_usd.</summary>
+    /// <summary>Deprecated: the same fixed part in whole US cents as a number — read fee_fixed_usd.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("fee_fixed_usd_cents")]
     public long? FeeFixedUsdCents { get; init; }
 
-    /// <summary>true — персональный тариф; false — умолчание платформы.</summary>
+    /// <summary>true — a personal rate; false — the platform default.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("fee_individual")]
     public bool? FeeIndividual { get; init; }
 
-    /// <summary>Процент комиссии мерчанта.</summary>
+    /// <summary>The merchant fee percentage.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("fee_percent")]
     public decimal? FeePercent { get; init; }
 
-    /// <summary>Доля, которую применит следующий счёт; 0, если оператор выключил перенос комиссии.</summary>
+    /// <summary>The share the next invoice will apply; 0 if the operator has disabled fee pass-through.</summary>
     [JsonPropertyName("payer_pays_percent")]
     public required long PayerPaysPercent { get; init; }
 }
@@ -1766,192 +1869,192 @@ public sealed partial record PaymentFeeResult : Model
 /// <summary><c>PaymentInfoResult</c> model.</summary>
 public sealed partial record PaymentInfoResult : Model
 {
-    /// <summary>Ваши приватные данные, которые вернутся в ответе и в вебхуке.</summary>
+    /// <summary>Your private data, returned in the response and in the webhook.</summary>
     [JsonPropertyName("additional_data")]
     public required string AdditionalData { get; init; }
 
-    /// <summary>Адрес, на который клиент отправляет деньги. На XRP это классический r-адрес ОБЩЕГО кошелька — платёж обязан нести destination_tag, иначе сеть его отклонит.</summary>
+    /// <summary>The address the customer sends money to. On XRP this is the classic r-address of a SHARED wallet — the payment must carry destination_tag, otherwise the network rejects it.</summary>
     [JsonPropertyName("address")]
     public required string Address { get; init; }
 
-    /// <summary>Только XLM: те же реквизиты одной строкой — muxed-адрес M… (SEP-23), адрес и memo вместе; его же кодирует QR. Пусто на остальных сетях.</summary>
+    /// <summary>XLM only: the same payment details in one string — a muxed M… address (SEP-23), address and memo together; the QR code encodes it as well. Empty on other networks.</summary>
     [JsonPropertyName("address_muxed")]
     public required string AddressMuxed { get; init; }
 
-    /// <summary>QR-код адреса как PNG data:-URI — можно сразу в &lt;img src&gt;. На XRP кодирует X-address (адрес+тег одной строкой).</summary>
+    /// <summary>The address QR code as a PNG data: URI — can go straight into &lt;img src&gt;. On XRP it encodes the X-address (address + tag in one string).</summary>
     [JsonPropertyName("address_qr_code")]
     public required string AddressQrCode { get; init; }
 
-    /// <summary>Только XRP: те же реквизиты одной строкой в формате X-address (XLS-5) — адрес и тег вместе; его же кодирует QR. Пусто на остальных сетях.</summary>
+    /// <summary>XRP only: the same payment details in one string in X-address format (XLS-5) — address and tag together; the QR code encodes it as well. Empty on other networks.</summary>
     [JsonPropertyName("address_xaddress")]
     public required string AddressXaddress { get; init; }
 
-    /// <summary>Сумма к оплате в валюте цены (например, в USD).</summary>
+    /// <summary>The amount to pay in the price currency (e.g. USD).</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Сколько уже подтверждённо оплачено, в крипте оплаты; всегда строка (0, если ничего не пришло). Пусто, пока валюта оплаты не выбрана (счёт без валюты).</summary>
+    /// <summary>How much has already been paid and confirmed, in the payment crypto; always a string (0 if nothing has arrived). Empty until the payment currency is chosen (an invoice without a currency).</summary>
     [JsonPropertyName("amount_paid")]
     public required string AmountPaid { get; init; }
 
-    /// <summary>Сколько ещё осталось доплатить (к оплате − оплачено); 0, если хватает. Пусто, пока валюта оплаты не выбрана (счёт без валюты).</summary>
+    /// <summary>How much is still left to pay (due − paid); 0 if enough has been paid. Empty until the payment currency is chosen (an invoice without a currency).</summary>
     [JsonPropertyName("amount_remaining")]
     public required string AmountRemaining { get; init; }
 
-    /// <summary>Наша комиссия с этого платежа — УДЕРЖАННАЯ величина, в валюте оплаты (payer_currency). Ставка счёта уже включает амортизированный фиксированный сбор — второй раз он не берётся. ПУСТО, пока по счёту ничего не зачислено (и у валюто-агностичного счёта до выбора монеты): нуля здесь не бывает у неоплаченного счёта — «0» читалось бы как «комиссию не берут». У оплаченного счёта с нулевым тарифом 0 — настоящий.</summary>
+    /// <summary>Our fee on this payment — the WITHHELD amount, in the payment currency (payer_currency). The invoice rate already includes the amortized fixed fee — it is not charged a second time. EMPTY until anything has been credited on the invoice (and, for a currency-agnostic invoice, until a coin is chosen): an unpaid invoice never shows zero here — "0" would read as "no fee is charged". For a paid invoice with a zero rate, 0 is genuine.</summary>
     [JsonPropertyName("commission")]
     public required string Commission { get; init; }
 
-    /// <summary>Текущее число подтверждений входящего платежа.</summary>
+    /// <summary>The current number of confirmations of the incoming payment.</summary>
     [JsonPropertyName("confirmations")]
     public required long Confirmations { get; init; }
 
-    /// <summary>Время создания (ISO 8601).</summary>
+    /// <summary>Creation time (ISO 8601).</summary>
     [JsonPropertyName("created_at")]
     public required string CreatedAt { get; init; }
 
-    /// <summary>Валюта цены: фиат (USD, EUR, RUB, JPY… — см. pricing_currencies) или монета. Говорит, сколько счёт СТОИТ, а не чем за него платят (это payer_currency).</summary>
+    /// <summary>The price currency: fiat (USD, EUR, RUB, JPY… — see pricing_currencies) or a coin. It says how much the invoice COSTS, not what it is paid with (that is payer_currency).</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Только XRP: числовой destination tag, который клиент ОБЯЗАН указать в переводе (поле «тег/memo получателя» на бирже или в кошельке). Пусто на остальных сетях.</summary>
+    /// <summary>XRP only: the numeric destination tag the customer MUST specify in the transfer (the "recipient tag/memo" field at the exchange or in the wallet). Empty on other networks.</summary>
     [JsonPropertyName("destination_tag")]
     public required string DestinationTag { get; init; }
 
-    /// <summary>Подписанная ссылка на PDF-чек этой операции — открывается без API-ключа, можно вложить в письмо или отдать клиенту. Пусто, если генерация документов не включена.</summary>
+    /// <summary>A signed link to the PDF receipt of this operation — opens without an API key, can be attached to an email or given to the customer. Empty if document generation is not enabled.</summary>
     [JsonPropertyName("document_url")]
     public required string DocumentUrl { get; init; }
 
-    /// <summary>Курс, зафиксированный этим счётом (сколько валюты оплаты за 1 единицу валюты цены) — по нему рассчитан payer_amount. Пусто, пока валюта не выбрана.</summary>
+    /// <summary>The rate locked in by this invoice (how much of the payment currency per 1 unit of the price currency) — payer_amount is calculated from it. Empty until the currency is chosen.</summary>
     [JsonPropertyName("exchange_rate")]
     public required string ExchangeRate { get; init; }
 
-    /// <summary>Когда истекает счёт (ISO 8601, как и все временные поля).</summary>
+    /// <summary>When the invoice expires (ISO 8601, like all time fields).</summary>
     [JsonPropertyName("expired_at")]
     public required string ExpiredAt { get; init; }
 
-    /// <summary>Ставка комиссии этого счёта в процентах — та, что зафиксирована в момент создания (смена тарифа не меняет уже созданные счета). Уже включает амортизированный фиксированный сбор. В отличие от commission известна с первой секунды и присутствует всегда.</summary>
+    /// <summary>The fee rate of this invoice in percent — the one locked in at creation (a pricing change does not affect invoices already created). Already includes the amortized fixed fee. Unlike commission, it is known from the first second and is always present.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("fee_percent")]
     public required decimal FeePercent { get; init; }
 
-    /// <summary>true — статус финальный, больше не изменится.</summary>
+    /// <summary>true — the status is final and will not change again.</summary>
     [JsonPropertyName("is_final")]
     public required bool IsFinal { get; init; }
 
-    /// <summary>true — это валюто-агностичная ссылка, клиент ещё не выбрал валюту/сеть.</summary>
+    /// <summary>true — this is a currency-agnostic link; the customer has not chosen the currency/network yet.</summary>
     [JsonPropertyName("is_multi")]
     public required bool IsMulti { get; init; }
 
-    /// <summary>true — счёт песочницы (dev-магазина): деньги ненастоящие, в живую сверку не включайте.</summary>
+    /// <summary>true — a sandbox (dev store) invoice: the money is not real, do not include it in live reconciliation.</summary>
     [JsonPropertyName("is_test")]
     public required bool IsTest { get; init; }
 
-    /// <summary>Только XLM (Stellar): числовой memo (тип ID), который клиент ОБЯЗАН указать в переводе — поле «memo» на бирже или в кошельке. Пусто на остальных сетях.</summary>
+    /// <summary>XLM (Stellar) only: the numeric memo (ID type) the customer MUST specify in the transfer — the "memo" field at the exchange or in the wallet. Empty on other networks.</summary>
     [JsonPropertyName("memo")]
     public required string Memo { get; init; }
 
-    /// <summary>Сколько зачислено (или будет зачислено) вам: amount_paid − network_surcharge − commission. Сетевые расходы на сбор депозита оплачивает плательщик отдельной строкой (network_surcharge) — из вашей суммы они НЕ вычитаются. Пусто, пока валюта оплаты не выбрана (счёт без валюты).</summary>
+    /// <summary>How much has been (or will be) credited to you: amount_paid − network_surcharge − commission. The network costs of sweeping the deposit are paid by the payer as a separate line (network_surcharge) — they are NOT deducted from your amount. Empty until the payment currency is chosen (an invoice without a currency).</summary>
     [JsonPropertyName("merchant_amount")]
     public required string MerchantAmount { get; init; }
 
-    /// <summary>Ваша скидка или наценка для ВЫБРАННОГО способа оплаты, в валюте оплаты: на столько сдвинулась сумма плательщика из-за настройки по этой монете и сети. Положительное — плательщик платит МЕНЬШЕ (скидка), отрицательное — больше (наценка). Пусто, если настройки для метода нет.</summary>
+    /// <summary>Your discount or surcharge for the CHOSEN payment method, in the payment currency: how much the payer's amount shifted because of the setting for this coin and network. Positive — the payer pays LESS (discount), negative — more (surcharge). Empty if there is no setting for the method.</summary>
     [JsonPropertyName("method_adjustment")]
     public required string MethodAdjustment { get; init; }
 
-    /// <summary>Та же скидка/наценка в базисных пунктах (так она переживает переоценку курса). Знак тот же, что в настройке скидок: ПЛЮС — скидка, МИНУС — наценка.</summary>
+    /// <summary>The same discount/surcharge in basis points (this way it survives a rate re-quote). The sign is the same as in the discount setting: PLUS — a discount, MINUS — a surcharge.</summary>
     [JsonPropertyName("method_adjustment_bps")]
     public required long MethodAdjustmentBps { get; init; }
 
-    /// <summary>Сеть блокчейна (например, tron).</summary>
+    /// <summary>Blockchain network (e.g. tron).</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>Сетевая надбавка плательщика в валюте оплаты: стоимость сбора депозита в выбранной сети (активация адреса, если адрес новый, плюс энергия/газ с запасом), зафиксированная при выборе сети. Пусто до выбора сети; 0, если надбавка выключена.</summary>
+    /// <summary>The payer's network surcharge in the payment currency: the cost of sweeping the deposit on the chosen network (address activation, if the address is new, plus energy/gas with a margin), locked in when the network is chosen. Empty until the network is chosen; 0 if the surcharge is disabled.</summary>
     [JsonPropertyName("network_surcharge")]
     public required string NetworkSurcharge { get; init; }
 
-    /// <summary>Та же надбавка в базисных пунктах от суммы к оплате (так она переживает переоценку курса).</summary>
+    /// <summary>The same surcharge in basis points of the amount due (this way it survives a rate re-quote).</summary>
     [JsonPropertyName("network_surcharge_bps")]
     public required long NetworkSurchargeBps { get; init; }
 
-    /// <summary>Ваш номер заказа, который вы передали при создании.</summary>
+    /// <summary>Your order number that you passed at creation.</summary>
     [JsonPropertyName("order_id")]
     public required string OrderId { get; init; }
 
-    /// <summary>Момент фактической оплаты — зачисление последнего подтверждённого перевода (ISO 8601). null, пока оплата не пришла. Отличайте от updated_at: тот сдвигается любым изменением счёта.</summary>
+    /// <summary>The moment of actual payment — the crediting of the last confirmed transfer (ISO 8601). null until the payment arrives. Not to be confused with updated_at, which moves on any change to the invoice.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("paid_at")]
     public string? PaidAt { get; init; }
 
-    /// <summary>Адрес, С КОТОРОГО пришёл первый подтверждённый депозит — на аккаунт-сетях (EVM/Tron/Solana/TON); пусто на UTXO. ⚠ Это НЕ обязательно адрес для возврата: отправителем может быть биржа, сдача UTXO-транзакции или горячий омнибус крипто-он-рампа, если покупатель платил картой. Прежде чем возвращать деньги сюда, смотрите payer_address_is_refundable.</summary>
+    /// <summary>The address the first confirmed deposit came FROM — on account-based networks (EVM/Tron/Solana/TON); empty on UTXO. ⚠ This is NOT necessarily a refund address: the sender may be an exchange, the change of a UTXO transaction, or the omnibus hot wallet of a crypto on-ramp if the buyer paid by card. Before refunding money here, check payer_address_is_refundable.</summary>
     [JsonPropertyName("payer_address")]
     public required string PayerAddress { get; init; }
 
-    /// <summary>true — payer_address принадлежит плательщику, и в /v1/payment/refund можно опустить address (вернём на него). false — адрес возврата неизвестен (UTXO/XRP, оплата картой через он-рамп, адрес не записан): спросите адрес у покупателя и передайте address явно, иначе запрос будет отклонён с refund.no_address.</summary>
+    /// <summary>true — payer_address belongs to the payer, and address may be omitted in /v1/payment/refund (we refund to it). false — the refund address is unknown (UTXO/XRP, card payment via an on-ramp, address not recorded): ask the buyer for an address and pass address explicitly, otherwise the request is rejected with refund.no_address.</summary>
     [JsonPropertyName("payer_address_is_refundable")]
     public required bool PayerAddressIsRefundable { get; init; }
 
-    /// <summary>Сколько нужно отправить в крипте оплаты. Пусто, пока валюта оплаты не выбрана (счёт без валюты).</summary>
+    /// <summary>How much must be sent in the payment crypto. Empty until the payment currency is chosen (an invoice without a currency).</summary>
     [JsonPropertyName("payer_amount")]
     public required string PayerAmount { get; init; }
 
-    /// <summary>Валюта, в которой платит клиент (например, USDT). Пусто у валюто-агностичного счёта (is_multi), пока клиент не выбрал монету — валюты расчёта у него ещё нет.</summary>
+    /// <summary>The currency the customer pays in (e.g. USDT). Empty for a currency-agnostic invoice (is_multi) until the customer picks a coin — it has no settlement currency yet.</summary>
     [JsonPropertyName("payer_currency")]
     public required string PayerCurrency { get; init; }
 
-    /// <summary>E-mail плательщика, если вы его передали.</summary>
+    /// <summary>The payer's email, if you provided it.</summary>
     [JsonPropertyName("payer_email")]
     public required string PayerEmail { get; init; }
 
-    /// <summary>До какого момента действует зафиксированный payer_amount (ISO 8601; окно ~5 мин, после него страница оплаты перекотирует счёт). Пусто, когда перекотировки уже не будет: валюта не выбрана, депозит замечен, счёт вышел из created или истёк — сумма зафиксирована навсегда.</summary>
+    /// <summary>Until when the locked payer_amount is valid (ISO 8601; a ~5 min window, after which the payment page re-quotes the invoice). Empty when there will be no more re-quotes: the currency has not been chosen, a deposit has been seen, the invoice has left created or expired — the amount is locked for good.</summary>
     [JsonPropertyName("rate_expires_at")]
     public required string RateExpiresAt { get; init; }
 
-    /// <summary>Сколько возвращено от оплаченного: none, partial или full (отменённые и неудавшиеся возвраты не считаются).</summary>
+    /// <summary>How much of the paid amount has been refunded: none, partial or full (cancelled and failed refunds are not counted).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("refund_status")]
     public RefundRollup? RefundStatus { get; init; }
 
-    /// <summary>Возвраты по этому платежу.</summary>
+    /// <summary>Refunds for this payment.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("refunds")]
     public IReadOnlyList<PaymentRefundLine>? Refunds { get; init; }
 
-    /// <summary>Сколько подтверждений нужно для зачисления (зависит от суммы и сети).</summary>
+    /// <summary>How many confirmations are required for crediting (depends on the amount and the network).</summary>
     [JsonPropertyName("required_confirmations")]
     public required long RequiredConfirmations { get; init; }
 
-    /// <summary>Статус: select (клиент выбирает валюту) | created (ждём оплату) | confirm_check (видим оплату, ждём подтверждений; при amount_remaining &gt; 0 — частичная, ждём остаток) | paid (оплачено) | paid_over (переплата) | wrong_amount (недоплата, срок вышел) | expired (просрочен) | cancelled (отменён) | under_review (поступление задержано на проверке, разбирает оператор).</summary>
+    /// <summary>Status: select (the customer is choosing a currency) | created (awaiting payment) | confirm_check (payment seen, awaiting confirmations; with amount_remaining &gt; 0 — partial, awaiting the remainder) | paid (paid) | paid_over (overpaid) | wrong_amount (underpaid, expired) | expired (expired) | cancelled (cancelled) | under_review (the deposit is held for review, an operator is handling it).</summary>
     [JsonPropertyName("status")]
     public required PaymentStatus Status { get; init; }
 
-    /// <summary>Все подтверждённые переводы, которыми оплачен счёт. Частичная оплата несколькими переводами — штатный сценарий wrong_amount; один txid наверху — лишь последний замеченный.</summary>
+    /// <summary>All confirmed transfers that paid the invoice. Partial payment by several transfers is a regular wrong_amount scenario; the single txid above is only the last one seen.</summary>
     [JsonPropertyName("tx_list")]
     public required IReadOnlyList<PaymentTx> TxList { get; init; }
 
-    /// <summary>Хеш входящей транзакции (когда замечена).</summary>
+    /// <summary>The hash of the incoming transaction (once seen).</summary>
     [JsonPropertyName("txid")]
     public required string Txid { get; init; }
 
-    /// <summary>Время последнего изменения (ISO 8601).</summary>
+    /// <summary>Time of the last change (ISO 8601).</summary>
     [JsonPropertyName("updated_at")]
     public required string UpdatedAt { get; init; }
 
-    /// <summary>Ссылка на готовую страницу оплаты.</summary>
+    /// <summary>A link to the ready-made payment page.</summary>
     [JsonPropertyName("url")]
     public required string Url { get; init; }
 
-    /// <summary>Ссылка «вернуться в магазин» до оплаты.</summary>
+    /// <summary>The "back to store" link before payment.</summary>
     [JsonPropertyName("url_return")]
     public required string UrlReturn { get; init; }
 
-    /// <summary>Куда перенаправить после успешной оплаты.</summary>
+    /// <summary>Where to redirect after a successful payment.</summary>
     [JsonPropertyName("url_success")]
     public required string UrlSuccess { get; init; }
 
-    /// <summary>Наш идентификатор платежа (используйте его в info/refund).</summary>
+    /// <summary>Our payment identifier (use it in info/refund).</summary>
     [JsonPropertyName("uuid")]
     public required string Uuid { get; init; }
 }
@@ -1959,52 +2062,52 @@ public sealed partial record PaymentInfoResult : Model
 /// <summary><c>PaymentLinkCreateRequest</c> model.</summary>
 public sealed partial record PaymentLinkCreateRequest : Model
 {
-    /// <summary>Сумма — для режима fixed; обязательна в этом режиме</summary>
+    /// <summary>Amount — for fixed mode; required in this mode</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("amount_fixed")]
     public string? AmountFixed { get; init; }
 
-    /// <summary>Режим суммы: fixed | open | range</summary>
+    /// <summary>Amount mode: fixed | open | range</summary>
     [JsonPropertyName("amount_mode")]
     public required AmountMode AmountMode { get; init; }
 
-    /// <summary>Валюта цены — фиат (USD, EUR, RUB, …) или монета; список — pricing_currencies из GET /v1/currencies</summary>
+    /// <summary>The price currency — fiat (USD, EUR, RUB, …) or a coin; the list is pricing_currencies from GET /v1/currencies</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Описание на странице оплаты</summary>
+    /// <summary>Description on the payment page</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("description")]
     public string? Description { get; init; }
 
-    /// <summary>Срок жизни ссылки, секунд от момента создания; 0 (по умолчанию) — ссылка бессрочная</summary>
+    /// <summary>The link lifetime, in seconds from creation; 0 (default) — the link never expires</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("expires_in_seconds")]
     public long? ExpiresInSeconds { get; init; }
 
-    /// <summary>Верхняя граница — для range; обязательна в этом режиме</summary>
+    /// <summary>Upper bound — for range; required in this mode</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("max_amount")]
     public decimal? MaxAmount { get; init; }
 
-    /// <summary>Нижняя граница: необязательный «пол» для open, обязательный минимум для range</summary>
+    /// <summary>Lower bound: an optional "floor" for open, a required minimum for range</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("min_amount")]
     public decimal? MinAmount { get; init; }
 
-    /// <summary>Валюта расчёта (монета), закреплённая за ссылкой; пусто — монету выбирает покупатель</summary>
+    /// <summary>The settlement currency (coin) pinned to the link; empty — the buyer chooses the coin</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("pinned_currency")]
     public string? PinnedCurrency { get; init; }
 
-    /// <summary>Сеть расчёта, закреплённая за ссылкой; пусто — сеть выбирает покупатель</summary>
+    /// <summary>The settlement network pinned to the link; empty — the buyer chooses the network</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("pinned_network")]
     public string? PinnedNetwork { get; init; }
 
-    /// <summary>Заголовок на странице оплаты</summary>
+    /// <summary>Title on the payment page</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("title")]
     public string? Title { get; init; }
@@ -2013,76 +2116,76 @@ public sealed partial record PaymentLinkCreateRequest : Model
 /// <summary><c>PaymentLinkDetail</c> model.</summary>
 public sealed partial record PaymentLinkDetail : Model
 {
-    /// <summary>Ссылка принимает оплату.</summary>
+    /// <summary>The link accepts payments.</summary>
     [JsonPropertyName("active")]
     public required bool Active { get; init; }
 
-    /// <summary>Сумма для режима fixed.</summary>
+    /// <summary>The amount for fixed mode.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount_fixed")]
     public decimal? AmountFixed { get; init; }
 
-    /// <summary>Режим суммы.</summary>
+    /// <summary>Amount mode.</summary>
     [JsonPropertyName("amount_mode")]
     public required AmountMode AmountMode { get; init; }
 
-    /// <summary>Когда создана (UTC).</summary>
+    /// <summary>When created (UTC).</summary>
     [JsonPropertyName("created_at")]
     public required string CreatedAt { get; init; }
 
-    /// <summary>Валюта цены.</summary>
+    /// <summary>Price currency.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Описание на странице оплаты.</summary>
+    /// <summary>Description on the payment page.</summary>
     [JsonPropertyName("description")]
     public required string Description { get; init; }
 
-    /// <summary>Подписанная ссылка на PDF-плакат с QR оплаты; пусто, когда рендер документов не включён.</summary>
+    /// <summary>A signed link to a PDF poster with the payment QR code; empty when document rendering is not enabled.</summary>
     [JsonPropertyName("document_url")]
     public required string DocumentUrl { get; init; }
 
-    /// <summary>Когда ссылка истекает (UTC); нет — бессрочная.</summary>
+    /// <summary>When the link expires (UTC); absent — never expires.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("expires_at")]
     public string? ExpiresAt { get; init; }
 
-    /// <summary>Идентификатор ссылки.</summary>
+    /// <summary>Link id.</summary>
     [JsonPropertyName("link_id")]
     public required string LinkId { get; init; }
 
-    /// <summary>Верхняя граница для range.</summary>
+    /// <summary>Upper bound for range.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("max_amount")]
     public decimal? MaxAmount { get; init; }
 
-    /// <summary>Нижняя граница для open/range.</summary>
+    /// <summary>Lower bound for open/range.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("min_amount")]
     public decimal? MinAmount { get; init; }
 
-    /// <summary>Платежи по ссылке, страница по limit/offset запроса.</summary>
+    /// <summary>Payments through the link, paged by the request's limit/offset.</summary>
     [JsonPropertyName("payments")]
     public required IReadOnlyList<PaymentLinkPayment> Payments { get; init; }
 
-    /// <summary>Закреплённая валюта оплаты.</summary>
+    /// <summary>The pinned payment currency.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("pinned_currency")]
     public string? PinnedCurrency { get; init; }
 
-    /// <summary>Закреплённая сеть оплаты.</summary>
+    /// <summary>The pinned payment network.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("pinned_network")]
     public string? PinnedNetwork { get; init; }
 
-    /// <summary>Заголовок страницы оплаты.</summary>
+    /// <summary>Payment page title.</summary>
     [JsonPropertyName("title")]
     public required string Title { get; init; }
 
-    /// <summary>Публичный URL страницы оплаты; пусто, если публичный адрес не настроен.</summary>
+    /// <summary>The public URL of the payment page; empty if the public address is not configured.</summary>
     [JsonPropertyName("url")]
     public required string Url { get; init; }
 }
@@ -2090,16 +2193,16 @@ public sealed partial record PaymentLinkDetail : Model
 /// <summary><c>PaymentLinkLookupRequest</c> model.</summary>
 public sealed partial record PaymentLinkLookupRequest : Model
 {
-    /// <summary>Размер страницы платежей по ссылке, 1–100; вне диапазона — 25.</summary>
+    /// <summary>The page size for payments through the link, 1–100; out of range — 25.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("limit")]
     public long? Limit { get; init; }
 
-    /// <summary>Идентификатор платёжной ссылки.</summary>
+    /// <summary>Payment link id.</summary>
     [JsonPropertyName("link_id")]
     public required string LinkId { get; init; }
 
-    /// <summary>Смещение страницы платежей.</summary>
+    /// <summary>The offset of the payments page.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("offset")]
     public long? Offset { get; init; }
@@ -2108,29 +2211,29 @@ public sealed partial record PaymentLinkLookupRequest : Model
 /// <summary><c>PaymentLinkPayment</c> model.</summary>
 public sealed partial record PaymentLinkPayment : Model
 {
-    /// <summary>Цена счёта в валюте цены ссылки.</summary>
+    /// <summary>The invoice price in the link's price currency.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Когда создан (UTC).</summary>
+    /// <summary>When created (UTC).</summary>
     [JsonPropertyName("created_at")]
     public required string CreatedAt { get; init; }
 
-    /// <summary>Валюта цены.</summary>
+    /// <summary>Price currency.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Номер заказа магазина, если виджет его передал.</summary>
+    /// <summary>The store's order number, if the widget passed one.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
 
-    /// <summary>Статус платежа.</summary>
+    /// <summary>Payment status.</summary>
     [JsonPropertyName("status")]
     public required PaymentStatus Status { get; init; }
 
-    /// <summary>Идентификатор платежа.</summary>
+    /// <summary>Payment id.</summary>
     [JsonPropertyName("uuid")]
     public required string Uuid { get; init; }
 }
@@ -2138,50 +2241,50 @@ public sealed partial record PaymentLinkPayment : Model
 /// <summary><c>PaymentLinkPublicView</c> model.</summary>
 public sealed partial record PaymentLinkPublicView : Model
 {
-    /// <summary>Сумма для fixed.</summary>
+    /// <summary>Amount for fixed.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("amount_fixed")]
     public string? AmountFixed { get; init; }
 
-    /// <summary>fixed, open или range.</summary>
+    /// <summary>fixed, open or range.</summary>
     [JsonPropertyName("amount_mode")]
     public required AmountMode AmountMode { get; init; }
 
-    /// <summary>Валюта цены.</summary>
+    /// <summary>Price currency.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Описание.</summary>
+    /// <summary>Description.</summary>
     [JsonPropertyName("description")]
     public required string Description { get; init; }
 
-    /// <summary>Идентификатор ссылки.</summary>
+    /// <summary>Link id.</summary>
     [JsonPropertyName("link_id")]
     public required string LinkId { get; init; }
 
-    /// <summary>Верхняя граница для range.</summary>
+    /// <summary>Upper bound for range.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("max_amount")]
     public decimal? MaxAmount { get; init; }
 
-    /// <summary>Нижняя граница для open/range.</summary>
+    /// <summary>Lower bound for open/range.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("min_amount")]
     public decimal? MinAmount { get; init; }
 
-    /// <summary>Закреплённая валюта оплаты.</summary>
+    /// <summary>The pinned payment currency.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("pinned_currency")]
     public string? PinnedCurrency { get; init; }
 
-    /// <summary>Закреплённая сеть оплаты.</summary>
+    /// <summary>The pinned payment network.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("pinned_network")]
     public string? PinnedNetwork { get; init; }
 
-    /// <summary>Заголовок страницы.</summary>
+    /// <summary>Page title.</summary>
     [JsonPropertyName("title")]
     public required string Title { get; init; }
 }
@@ -2189,15 +2292,15 @@ public sealed partial record PaymentLinkPublicView : Model
 /// <summary><c>PaymentLinkResponse</c> model.</summary>
 public sealed partial record PaymentLinkResponse : Model
 {
-    /// <summary>Подписанная ссылка на PDF-плакат с QR оплаты (печать на кассу). Пусто, если генерация документов не включена.</summary>
+    /// <summary>A signed link to a PDF poster with the payment QR code (for printing at the till). Empty if document generation is not enabled.</summary>
     [JsonPropertyName("document_url")]
     public required string DocumentUrl { get; init; }
 
-    /// <summary>Идентификатор ссылки</summary>
+    /// <summary>Link id</summary>
     [JsonPropertyName("link_id")]
     public required string LinkId { get; init; }
 
-    /// <summary>Публичный URL страницы оплаты — его вы даёте покупателю: кнопкой, в письме, QR-кодом</summary>
+    /// <summary>The public URL of the payment page — the one you give to the buyer: as a button, in an email, as a QR code</summary>
     [JsonPropertyName("url")]
     public required string Url { get; init; }
 }
@@ -2205,11 +2308,11 @@ public sealed partial record PaymentLinkResponse : Model
 /// <summary><c>PaymentLinkToggleRequest</c> model.</summary>
 public sealed partial record PaymentLinkToggleRequest : Model
 {
-    /// <summary>true — ссылка принимает оплату; false — выключена (страница покажет, что ссылка неактивна).</summary>
+    /// <summary>true — the link accepts payments; false — disabled (the page will show that the link is inactive).</summary>
     [JsonPropertyName("active")]
     public required bool Active { get; init; }
 
-    /// <summary>Идентификатор платёжной ссылки.</summary>
+    /// <summary>Payment link id.</summary>
     [JsonPropertyName("link_id")]
     public required string LinkId { get; init; }
 }
@@ -2217,11 +2320,11 @@ public sealed partial record PaymentLinkToggleRequest : Model
 /// <summary><c>PaymentLinkToggled</c> model.</summary>
 public sealed partial record PaymentLinkToggled : Model
 {
-    /// <summary>Новое состояние: true — принимает оплату.</summary>
+    /// <summary>The new state: true — accepts payments.</summary>
     [JsonPropertyName("active")]
     public required bool Active { get; init; }
 
-    /// <summary>Идентификатор ссылки.</summary>
+    /// <summary>Link id.</summary>
     [JsonPropertyName("link_id")]
     public required string LinkId { get; init; }
 }
@@ -2229,72 +2332,72 @@ public sealed partial record PaymentLinkToggled : Model
 /// <summary><c>PaymentLinkView</c> model.</summary>
 public sealed partial record PaymentLinkView : Model
 {
-    /// <summary>Ссылка принимает оплату.</summary>
+    /// <summary>The link accepts payments.</summary>
     [JsonPropertyName("active")]
     public required bool Active { get; init; }
 
-    /// <summary>Сумма для режима fixed.</summary>
+    /// <summary>The amount for fixed mode.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount_fixed")]
     public decimal? AmountFixed { get; init; }
 
-    /// <summary>Режим суммы.</summary>
+    /// <summary>Amount mode.</summary>
     [JsonPropertyName("amount_mode")]
     public required AmountMode AmountMode { get; init; }
 
-    /// <summary>Когда создана (UTC).</summary>
+    /// <summary>When created (UTC).</summary>
     [JsonPropertyName("created_at")]
     public required string CreatedAt { get; init; }
 
-    /// <summary>Валюта цены.</summary>
+    /// <summary>Price currency.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Описание на странице оплаты.</summary>
+    /// <summary>Description on the payment page.</summary>
     [JsonPropertyName("description")]
     public required string Description { get; init; }
 
-    /// <summary>Подписанная ссылка на PDF-плакат с QR оплаты; пусто, когда рендер документов не включён.</summary>
+    /// <summary>A signed link to a PDF poster with the payment QR code; empty when document rendering is not enabled.</summary>
     [JsonPropertyName("document_url")]
     public required string DocumentUrl { get; init; }
 
-    /// <summary>Когда ссылка истекает (UTC); нет — бессрочная.</summary>
+    /// <summary>When the link expires (UTC); absent — never expires.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("expires_at")]
     public string? ExpiresAt { get; init; }
 
-    /// <summary>Идентификатор ссылки.</summary>
+    /// <summary>Link id.</summary>
     [JsonPropertyName("link_id")]
     public required string LinkId { get; init; }
 
-    /// <summary>Верхняя граница для range.</summary>
+    /// <summary>Upper bound for range.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("max_amount")]
     public decimal? MaxAmount { get; init; }
 
-    /// <summary>Нижняя граница для open/range.</summary>
+    /// <summary>Lower bound for open/range.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("min_amount")]
     public decimal? MinAmount { get; init; }
 
-    /// <summary>Закреплённая валюта оплаты.</summary>
+    /// <summary>The pinned payment currency.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("pinned_currency")]
     public string? PinnedCurrency { get; init; }
 
-    /// <summary>Закреплённая сеть оплаты.</summary>
+    /// <summary>The pinned payment network.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("pinned_network")]
     public string? PinnedNetwork { get; init; }
 
-    /// <summary>Заголовок страницы оплаты.</summary>
+    /// <summary>Payment page title.</summary>
     [JsonPropertyName("title")]
     public required string Title { get; init; }
 
-    /// <summary>Публичный URL страницы оплаты; пусто, если публичный адрес не настроен.</summary>
+    /// <summary>The public URL of the payment page; empty if the public address is not configured.</summary>
     [JsonPropertyName("url")]
     public required string Url { get; init; }
 }
@@ -2302,11 +2405,11 @@ public sealed partial record PaymentLinkView : Model
 /// <summary><c>PaymentLinkViewList</c> model.</summary>
 public sealed partial record PaymentLinkViewList : Model
 {
-    /// <summary>Записи этой страницы.</summary>
+    /// <summary>The records of this page.</summary>
     [JsonPropertyName("items")]
     public required IReadOnlyList<PaymentLinkView> Items { get; init; }
 
-    /// <summary>Блок пагинации.</summary>
+    /// <summary>Pagination block.</summary>
     [JsonPropertyName("paginate")]
     public required Pagination Paginate { get; init; }
 }
@@ -2314,19 +2417,19 @@ public sealed partial record PaymentLinkViewList : Model
 /// <summary><c>PaymentQRResult</c> model.</summary>
 public sealed partial record PaymentQRResult : Model
 {
-    /// <summary>Депозитный адрес; пусто, пока его нет.</summary>
+    /// <summary>The deposit address; empty until there is one.</summary>
     [JsonPropertyName("address")]
     public required string Address { get; init; }
 
-    /// <summary>PNG QR-кода как data:-URI; "" — адреса ещё нет (монета не выбрана) или он не платёжный (песочница).</summary>
+    /// <summary>The QR code PNG as a data: URI; "" — there is no address yet (the coin has not been chosen) or it is not a payment address (sandbox).</summary>
     [JsonPropertyName("image")]
     public required string Image { get; init; }
 
-    /// <summary>true — в QR платёжный запрос с суммой (кошелёк подставит её сам); false — только адрес, сумму плательщик вводит.</summary>
+    /// <summary>true — the QR code holds a payment request with the amount (the wallet fills it in); false — address only, the payer enters the amount.</summary>
     [JsonPropertyName("is_uri")]
     public required bool IsUri { get; init; }
 
-    /// <summary>Что закодировано в QR: платёжный URI сети с суммой или голый адрес.</summary>
+    /// <summary>What the QR code encodes: the network's payment URI with the amount, or the bare address.</summary>
     [JsonPropertyName("payload")]
     public required string Payload { get; init; }
 }
@@ -2334,32 +2437,32 @@ public sealed partial record PaymentQRResult : Model
 /// <summary><c>PaymentRefundLine</c> model.</summary>
 public sealed partial record PaymentRefundLine : Model
 {
-    /// <summary>Куда возвращено.</summary>
+    /// <summary>Where the refund went.</summary>
     [JsonPropertyName("address")]
     public required string Address { get; init; }
 
-    /// <summary>Сумма возврата в монете платежа.</summary>
+    /// <summary>The refund amount in the payment coin.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Когда создан (RFC 3339).</summary>
+    /// <summary>When created (RFC 3339).</summary>
     [JsonPropertyName("created_at")]
     public required string CreatedAt { get; init; }
 
-    /// <summary>Статус возврата окончательный.</summary>
+    /// <summary>The refund status is final.</summary>
     [JsonPropertyName("is_final")]
     public required bool IsFinal { get; init; }
 
-    /// <summary>Статус выплаты-возврата.</summary>
+    /// <summary>The status of the refund payout.</summary>
     [JsonPropertyName("status")]
     public required PayoutStatus Status { get; init; }
 
-    /// <summary>Хэш транзакции возврата; пусто, пока не отправлен.</summary>
+    /// <summary>The refund transaction hash; empty until sent.</summary>
     [JsonPropertyName("txid")]
     public required string Txid { get; init; }
 
-    /// <summary>Идентификатор возврата (это выплата).</summary>
+    /// <summary>The refund id (it is a payout).</summary>
     [JsonPropertyName("uuid")]
     public required string Uuid { get; init; }
 }
@@ -2367,81 +2470,81 @@ public sealed partial record PaymentRefundLine : Model
 /// <summary><c>PaymentRequest</c> model.</summary>
 public sealed partial record PaymentRequest : Model
 {
-    /// <summary>Допуск недо/переплаты, 0–5 %. Перекрывает настройку мерчанта.</summary>
+    /// <summary>Underpayment/overpayment tolerance, 0–5 %. Overrides the merchant setting.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("accuracy_payment_percent")]
     public double? AccuracyPaymentPercent { get; init; }
 
-    /// <summary>Приватные данные мерчанта, эхом в вебхуках (покупателю не видны).</summary>
+    /// <summary>The merchant's private data, echoed in webhooks (not visible to the buyer).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("additional_data")]
     public string? AdditionalData { get; init; }
 
-    /// <summary>Сумма к оплате в валюте currency.</summary>
+    /// <summary>The amount to pay in currency.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Код валюты цены: любой из 23 фиатов (USD, EUR, RUB, …) или любая монета (USDT, BTC, …). У JPY и KRW ноль знаков после запятой.</summary>
+    /// <summary>The price currency code: any of the 23 fiat currencies (USD, EUR, RUB, …) or any coin (USDT, BTC, …). JPY and KRW have zero decimal places.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Разрешить доплату остатка.</summary>
+    /// <summary>Allow paying the remainder.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("is_payment_multiple")]
     public bool? IsPaymentMultiple { get; init; }
 
-    /// <summary>Оживить просроченный счёт по order_id вместо создания нового.</summary>
+    /// <summary>Revive an expired invoice by order_id instead of creating a new one.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("is_refresh")]
     public bool? IsRefresh { get; init; }
 
-    /// <summary>Время жизни счёта в секундах, 300–43200; по умолчанию 3600. Значения вне диапазона обрезаются к ближайшей границе.</summary>
+    /// <summary>Invoice lifetime in seconds, 300–43200; default 3600. Out-of-range values are clamped to the nearest bound.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("lifetime_seconds")]
     public long? LifetimeSeconds { get; init; }
 
-    /// <summary>Сеть расчёта (напр. tron, ethereum). Необязательна — см. режимы выбора валюты и сети.</summary>
+    /// <summary>The settlement network (e.g. tron, ethereum). Optional — see the currency and network selection modes.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("network")]
     public string? Network { get; init; }
 
-    /// <summary>Ссылка мерчанта; ключ идемпотентности. Настоятельно рекомендуется.</summary>
+    /// <summary>The merchant reference; the idempotency key. Strongly recommended.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
 
-    /// <summary>Email плательщика. Если задан — после оплаты на него автоматически уходит чек; он же получатель по умолчанию у POST /v1/payment/send-email.</summary>
+    /// <summary>The payer's email. If set, a receipt is sent to it automatically after payment; it is also the default recipient for POST /v1/payment/send-email.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("payer_email")]
     public string? PayerEmail { get; init; }
 
-    /// <summary>Устаревшее: % сетевой наценки на плательщика (0–100); payer-facing наценки настраиваются через discount.</summary>
+    /// <summary>Deprecated: % network surcharge on the payer (0–100); payer-facing surcharges are configured via discount.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("subtract")]
     public long? Subtract { get; init; }
 
-    /// <summary>Тема страницы оплаты: dark | light.</summary>
+    /// <summary>Payment page theme: dark | light.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("theme")]
     public string? Theme { get; init; }
 
-    /// <summary>Валюта расчёта — крипта, которой платят. По умолчанию = currency (только если currency — крипта); при цене в фиате задайте явно либо опустите вместе с network.</summary>
+    /// <summary>The settlement currency — the crypto used to pay. Defaults to currency (only if currency is crypto); for a fiat price set it explicitly or omit it together with network.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("to_currency")]
     public string? ToCurrency { get; init; }
 
-    /// <summary>Индивидуальный webhook для этого счёта. Требует зарегистрированного эндпоинта (POST /v1/webhooks): доставка подписывается его секретом.</summary>
+    /// <summary>A per-invoice webhook. Requires a registered endpoint (POST /v1/webhooks): the delivery is signed with its secret.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("url_callback")]
     public string? UrlCallback { get; init; }
 
-    /// <summary>Ссылка «назад в магазин» на странице оплаты.</summary>
+    /// <summary>The "back to store" link on the payment page.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("url_return")]
     public string? UrlReturn { get; init; }
 
-    /// <summary>Редирект после успешной оплаты.</summary>
+    /// <summary>Redirect after a successful payment.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("url_success")]
     public string? UrlSuccess { get; init; }
@@ -2450,24 +2553,24 @@ public sealed partial record PaymentRequest : Model
 /// <summary><c>PaymentTx</c> model.</summary>
 public sealed partial record PaymentTx : Model
 {
-    /// <summary>Сумма перевода в валюте оплаты.</summary>
+    /// <summary>The transfer amount in the payment currency.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Когда перевод зачислен (ISO 8601).</summary>
+    /// <summary>When the transfer was credited (ISO 8601).</summary>
     [JsonPropertyName("created_at")]
     public required string CreatedAt { get; init; }
 
-    /// <summary>Высота блока, в котором перевод подтверждён.</summary>
+    /// <summary>The height of the block in which the transfer was confirmed.</summary>
     [JsonPropertyName("height")]
     public required long Height { get; init; }
 
-    /// <summary>Сеть, в которой пришёл перевод. На EVM может отличаться от network счёта: депозит зачитывается и на другой цепочке с тем же адресом.</summary>
+    /// <summary>The network the transfer arrived on. On EVM it may differ from the invoice's network: a deposit is also credited on another chain with the same address.</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>Хеш транзакции.</summary>
+    /// <summary>Transaction hash.</summary>
     [JsonPropertyName("txid")]
     public required string Txid { get; init; }
 }
@@ -2475,182 +2578,182 @@ public sealed partial record PaymentTx : Model
 /// <summary><c>PaymentView</c> model.</summary>
 public sealed partial record PaymentView : Model
 {
-    /// <summary>Ваши приватные данные, которые вернутся в ответе и в вебхуке.</summary>
+    /// <summary>Your private data, returned in the response and in the webhook.</summary>
     [JsonPropertyName("additional_data")]
     public required string AdditionalData { get; init; }
 
-    /// <summary>Адрес, на который клиент отправляет деньги. На XRP это классический r-адрес ОБЩЕГО кошелька — платёж обязан нести destination_tag, иначе сеть его отклонит.</summary>
+    /// <summary>The address the customer sends money to. On XRP this is the classic r-address of a SHARED wallet — the payment must carry destination_tag, otherwise the network rejects it.</summary>
     [JsonPropertyName("address")]
     public required string Address { get; init; }
 
-    /// <summary>Только XLM: те же реквизиты одной строкой — muxed-адрес M… (SEP-23), адрес и memo вместе; его же кодирует QR. Пусто на остальных сетях.</summary>
+    /// <summary>XLM only: the same payment details in one string — a muxed M… address (SEP-23), address and memo together; the QR code encodes it as well. Empty on other networks.</summary>
     [JsonPropertyName("address_muxed")]
     public required string AddressMuxed { get; init; }
 
-    /// <summary>QR-код адреса как PNG data:-URI — можно сразу в &lt;img src&gt;. На XRP кодирует X-address (адрес+тег одной строкой).</summary>
+    /// <summary>The address QR code as a PNG data: URI — can go straight into &lt;img src&gt;. On XRP it encodes the X-address (address + tag in one string).</summary>
     [JsonPropertyName("address_qr_code")]
     public required string AddressQrCode { get; init; }
 
-    /// <summary>Только XRP: те же реквизиты одной строкой в формате X-address (XLS-5) — адрес и тег вместе; его же кодирует QR. Пусто на остальных сетях.</summary>
+    /// <summary>XRP only: the same payment details in one string in X-address format (XLS-5) — address and tag together; the QR code encodes it as well. Empty on other networks.</summary>
     [JsonPropertyName("address_xaddress")]
     public required string AddressXaddress { get; init; }
 
-    /// <summary>Сумма к оплате в валюте цены (например, в USD).</summary>
+    /// <summary>The amount to pay in the price currency (e.g. USD).</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Сколько уже подтверждённо оплачено, в крипте оплаты; всегда строка (0, если ничего не пришло). Пусто, пока валюта оплаты не выбрана (счёт без валюты).</summary>
+    /// <summary>How much has already been paid and confirmed, in the payment crypto; always a string (0 if nothing has arrived). Empty until the payment currency is chosen (an invoice without a currency).</summary>
     [JsonPropertyName("amount_paid")]
     public required string AmountPaid { get; init; }
 
-    /// <summary>Сколько ещё осталось доплатить (к оплате − оплачено); 0, если хватает. Пусто, пока валюта оплаты не выбрана (счёт без валюты).</summary>
+    /// <summary>How much is still left to pay (due − paid); 0 if enough has been paid. Empty until the payment currency is chosen (an invoice without a currency).</summary>
     [JsonPropertyName("amount_remaining")]
     public required string AmountRemaining { get; init; }
 
-    /// <summary>Наша комиссия с этого платежа — УДЕРЖАННАЯ величина, в валюте оплаты (payer_currency). Ставка счёта уже включает амортизированный фиксированный сбор — второй раз он не берётся. ПУСТО, пока по счёту ничего не зачислено (и у валюто-агностичного счёта до выбора монеты): нуля здесь не бывает у неоплаченного счёта — «0» читалось бы как «комиссию не берут». У оплаченного счёта с нулевым тарифом 0 — настоящий.</summary>
+    /// <summary>Our fee on this payment — the WITHHELD amount, in the payment currency (payer_currency). The invoice rate already includes the amortized fixed fee — it is not charged a second time. EMPTY until anything has been credited on the invoice (and, for a currency-agnostic invoice, until a coin is chosen): an unpaid invoice never shows zero here — "0" would read as "no fee is charged". For a paid invoice with a zero rate, 0 is genuine.</summary>
     [JsonPropertyName("commission")]
     public required string Commission { get; init; }
 
-    /// <summary>Текущее число подтверждений входящего платежа.</summary>
+    /// <summary>The current number of confirmations of the incoming payment.</summary>
     [JsonPropertyName("confirmations")]
     public required long Confirmations { get; init; }
 
-    /// <summary>Время создания (ISO 8601).</summary>
+    /// <summary>Creation time (ISO 8601).</summary>
     [JsonPropertyName("created_at")]
     public required string CreatedAt { get; init; }
 
-    /// <summary>Валюта цены: фиат (USD, EUR, RUB, JPY… — см. pricing_currencies) или монета. Говорит, сколько счёт СТОИТ, а не чем за него платят (это payer_currency).</summary>
+    /// <summary>The price currency: fiat (USD, EUR, RUB, JPY… — see pricing_currencies) or a coin. It says how much the invoice COSTS, not what it is paid with (that is payer_currency).</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Только XRP: числовой destination tag, который клиент ОБЯЗАН указать в переводе (поле «тег/memo получателя» на бирже или в кошельке). Пусто на остальных сетях.</summary>
+    /// <summary>XRP only: the numeric destination tag the customer MUST specify in the transfer (the "recipient tag/memo" field at the exchange or in the wallet). Empty on other networks.</summary>
     [JsonPropertyName("destination_tag")]
     public required string DestinationTag { get; init; }
 
-    /// <summary>Подписанная ссылка на PDF-чек этой операции — открывается без API-ключа, можно вложить в письмо или отдать клиенту. Пусто, если генерация документов не включена.</summary>
+    /// <summary>A signed link to the PDF receipt of this operation — opens without an API key, can be attached to an email or given to the customer. Empty if document generation is not enabled.</summary>
     [JsonPropertyName("document_url")]
     public required string DocumentUrl { get; init; }
 
-    /// <summary>Курс, зафиксированный этим счётом (сколько валюты оплаты за 1 единицу валюты цены) — по нему рассчитан payer_amount. Пусто, пока валюта не выбрана.</summary>
+    /// <summary>The rate locked in by this invoice (how much of the payment currency per 1 unit of the price currency) — payer_amount is calculated from it. Empty until the currency is chosen.</summary>
     [JsonPropertyName("exchange_rate")]
     public required string ExchangeRate { get; init; }
 
-    /// <summary>Когда истекает счёт (ISO 8601, как и все временные поля).</summary>
+    /// <summary>When the invoice expires (ISO 8601, like all time fields).</summary>
     [JsonPropertyName("expired_at")]
     public required string ExpiredAt { get; init; }
 
-    /// <summary>Ставка комиссии этого счёта в процентах — та, что зафиксирована в момент создания (смена тарифа не меняет уже созданные счета). Уже включает амортизированный фиксированный сбор. В отличие от commission известна с первой секунды и присутствует всегда.</summary>
+    /// <summary>The fee rate of this invoice in percent — the one locked in at creation (a pricing change does not affect invoices already created). Already includes the amortized fixed fee. Unlike commission, it is known from the first second and is always present.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("fee_percent")]
     public required decimal FeePercent { get; init; }
 
-    /// <summary>true — статус финальный, больше не изменится.</summary>
+    /// <summary>true — the status is final and will not change again.</summary>
     [JsonPropertyName("is_final")]
     public required bool IsFinal { get; init; }
 
-    /// <summary>true — это валюто-агностичная ссылка, клиент ещё не выбрал валюту/сеть.</summary>
+    /// <summary>true — this is a currency-agnostic link; the customer has not chosen the currency/network yet.</summary>
     [JsonPropertyName("is_multi")]
     public required bool IsMulti { get; init; }
 
-    /// <summary>true — счёт песочницы (dev-магазина): деньги ненастоящие, в живую сверку не включайте.</summary>
+    /// <summary>true — a sandbox (dev store) invoice: the money is not real, do not include it in live reconciliation.</summary>
     [JsonPropertyName("is_test")]
     public required bool IsTest { get; init; }
 
-    /// <summary>Только XLM (Stellar): числовой memo (тип ID), который клиент ОБЯЗАН указать в переводе — поле «memo» на бирже или в кошельке. Пусто на остальных сетях.</summary>
+    /// <summary>XLM (Stellar) only: the numeric memo (ID type) the customer MUST specify in the transfer — the "memo" field at the exchange or in the wallet. Empty on other networks.</summary>
     [JsonPropertyName("memo")]
     public required string Memo { get; init; }
 
-    /// <summary>Сколько зачислено (или будет зачислено) вам: amount_paid − network_surcharge − commission. Сетевые расходы на сбор депозита оплачивает плательщик отдельной строкой (network_surcharge) — из вашей суммы они НЕ вычитаются. Пусто, пока валюта оплаты не выбрана (счёт без валюты).</summary>
+    /// <summary>How much has been (or will be) credited to you: amount_paid − network_surcharge − commission. The network costs of sweeping the deposit are paid by the payer as a separate line (network_surcharge) — they are NOT deducted from your amount. Empty until the payment currency is chosen (an invoice without a currency).</summary>
     [JsonPropertyName("merchant_amount")]
     public required string MerchantAmount { get; init; }
 
-    /// <summary>Ваша скидка или наценка для ВЫБРАННОГО способа оплаты, в валюте оплаты: на столько сдвинулась сумма плательщика из-за настройки по этой монете и сети. Положительное — плательщик платит МЕНЬШЕ (скидка), отрицательное — больше (наценка). Пусто, если настройки для метода нет.</summary>
+    /// <summary>Your discount or surcharge for the CHOSEN payment method, in the payment currency: how much the payer's amount shifted because of the setting for this coin and network. Positive — the payer pays LESS (discount), negative — more (surcharge). Empty if there is no setting for the method.</summary>
     [JsonPropertyName("method_adjustment")]
     public required string MethodAdjustment { get; init; }
 
-    /// <summary>Та же скидка/наценка в базисных пунктах (так она переживает переоценку курса). Знак тот же, что в настройке скидок: ПЛЮС — скидка, МИНУС — наценка.</summary>
+    /// <summary>The same discount/surcharge in basis points (this way it survives a rate re-quote). The sign is the same as in the discount setting: PLUS — a discount, MINUS — a surcharge.</summary>
     [JsonPropertyName("method_adjustment_bps")]
     public required long MethodAdjustmentBps { get; init; }
 
-    /// <summary>Сеть блокчейна (например, tron).</summary>
+    /// <summary>Blockchain network (e.g. tron).</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>Сетевая надбавка плательщика в валюте оплаты: стоимость сбора депозита в выбранной сети (активация адреса, если адрес новый, плюс энергия/газ с запасом), зафиксированная при выборе сети. Пусто до выбора сети; 0, если надбавка выключена.</summary>
+    /// <summary>The payer's network surcharge in the payment currency: the cost of sweeping the deposit on the chosen network (address activation, if the address is new, plus energy/gas with a margin), locked in when the network is chosen. Empty until the network is chosen; 0 if the surcharge is disabled.</summary>
     [JsonPropertyName("network_surcharge")]
     public required string NetworkSurcharge { get; init; }
 
-    /// <summary>Та же надбавка в базисных пунктах от суммы к оплате (так она переживает переоценку курса).</summary>
+    /// <summary>The same surcharge in basis points of the amount due (this way it survives a rate re-quote).</summary>
     [JsonPropertyName("network_surcharge_bps")]
     public required long NetworkSurchargeBps { get; init; }
 
-    /// <summary>Ваш номер заказа, который вы передали при создании.</summary>
+    /// <summary>Your order number that you passed at creation.</summary>
     [JsonPropertyName("order_id")]
     public required string OrderId { get; init; }
 
-    /// <summary>Момент фактической оплаты — зачисление последнего подтверждённого перевода (ISO 8601). null, пока оплата не пришла. Отличайте от updated_at: тот сдвигается любым изменением счёта.</summary>
+    /// <summary>The moment of actual payment — the crediting of the last confirmed transfer (ISO 8601). null until the payment arrives. Not to be confused with updated_at, which moves on any change to the invoice.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("paid_at")]
     public string? PaidAt { get; init; }
 
-    /// <summary>Адрес, С КОТОРОГО пришёл первый подтверждённый депозит — на аккаунт-сетях (EVM/Tron/Solana/TON); пусто на UTXO. ⚠ Это НЕ обязательно адрес для возврата: отправителем может быть биржа, сдача UTXO-транзакции или горячий омнибус крипто-он-рампа, если покупатель платил картой. Прежде чем возвращать деньги сюда, смотрите payer_address_is_refundable.</summary>
+    /// <summary>The address the first confirmed deposit came FROM — on account-based networks (EVM/Tron/Solana/TON); empty on UTXO. ⚠ This is NOT necessarily a refund address: the sender may be an exchange, the change of a UTXO transaction, or the omnibus hot wallet of a crypto on-ramp if the buyer paid by card. Before refunding money here, check payer_address_is_refundable.</summary>
     [JsonPropertyName("payer_address")]
     public required string PayerAddress { get; init; }
 
-    /// <summary>true — payer_address принадлежит плательщику, и в /v1/payment/refund можно опустить address (вернём на него). false — адрес возврата неизвестен (UTXO/XRP, оплата картой через он-рамп, адрес не записан): спросите адрес у покупателя и передайте address явно, иначе запрос будет отклонён с refund.no_address.</summary>
+    /// <summary>true — payer_address belongs to the payer, and address may be omitted in /v1/payment/refund (we refund to it). false — the refund address is unknown (UTXO/XRP, card payment via an on-ramp, address not recorded): ask the buyer for an address and pass address explicitly, otherwise the request is rejected with refund.no_address.</summary>
     [JsonPropertyName("payer_address_is_refundable")]
     public required bool PayerAddressIsRefundable { get; init; }
 
-    /// <summary>Сколько нужно отправить в крипте оплаты. Пусто, пока валюта оплаты не выбрана (счёт без валюты).</summary>
+    /// <summary>How much must be sent in the payment crypto. Empty until the payment currency is chosen (an invoice without a currency).</summary>
     [JsonPropertyName("payer_amount")]
     public required string PayerAmount { get; init; }
 
-    /// <summary>Валюта, в которой платит клиент (например, USDT). Пусто у валюто-агностичного счёта (is_multi), пока клиент не выбрал монету — валюты расчёта у него ещё нет.</summary>
+    /// <summary>The currency the customer pays in (e.g. USDT). Empty for a currency-agnostic invoice (is_multi) until the customer picks a coin — it has no settlement currency yet.</summary>
     [JsonPropertyName("payer_currency")]
     public required string PayerCurrency { get; init; }
 
-    /// <summary>E-mail плательщика, если вы его передали.</summary>
+    /// <summary>The payer's email, if you provided it.</summary>
     [JsonPropertyName("payer_email")]
     public required string PayerEmail { get; init; }
 
-    /// <summary>До какого момента действует зафиксированный payer_amount (ISO 8601; окно ~5 мин, после него страница оплаты перекотирует счёт). Пусто, когда перекотировки уже не будет: валюта не выбрана, депозит замечен, счёт вышел из created или истёк — сумма зафиксирована навсегда.</summary>
+    /// <summary>Until when the locked payer_amount is valid (ISO 8601; a ~5 min window, after which the payment page re-quotes the invoice). Empty when there will be no more re-quotes: the currency has not been chosen, a deposit has been seen, the invoice has left created or expired — the amount is locked for good.</summary>
     [JsonPropertyName("rate_expires_at")]
     public required string RateExpiresAt { get; init; }
 
-    /// <summary>Сколько подтверждений нужно для зачисления (зависит от суммы и сети).</summary>
+    /// <summary>How many confirmations are required for crediting (depends on the amount and the network).</summary>
     [JsonPropertyName("required_confirmations")]
     public required long RequiredConfirmations { get; init; }
 
-    /// <summary>Статус: select (клиент выбирает валюту) | created (ждём оплату) | confirm_check (видим оплату, ждём подтверждений; при amount_remaining &gt; 0 — частичная, ждём остаток) | paid (оплачено) | paid_over (переплата) | wrong_amount (недоплата, срок вышел) | expired (просрочен) | cancelled (отменён) | under_review (поступление задержано на проверке, разбирает оператор).</summary>
+    /// <summary>Status: select (the customer is choosing a currency) | created (awaiting payment) | confirm_check (payment seen, awaiting confirmations; with amount_remaining &gt; 0 — partial, awaiting the remainder) | paid (paid) | paid_over (overpaid) | wrong_amount (underpaid, expired) | expired (expired) | cancelled (cancelled) | under_review (the deposit is held for review, an operator is handling it).</summary>
     [JsonPropertyName("status")]
     public required PaymentStatus Status { get; init; }
 
-    /// <summary>Все подтверждённые переводы, которыми оплачен счёт. Частичная оплата несколькими переводами — штатный сценарий wrong_amount; один txid наверху — лишь последний замеченный.</summary>
+    /// <summary>All confirmed transfers that paid the invoice. Partial payment by several transfers is a regular wrong_amount scenario; the single txid above is only the last one seen.</summary>
     [JsonPropertyName("tx_list")]
     public required IReadOnlyList<PaymentTx> TxList { get; init; }
 
-    /// <summary>Хеш входящей транзакции (когда замечена).</summary>
+    /// <summary>The hash of the incoming transaction (once seen).</summary>
     [JsonPropertyName("txid")]
     public required string Txid { get; init; }
 
-    /// <summary>Время последнего изменения (ISO 8601).</summary>
+    /// <summary>Time of the last change (ISO 8601).</summary>
     [JsonPropertyName("updated_at")]
     public required string UpdatedAt { get; init; }
 
-    /// <summary>Ссылка на готовую страницу оплаты.</summary>
+    /// <summary>A link to the ready-made payment page.</summary>
     [JsonPropertyName("url")]
     public required string Url { get; init; }
 
-    /// <summary>Ссылка «вернуться в магазин» до оплаты.</summary>
+    /// <summary>The "back to store" link before payment.</summary>
     [JsonPropertyName("url_return")]
     public required string UrlReturn { get; init; }
 
-    /// <summary>Куда перенаправить после успешной оплаты.</summary>
+    /// <summary>Where to redirect after a successful payment.</summary>
     [JsonPropertyName("url_success")]
     public required string UrlSuccess { get; init; }
 
-    /// <summary>Наш идентификатор платежа (используйте его в info/refund).</summary>
+    /// <summary>Our payment identifier (use it in info/refund).</summary>
     [JsonPropertyName("uuid")]
     public required string Uuid { get; init; }
 }
@@ -2658,91 +2761,91 @@ public sealed partial record PaymentView : Model
 /// <summary><c>PaymentViewList</c> model.</summary>
 public sealed partial record PaymentViewList : Model
 {
-    /// <summary>Записи этой страницы.</summary>
+    /// <summary>The records of this page.</summary>
     [JsonPropertyName("items")]
     public required IReadOnlyList<PaymentView> Items { get; init; }
 
-    /// <summary>Блок пагинации.</summary>
+    /// <summary>Pagination block.</summary>
     [JsonPropertyName("paginate")]
     public required Pagination Paginate { get; init; }
 }
 
-/// <summary>Приходит, когда платёж переходит в paid, paid_over, wrong_amount, expired или under_review, и когда откатывается из них (реорганизация сети). Текущий статус — любой из словаря — можно запросить заново: POST /v1/payment/resend. Сверять с заказом по order_id/uuid, с блокчейном — по txid и network.</summary>
+/// <summary>Sent when a payment moves to paid, paid_over, wrong_amount, expired or under_review, and when it rolls back from them (a chain reorganization). The current status — any value from the vocabulary — can be requested again: POST /v1/payment/resend. Match it to the order by order_id/uuid and to the blockchain by txid and network.</summary>
 public sealed partial record PaymentWebhook : Model
 {
-    /// <summary>Ваши данные, переданные при создании платежа, как есть.</summary>
+    /// <summary>Your data passed when creating the payment, as is.</summary>
     [JsonPropertyName("additional_data")]
     public required string AdditionalData { get; init; }
 
-    /// <summary>Сумма счёта в валюте currency.</summary>
+    /// <summary>The invoice amount in currency.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Валюта счёта.</summary>
+    /// <summary>Invoice currency.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Когда событие произошло, UTC с миллисекундами (ISO 8601).</summary>
+    /// <summary>When the event happened, UTC with milliseconds (ISO 8601).</summary>
     [JsonPropertyName("event_at")]
     public required string EventAt { get; init; }
 
-    /// <summary>true — статус финальный, дальше платёж не изменится.</summary>
+    /// <summary>true — the status is final, the payment will not change any further.</summary>
     [JsonPropertyName("is_final")]
     public required bool IsFinal { get; init; }
 
-    /// <summary>Сеть, в которой пришли деньги.</summary>
+    /// <summary>The network the money arrived on.</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>Ваш order_id платежа.</summary>
+    /// <summary>Your order_id for the payment.</summary>
     [JsonPropertyName("order_id")]
     public required string OrderId { get; init; }
 
-    /// <summary>Адрес, с которого пришёл платёж (пусто, если неизвестен). Возвращать на него можно только при payer_address_is_refundable = true.</summary>
+    /// <summary>The address the payment came from (empty if unknown). Refunding to it is allowed only when payer_address_is_refundable = true.</summary>
     [JsonPropertyName("payer_address")]
     public required string PayerAddress { get; init; }
 
-    /// <summary>true — payer_address принадлежит плательщику и годится как адрес возврата; false — это адрес биржи, провайдера карты или сдачи, возвращать на него нельзя.</summary>
+    /// <summary>true — payer_address belongs to the payer and is usable as a refund address; false — it is an exchange, card provider or change address, refunding to it is not allowed.</summary>
     [JsonPropertyName("payer_address_is_refundable")]
     public required bool PayerAddressIsRefundable { get; init; }
 
-    /// <summary>Сколько плательщик должен был заплатить в валюте payer_currency.</summary>
+    /// <summary>How much the payer was supposed to pay, in payer_currency.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("payer_amount")]
     public required decimal PayerAmount { get; init; }
 
-    /// <summary>Валюта, в которой платит плательщик.</summary>
+    /// <summary>The currency the payer pays in.</summary>
     [JsonPropertyName("payer_currency")]
     public required string PayerCurrency { get; init; }
 
-    /// <summary>Сколько фактически получено (подтверждено), в валюте payer_currency.</summary>
+    /// <summary>How much was actually received (confirmed), in payer_currency.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("payment_amount")]
     public required decimal PaymentAmount { get; init; }
 
-    /// <summary>Глобальный номер события: в пределах одного объекта больший номер новее, меньший — опоздавшая доставка, её нужно отбросить. У репетиции (test: true) всегда 0.</summary>
+    /// <summary>The global event number: within one object a higher number is newer, a lower one is a late delivery and must be discarded. Always 0 on a rehearsal (test: true).</summary>
     [JsonPropertyName("sequence")]
     public required long Sequence { get; init; }
 
-    /// <summary>Статус платежа — тот же литерал, что в /v1/payment/info и фильтре истории.</summary>
+    /// <summary>The payment status — the same literal as in /v1/payment/info and the history filter.</summary>
     [JsonPropertyName("status")]
     public required PaymentStatus Status { get; init; }
 
-    /// <summary>Есть только у репетиции (/v1/test-webhook/*, /v1/payment/testing-webhook) и всегда true — внутри подписи. Боевое событие этого поля не несёт никогда: тело с test: true обработчик обязан игнорировать, даже если подпись верна.</summary>
+    /// <summary>Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always true — inside the signature. A live event never carries this field: your handler must ignore a body with test: true even if the signature is valid.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("test")]
     public bool? Test { get; init; }
 
-    /// <summary>Хеш транзакции, которой пришёл платёж (пусто, пока платежа нет).</summary>
+    /// <summary>The hash of the transaction the payment arrived with (empty until there is a payment).</summary>
     [JsonPropertyName("txid")]
     public required string Txid { get; init; }
 
-    /// <summary>Вид события: payment | payout | wallet | conversion — какое тело пришло.</summary>
+    /// <summary>Event kind: payment | payout | wallet | conversion — which body arrived.</summary>
     [JsonPropertyName("type")]
     public required string Type { get; init; }
 
-    /// <summary>Идентификатор платежа.</summary>
+    /// <summary>Payment id.</summary>
     [JsonPropertyName("uuid")]
     public required string Uuid { get; init; }
 }
@@ -2750,12 +2853,12 @@ public sealed partial record PaymentWebhook : Model
 /// <summary><c>PayoutBatchRequest</c> model.</summary>
 public sealed partial record PayoutBatchRequest : Model
 {
-    /// <summary>Что делать при ошибке элемента: continue (по умолчанию) — обрабатывать остальные; stop — прекратить обработку после первой ошибки.</summary>
+    /// <summary>What to do when an item fails: continue (default) — process the rest; stop — stop processing after the first error.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("on_error")]
     public BatchOnError? OnError { get; init; }
 
-    /// <summary>Массив от 1 до 5000 элементов — те же поля, что у POST /v1/payout; order_id у каждого элемента обязателен и служит ключом идемпотентности: повтор вернёт уже созданную выплату.</summary>
+    /// <summary>An array of 1 to 5000 items — the same fields as in POST /v1/payout; order_id is required on each item and serves as the idempotency key: a retry returns the payout already created.</summary>
     [JsonPropertyName("payouts")]
     public required IReadOnlyList<PayoutRequest> Payouts { get; init; }
 }
@@ -2763,21 +2866,21 @@ public sealed partial record PayoutBatchRequest : Model
 /// <summary><c>PayoutCalculateRequest</c> model.</summary>
 public sealed partial record PayoutCalculateRequest : Model
 {
-    /// <summary>Сумма выплаты, строкой.</summary>
+    /// <summary>The payout amount, as a string.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Актив выплаты (USDT, BTC, …).</summary>
+    /// <summary>Payout asset (USDT, BTC, …).</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>true — комиссия списывается с баланса поверх суммы (получатель получит ровно amount); false — из суммы выплаты.</summary>
+    /// <summary>true — the fee is debited from the balance on top of the amount (the recipient gets exactly amount); false — from the payout amount.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("is_subtract")]
     public bool? IsSubtract { get; init; }
 
-    /// <summary>Сеть выплаты; обязательна, если актив живёт в нескольких сетях.</summary>
+    /// <summary>Payout network; required if the asset lives on several networks.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("network")]
     public string? Network { get; init; }
@@ -2786,35 +2889,35 @@ public sealed partial record PayoutCalculateRequest : Model
 /// <summary><c>PayoutCalculation</c> model.</summary>
 public sealed partial record PayoutCalculation : Model
 {
-    /// <summary>Сколько спишется с баланса; null — неизвестно (комиссию не оценить).</summary>
+    /// <summary>How much will be debited from the balance; null — unknown (the fee cannot be estimated).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public decimal? Amount { get; init; }
 
-    /// <summary>Сетевая комиссия; null — не оценить сейчас.</summary>
+    /// <summary>Network fee; null — cannot be estimated right now.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("commission")]
     public decimal? Commission { get; init; }
 
-    /// <summary>Актив выплаты.</summary>
+    /// <summary>Payout asset.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Кто платит комиссию: gateway, merchant или recipient.</summary>
+    /// <summary>Who pays the fee: gateway, merchant or recipient.</summary>
     [JsonPropertyName("fee_bearer")]
     public required PayoutFeeBearer FeeBearer { get; init; }
 
-    /// <summary>exact — комиссия договорная (шлюз её берёт на себя); estimated — оценка оракула.</summary>
+    /// <summary>exact — the fee is contractual (the gateway absorbs it); estimated — an oracle estimate.</summary>
     [JsonPropertyName("fee_type")]
     public required FeeType FeeType { get; init; }
 
-    /// <summary>Сеть — как пришла в запросе.</summary>
+    /// <summary>The network — as it came in the request.</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>Сколько получит адрес; null — неизвестно.</summary>
+    /// <summary>How much the address will receive; null — unknown.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("payer_amount")]
@@ -2824,23 +2927,23 @@ public sealed partial record PayoutCalculation : Model
 /// <summary><c>PayoutClaimLockedView</c> model.</summary>
 public sealed partial record PayoutClaimLockedView : Model, IPayoutClaimInfo
 {
-    /// <summary>Получить можно сейчас: ссылка оплачена и не истекла.</summary>
+    /// <summary>Can be claimed now: the link is funded and has not expired.</summary>
     [JsonPropertyName("claimable")]
     public required bool Claimable { get; init; }
 
-    /// <summary>До какого момента ссылку можно получить (UTC).</summary>
+    /// <summary>Until when the link can be claimed (UTC).</summary>
     [JsonPropertyName("expires_at")]
     public required string ExpiresAt { get; init; }
 
-    /// <summary>Всегда true: суммы и сеть покажутся после кода в заголовке X-Claim-Passcode.</summary>
+    /// <summary>Always true: amounts and network are shown after the passcode in the X-Claim-Passcode header.</summary>
     [JsonPropertyName("passcode_required")]
     public required bool PasscodeRequired { get; init; }
 
-    /// <summary>Состояние ссылки.</summary>
+    /// <summary>Link state.</summary>
     [JsonPropertyName("status")]
     public required PayoutLinkStatus Status { get; init; }
 
-    /// <summary>Заголовок от отправителя.</summary>
+    /// <summary>Title from the sender.</summary>
     [JsonPropertyName("title")]
     public required string Title { get; init; }
 }
@@ -2848,56 +2951,56 @@ public sealed partial record PayoutClaimLockedView : Model, IPayoutClaimInfo
 /// <summary><c>PayoutClaimView</c> model.</summary>
 public sealed partial record PayoutClaimView : Model, IPayoutClaimInfo
 {
-    /// <summary>Сумма ссылки — обещание получателю.</summary>
+    /// <summary>The link amount — a promise to the recipient.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Получить можно сейчас: ссылка оплачена и не истекла.</summary>
+    /// <summary>Can be claimed now: the link is funded and has not expired.</summary>
     [JsonPropertyName("claimable")]
     public required bool Claimable { get; init; }
 
-    /// <summary>Сетевая комиссия; null — оценить сейчас нельзя (ноль означал бы бесплатное получение).</summary>
+    /// <summary>Network fee; null — cannot be estimated right now (zero would mean the claim is free).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("commission")]
     public decimal? Commission { get; init; }
 
-    /// <summary>Актив выплаты.</summary>
+    /// <summary>Payout asset.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>До какого момента ссылку можно получить (UTC).</summary>
+    /// <summary>Until when the link can be claimed (UTC).</summary>
     [JsonPropertyName("expires_at")]
     public required string ExpiresAt { get; init; }
 
-    /// <summary>Кто платит сетевую комиссию.</summary>
+    /// <summary>Who pays the network fee.</summary>
     [JsonPropertyName("fee_bearer")]
     public required PayoutLinkFeeBearer FeeBearer { get; init; }
 
-    /// <summary>exact — комиссия зафиксирована; estimated — оценка по текущей сети.</summary>
+    /// <summary>exact — the fee is fixed; estimated — an estimate based on the current network.</summary>
     [JsonPropertyName("fee_type")]
     public required FeeType FeeType { get; init; }
 
-    /// <summary>Сеть выплаты.</summary>
+    /// <summary>Payout network.</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>Сообщение от отправителя.</summary>
+    /// <summary>Message from the sender.</summary>
     [JsonPropertyName("note")]
     public required string Note { get; init; }
 
-    /// <summary>Сколько дойдёт получателю; null — сказать нельзя (комиссия не оценена или съела сумму).</summary>
+    /// <summary>How much will reach the recipient; null — cannot be said (the fee was not estimated or ate the amount).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("payer_amount")]
     public decimal? PayerAmount { get; init; }
 
-    /// <summary>Состояние ссылки.</summary>
+    /// <summary>Link state.</summary>
     [JsonPropertyName("status")]
     public required PayoutLinkStatus Status { get; init; }
 
-    /// <summary>Заголовок от отправителя.</summary>
+    /// <summary>Title from the sender.</summary>
     [JsonPropertyName("title")]
     public required string Title { get; init; }
 }
@@ -2905,48 +3008,48 @@ public sealed partial record PayoutClaimView : Model, IPayoutClaimInfo
 /// <summary><c>PayoutClaimed</c> model.</summary>
 public sealed partial record PayoutClaimed : Model
 {
-    /// <summary>Адрес получателя.</summary>
+    /// <summary>Recipient address.</summary>
     [JsonPropertyName("address")]
     public required string Address { get; init; }
 
-    /// <summary>Сумма ссылки — обещание получателю.</summary>
+    /// <summary>The link amount — a promise to the recipient.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Сетевая комиссия; null — оценить сейчас нельзя (ноль означал бы бесплатное получение).</summary>
+    /// <summary>Network fee; null — cannot be estimated right now (zero would mean the claim is free).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("commission")]
     public decimal? Commission { get; init; }
 
-    /// <summary>Актив выплаты.</summary>
+    /// <summary>Payout asset.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Кто платит сетевую комиссию.</summary>
+    /// <summary>Who pays the network fee.</summary>
     [JsonPropertyName("fee_bearer")]
     public required PayoutLinkFeeBearer FeeBearer { get; init; }
 
-    /// <summary>exact — комиссия зафиксирована; estimated — оценка по текущей сети.</summary>
+    /// <summary>exact — the fee is fixed; estimated — an estimate based on the current network.</summary>
     [JsonPropertyName("fee_type")]
     public required FeeType FeeType { get; init; }
 
-    /// <summary>Сеть выплаты.</summary>
+    /// <summary>Payout network.</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>Сколько дойдёт получателю; null — сказать нельзя (комиссия не оценена или съела сумму).</summary>
+    /// <summary>How much will reach the recipient; null — cannot be said (the fee was not estimated or ate the amount).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("payer_amount")]
     public decimal? PayerAmount { get; init; }
 
-    /// <summary>Выплата получателю.</summary>
+    /// <summary>The payout to the recipient.</summary>
     [JsonPropertyName("payout_id")]
     public required string PayoutId { get; init; }
 
-    /// <summary>Состояние ссылки после получения.</summary>
+    /// <summary>The link state after the claim.</summary>
     [JsonPropertyName("status")]
     public required PayoutLinkStatus Status { get; init; }
 }
@@ -2954,11 +3057,11 @@ public sealed partial record PayoutClaimed : Model
 /// <summary><c>PayoutFeeResult</c> model.</summary>
 public sealed partial record PayoutFeeResult : Model
 {
-    /// <summary>true — проект задал настройку сам; false — действует умолчание шлюза.</summary>
+    /// <summary>true — the project set this setting itself; false — the gateway default applies.</summary>
     [JsonPropertyName("configured")]
     public required bool Configured { get; init; }
 
-    /// <summary>Действующее значение: настройка проекта, а без неё — умолчание шлюза.</summary>
+    /// <summary>The effective value: the project setting, or the gateway default if there is none.</summary>
     [JsonPropertyName("fee_on_recipient")]
     public required bool FeeOnRecipient { get; init; }
 }
@@ -2966,103 +3069,103 @@ public sealed partial record PayoutFeeResult : Model
 /// <summary><c>PayoutInfoResult</c> model.</summary>
 public sealed partial record PayoutInfoResult : Model
 {
-    /// <summary>Адрес получателя.</summary>
+    /// <summary>Recipient address.</summary>
     [JsonPropertyName("address")]
     public required string Address { get; init; }
 
-    /// <summary>Сумма выплаты в валюте currency, списанная с вашего баланса.</summary>
+    /// <summary>The payout amount in currency, debited from your balance.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>true — выплата ждёт подтверждения (внутренние сценарии; по API-ключу всегда false).</summary>
+    /// <summary>true — the payout is awaiting approval (internal scenarios; always false with an API key).</summary>
     [JsonPropertyName("approval_required")]
     public required bool ApprovalRequired { get; init; }
 
-    /// <summary>Удержанная сетевая комиссия, в валюте выплаты. 0 — комиссию поглотил шлюз.</summary>
+    /// <summary>The withheld network fee, in the payout currency. 0 — the gateway absorbed the fee.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("commission")]
     public required decimal Commission { get; init; }
 
-    /// <summary>Время создания (ISO 8601).</summary>
+    /// <summary>Creation time (ISO 8601).</summary>
     [JsonPropertyName("created_at")]
     public required string CreatedAt { get; init; }
 
-    /// <summary>Код валюты выплаты.</summary>
+    /// <summary>Payout currency code.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Подписанная ссылка на PDF-чек этой операции — открывается без API-ключа, можно вложить в письмо или отдать получателю. Пусто, если генерация документов не включена.</summary>
+    /// <summary>A signed link to the PDF receipt of this operation — opens without an API key, can be attached to an email or given to the recipient. Empty if document generation is not enabled.</summary>
     [JsonPropertyName("document_url")]
     public required string DocumentUrl { get; init; }
 
-    /// <summary>Причина сбоя выплаты человеческим текстом; null — сбоя нет.</summary>
+    /// <summary>The payout failure reason as human-readable text; null — no failure.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("error")]
     public string? Error { get; init; }
 
-    /// <summary>Машинный код причины; null — сбоя нет.</summary>
+    /// <summary>The machine reason code; null — no failure.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("error_code")]
     public string? ErrorCode { get; init; }
 
-    /// <summary>Кто заплатил сетевую комиссию: gateway — шлюз поглотил её (commission = 0); merchant — сумма списания увеличена на комиссию, получатель получает запрошенное целиком (is_subtract=true, выплатная ссылка с fee_bearer=merchant); recipient — комиссия удержана из выплаты, получателю приходит меньше запрошенного.</summary>
+    /// <summary>Who paid the network fee: gateway — the gateway absorbed it (commission = 0); merchant — the debit amount was increased by the fee, the recipient gets the full requested amount (is_subtract=true, a payout link with fee_bearer=merchant); recipient — the fee was withheld from the payout, the recipient gets less than requested.</summary>
     [JsonPropertyName("fee_bearer")]
     public required PayoutFeeBearer FeeBearer { get; init; }
 
-    /// <summary>true — статус финальный (confirmed / failed / cancelled).</summary>
+    /// <summary>true — the status is final (confirmed / failed / cancelled).</summary>
     [JsonPropertyName("is_final")]
     public required bool IsFinal { get; init; }
 
-    /// <summary>true — это возврат платежа, а не обычная выплата.</summary>
+    /// <summary>true — this is a payment refund, not a regular payout.</summary>
     [JsonPropertyName("is_refund")]
     public required bool IsRefund { get; init; }
 
-    /// <summary>Тег/мемо назначения, переданный при создании (TON Jetton, memo-биржи). Пусто — без мемо.</summary>
+    /// <summary>The destination tag/memo passed at creation (TON Jetton, exchange memos). Empty — no memo.</summary>
     [JsonPropertyName("memo")]
     public required string Memo { get; init; }
 
-    /// <summary>Сеть блокчейна.</summary>
+    /// <summary>Blockchain network.</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>Ваш номер (reference) выплаты. У возврата — null: возврат не имеет вашего идентификатора, см. payment_order_id.</summary>
+    /// <summary>Your payout number (reference). null for a refund: a refund has no identifier of yours, see payment_order_id.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
 
-    /// <summary>Сколько реально уходит получателю на адрес: amount − commission.</summary>
+    /// <summary>How much actually goes to the recipient's address: amount − commission.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("payer_amount")]
     public required decimal PayerAmount { get; init; }
 
-    /// <summary>Ваш order_id платежа, по которому сделан возврат (null у обычной выплаты). У возврата собственного order_id нет — он приходит null, а сверять возврат с заказом нужно по этому полю.</summary>
+    /// <summary>Your order_id of the payment that was refunded (null for a regular payout). A refund has no order_id of its own — it comes as null, so match a refund to an order by this field.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("payment_order_id")]
     public string? PaymentOrderId { get; init; }
 
-    /// <summary>Идентификатор возвращаемого платежа (null, если это не возврат).</summary>
+    /// <summary>The id of the payment being refunded (null if this is not a refund).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("refund_for")]
     public string? RefundFor { get; init; }
 
-    /// <summary>api (через интеграцию) | manual (из кабинета).</summary>
+    /// <summary>api (via the integration) | manual (from the dashboard).</summary>
     [JsonPropertyName("source")]
     public required PayoutSource Source { get; init; }
 
-    /// <summary>Статус выплаты: pending (создана, ждёт) | approved (одобрена) | awaiting_cosign (ждёт второй подписи) | broadcasting (отправляется) | sent (отправлена, ждёт подтверждений) | confirmed (подтверждена — готово) | failed | cancelled. Значение можно передать обратно в фильтр истории как есть.</summary>
+    /// <summary>Payout status: pending (created, waiting) | approved (approved) | awaiting_cosign (waiting for the second signature) | broadcasting (being broadcast) | sent (sent, awaiting confirmations) | confirmed (confirmed — done) | failed | cancelled. The value can be passed back to the history filter as is.</summary>
     [JsonPropertyName("status")]
     public required PayoutStatus Status { get; init; }
 
-    /// <summary>Хеш транзакции в блокчейне (появляется после отправки).</summary>
+    /// <summary>The blockchain transaction hash (appears after sending).</summary>
     [JsonPropertyName("txid")]
     public required string Txid { get; init; }
 
-    /// <summary>Время последнего изменения (ISO 8601).</summary>
+    /// <summary>Time of the last change (ISO 8601).</summary>
     [JsonPropertyName("updated_at")]
     public required string UpdatedAt { get; init; }
 
-    /// <summary>Идентификатор выплаты.</summary>
+    /// <summary>Payout id.</summary>
     [JsonPropertyName("uuid")]
     public required string Uuid { get; init; }
 }
@@ -3070,98 +3173,98 @@ public sealed partial record PayoutInfoResult : Model
 /// <summary><c>PayoutItem</c> model.</summary>
 public sealed partial record PayoutItem : Model
 {
-    /// <summary>Адрес получателя.</summary>
+    /// <summary>Recipient address.</summary>
     [JsonPropertyName("address")]
     public required string Address { get; init; }
 
-    /// <summary>Сумма выплаты в валюте currency, списанная с вашего баланса.</summary>
+    /// <summary>The payout amount in currency, debited from your balance.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>true — выплата ждёт подтверждения (внутренние сценарии; по API-ключу всегда false).</summary>
+    /// <summary>true — the payout is awaiting approval (internal scenarios; always false with an API key).</summary>
     [JsonPropertyName("approval_required")]
     public required bool ApprovalRequired { get; init; }
 
-    /// <summary>Удержанная сетевая комиссия, в валюте выплаты. 0 — комиссию поглотил шлюз.</summary>
+    /// <summary>The withheld network fee, in the payout currency. 0 — the gateway absorbed the fee.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("commission")]
     public required decimal Commission { get; init; }
 
-    /// <summary>Конверсия, сделанная по пути выплаты; нет ключа — конверсии не было.</summary>
+    /// <summary>The conversion performed on the payout path; no key — there was no conversion.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("convert")]
     public IReadOnlyDictionary<string, JsonElement>? Convert { get; init; }
 
-    /// <summary>Время создания (ISO 8601).</summary>
+    /// <summary>Creation time (ISO 8601).</summary>
     [JsonPropertyName("created_at")]
     public required string CreatedAt { get; init; }
 
-    /// <summary>Код валюты выплаты.</summary>
+    /// <summary>Payout currency code.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Подписанная ссылка на PDF-чек этой операции — открывается без API-ключа, можно вложить в письмо или отдать получателю. Пусто, если генерация документов не включена.</summary>
+    /// <summary>A signed link to the PDF receipt of this operation — opens without an API key, can be attached to an email or given to the recipient. Empty if document generation is not enabled.</summary>
     [JsonPropertyName("document_url")]
     public required string DocumentUrl { get; init; }
 
-    /// <summary>Кто заплатил сетевую комиссию: gateway — шлюз поглотил её (commission = 0); merchant — сумма списания увеличена на комиссию, получатель получает запрошенное целиком (is_subtract=true, выплатная ссылка с fee_bearer=merchant); recipient — комиссия удержана из выплаты, получателю приходит меньше запрошенного.</summary>
+    /// <summary>Who paid the network fee: gateway — the gateway absorbed it (commission = 0); merchant — the debit amount was increased by the fee, the recipient gets the full requested amount (is_subtract=true, a payout link with fee_bearer=merchant); recipient — the fee was withheld from the payout, the recipient gets less than requested.</summary>
     [JsonPropertyName("fee_bearer")]
     public required PayoutFeeBearer FeeBearer { get; init; }
 
-    /// <summary>true — статус финальный (confirmed / failed / cancelled).</summary>
+    /// <summary>true — the status is final (confirmed / failed / cancelled).</summary>
     [JsonPropertyName("is_final")]
     public required bool IsFinal { get; init; }
 
-    /// <summary>true — это возврат платежа, а не обычная выплата.</summary>
+    /// <summary>true — this is a payment refund, not a regular payout.</summary>
     [JsonPropertyName("is_refund")]
     public required bool IsRefund { get; init; }
 
-    /// <summary>Тег/мемо назначения, переданный при создании (TON Jetton, memo-биржи). Пусто — без мемо.</summary>
+    /// <summary>The destination tag/memo passed at creation (TON Jetton, exchange memos). Empty — no memo.</summary>
     [JsonPropertyName("memo")]
     public required string Memo { get; init; }
 
-    /// <summary>Сеть блокчейна.</summary>
+    /// <summary>Blockchain network.</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>Ваш номер (reference) выплаты. У возврата — null: возврат не имеет вашего идентификатора, см. payment_order_id.</summary>
+    /// <summary>Your payout number (reference). null for a refund: a refund has no identifier of yours, see payment_order_id.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
 
-    /// <summary>Сколько реально уходит получателю на адрес: amount − commission.</summary>
+    /// <summary>How much actually goes to the recipient's address: amount − commission.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("payer_amount")]
     public required decimal PayerAmount { get; init; }
 
-    /// <summary>Ваш order_id платежа, по которому сделан возврат (null у обычной выплаты). У возврата собственного order_id нет — он приходит null, а сверять возврат с заказом нужно по этому полю.</summary>
+    /// <summary>Your order_id of the payment that was refunded (null for a regular payout). A refund has no order_id of its own — it comes as null, so match a refund to an order by this field.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("payment_order_id")]
     public string? PaymentOrderId { get; init; }
 
-    /// <summary>Идентификатор возвращаемого платежа (null, если это не возврат).</summary>
+    /// <summary>The id of the payment being refunded (null if this is not a refund).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("refund_for")]
     public string? RefundFor { get; init; }
 
-    /// <summary>api (через интеграцию) | manual (из кабинета).</summary>
+    /// <summary>api (via the integration) | manual (from the dashboard).</summary>
     [JsonPropertyName("source")]
     public required PayoutSource Source { get; init; }
 
-    /// <summary>Статус выплаты: pending (создана, ждёт) | approved (одобрена) | awaiting_cosign (ждёт второй подписи) | broadcasting (отправляется) | sent (отправлена, ждёт подтверждений) | confirmed (подтверждена — готово) | failed | cancelled. Значение можно передать обратно в фильтр истории как есть.</summary>
+    /// <summary>Payout status: pending (created, waiting) | approved (approved) | awaiting_cosign (waiting for the second signature) | broadcasting (being broadcast) | sent (sent, awaiting confirmations) | confirmed (confirmed — done) | failed | cancelled. The value can be passed back to the history filter as is.</summary>
     [JsonPropertyName("status")]
     public required PayoutStatus Status { get; init; }
 
-    /// <summary>Хеш транзакции в блокчейне (появляется после отправки).</summary>
+    /// <summary>The blockchain transaction hash (appears after sending).</summary>
     [JsonPropertyName("txid")]
     public required string Txid { get; init; }
 
-    /// <summary>Время последнего изменения (ISO 8601).</summary>
+    /// <summary>Time of the last change (ISO 8601).</summary>
     [JsonPropertyName("updated_at")]
     public required string UpdatedAt { get; init; }
 
-    /// <summary>Идентификатор выплаты.</summary>
+    /// <summary>Payout id.</summary>
     [JsonPropertyName("uuid")]
     public required string Uuid { get; init; }
 }
@@ -3169,49 +3272,49 @@ public sealed partial record PayoutItem : Model
 /// <summary><c>PayoutLinkBatchItem</c> model.</summary>
 public sealed partial record PayoutLinkBatchItem : Model
 {
-    /// <summary>Сумма в currency, строкой; больше нуля</summary>
+    /// <summary>The amount in currency, as a string; greater than zero</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Крипто-актив выплаты (USDT, BTC, …); фиат невозможен</summary>
+    /// <summary>The payout crypto asset (USDT, BTC, …); fiat is not possible</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Если задан — получателю уходит письмо с кнопкой «Получить средства»; сбой доставки не отменяет создание ссылки</summary>
+    /// <summary>If set, the recipient gets an email with a "Claim funds" button; a delivery failure does not cancel the link creation</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("email")]
     public string? Email { get; init; }
 
-    /// <summary>Срок жизни ссылки в секундах, клампится в диапазон 3600–2592000 (час–30 суток); без поля или при 0 ссылка живёт 1 час, а не максимум — задавайте явно</summary>
+    /// <summary>The link lifetime in seconds, clamped to the range 3600–2592000 (an hour to 30 days); without the field or at 0 the link lives 1 hour, not the maximum — set it explicitly</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("expires_in_seconds")]
     public long? ExpiresInSeconds { get; init; }
 
-    /// <summary>Кто платит сетевую комиссию: "recipient" (по умолчанию — вычитается из суммы, получателю придёт меньше) или "merchant" (резервируется сумма плюс комиссия, получателю придёт ровно amount)</summary>
+    /// <summary>Who pays the network fee: "recipient" (default — deducted from the amount, the recipient gets less) or "merchant" (the amount plus the fee is reserved, the recipient gets exactly amount)</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("fee_bearer")]
     public PayoutLinkFeeBearer? FeeBearer { get; init; }
 
-    /// <summary>Сеть выплаты получателю (tron, bitcoin, …)</summary>
+    /// <summary>The network of the payout to the recipient (tron, bitcoin, …)</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>Сообщение получателю (видно на странице получения и в письме)</summary>
+    /// <summary>A message to the recipient (visible on the claim page and in the email)</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("note")]
     public string? Note { get; init; }
 
-    /// <summary>Код получения — второй фактор к ссылке: "auto" — сгенерируем и вернём ОДИН раз в ответе, либо свой (6–64 видимых символа), пусто — без кода. Код передавайте получателю ОТДЕЛЬНЫМ от ссылки каналом (в письмо он не кладётся); после 10 неверных вводов ссылка запирается.</summary>
+    /// <summary>Claim passcode — a second factor for the link: "auto" — we generate it and return it ONCE in the response, or your own (6–64 visible characters), empty — no passcode. Give the passcode to the recipient over a channel SEPARATE from the link (it is not included in the email); after 10 wrong attempts the link is locked.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("passcode")]
     public string? Passcode { get; init; }
 
-    /// <summary>Ваш ключ дедупликации ссылки, уникальный на мерчанта: повтор с тем же reference не зарезервирует деньги второй раз. В одиночном POST /v1/payout/link необязателен — без него ключом становится заголовок Idempotency-Key, а без обоих запрос отвергается (payoutlink.idempotency_required). В пачке POST /v1/payout/link/batch обязателен у каждой ссылки: Idempotency-Key пачки на элементы не переносится</summary>
+    /// <summary>Your deduplication key for the link, unique per merchant: a retry with the same reference will not reserve the money a second time. Optional in a single POST /v1/payout/link — without it the Idempotency-Key header becomes the key, and without both the request is rejected (payoutlink.idempotency_required). Required on every link in a POST /v1/payout/link/batch: the batch's Idempotency-Key is not carried over to the items</summary>
     [JsonPropertyName("reference")]
     public required string Reference { get; init; }
 
-    /// <summary>Заголовок — виден получателю на странице получения</summary>
+    /// <summary>Title — visible to the recipient on the claim page</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("title")]
     public string? Title { get; init; }
@@ -3220,7 +3323,7 @@ public sealed partial record PayoutLinkBatchItem : Model
 /// <summary><c>PayoutLinkBatchRequest</c> model.</summary>
 public sealed partial record PayoutLinkBatchRequest : Model
 {
-    /// <summary>До 500 ссылок за вызов; каждая проходит или падает независимо, ответ выровнен по индексам запроса. reference обязателен у каждой.</summary>
+    /// <summary>Up to 500 links per call; each succeeds or fails independently, the response is aligned with the request indices. reference is required on each.</summary>
     [JsonPropertyName("items")]
     public required IReadOnlyList<PayoutLinkBatchItem> Items { get; init; }
 }
@@ -3228,7 +3331,7 @@ public sealed partial record PayoutLinkBatchRequest : Model
 /// <summary><c>PayoutLinkBatchResult</c> model.</summary>
 public sealed partial record PayoutLinkBatchResult : Model
 {
-    /// <summary>Элементы в порядке запроса; result — ответ одиночного POST /v1/payout/link.</summary>
+    /// <summary>Items in request order; result — the response of a single POST /v1/payout/link.</summary>
     [JsonPropertyName("items")]
     public required IReadOnlyList<PayoutLinkBatchResultItemsItem> Items { get; init; }
 }
@@ -3236,35 +3339,35 @@ public sealed partial record PayoutLinkBatchResult : Model
 /// <summary><c>PayoutLinkBatchResultItemsItem</c> model.</summary>
 public sealed partial record PayoutLinkBatchResultItemsItem : Model
 {
-    /// <summary>Машинный код отказа; есть при ok=false.</summary>
+    /// <summary>The machine code of the rejection; present when ok=false.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("error_code")]
     public string? ErrorCode { get; init; }
 
-    /// <summary>HTTP-статус, которым ответил бы одиночный вызов; есть при ok=false.</summary>
+    /// <summary>The HTTP status a single call would have returned; present when ok=false.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("http_status")]
     public long? HttpStatus { get; init; }
 
-    /// <summary>Номер элемента в запросе.</summary>
+    /// <summary>The item's number in the request.</summary>
     [JsonPropertyName("idx")]
     public required long Idx { get; init; }
 
-    /// <summary>Текст отказа; есть при ok=false.</summary>
+    /// <summary>The rejection text; present when ok=false.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("message")]
     public string? Message { get; init; }
 
-    /// <summary>Элемент выполнен.</summary>
+    /// <summary>The item was executed.</summary>
     [JsonPropertyName("ok")]
     public required bool Ok { get; init; }
 
-    /// <summary>order_id элемента, если он был в запросе.</summary>
+    /// <summary>The item's order_id, if it was in the request.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
 
-    /// <summary>Результат одиночного вызова; есть при ok=true.</summary>
+    /// <summary>The result of a single call; present when ok=true.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("result")]
     public PayoutLinkCreated? Result { get; init; }
@@ -3273,11 +3376,11 @@ public sealed partial record PayoutLinkBatchResultItemsItem : Model
 /// <summary><c>PayoutLinkChequeRequest</c> model.</summary>
 public sealed partial record PayoutLinkChequeRequest : Model
 {
-    /// <summary>Секрет получения из ответа создания выплатной ссылки. Хранится только хешем и повторно не выдаётся — чек можно напечатать, лишь пока токен у вас.</summary>
+    /// <summary>The claim secret from the payout link creation response. Stored only as a hash and not issued again — the cheque can be printed only while you still have the token.</summary>
     [JsonPropertyName("claim_token")]
     public required string ClaimToken { get; init; }
 
-    /// <summary>Язык документа — один из 41 поддерживаемого кода (en по умолчанию); полный список — в ошибке document.unknown_lang.</summary>
+    /// <summary>Document language — one of the 41 supported codes (en by default); the full list is in the document.unknown_lang error.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("lang")]
     public string? Lang { get; init; }
@@ -3286,102 +3389,102 @@ public sealed partial record PayoutLinkChequeRequest : Model
 /// <summary><c>PayoutLinkCreated</c> model.</summary>
 public sealed partial record PayoutLinkCreated : Model
 {
-    /// <summary>Сумма ссылки — обещание получателю.</summary>
+    /// <summary>The link amount — a promise to the recipient.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Пачка, в которой создана ссылка.</summary>
+    /// <summary>The batch in which the link was created.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("batch_id")]
     public string? BatchId { get; init; }
 
-    /// <summary>Адрес, который указал получатель.</summary>
+    /// <summary>The address the recipient specified.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("claim_address")]
     public string? ClaimAddress { get; init; }
 
-    /// <summary>Секрет ссылки получения; выдаётся один раз и хранится только хешем.</summary>
+    /// <summary>The claim link secret; issued once and stored only as a hash.</summary>
     [JsonPropertyName("claim_token")]
     public required string ClaimToken { get; init; }
 
-    /// <summary>Страница получения; пусто, если публичный адрес не настроен.</summary>
+    /// <summary>The claim page; empty if the public address is not configured.</summary>
     [JsonPropertyName("claim_url")]
     public required string ClaimUrl { get; init; }
 
-    /// <summary>Сетевая комиссия; null — оценить сейчас нельзя (ноль означал бы бесплатное получение).</summary>
+    /// <summary>Network fee; null — cannot be estimated right now (zero would mean the claim is free).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("commission")]
     public decimal? Commission { get; init; }
 
-    /// <summary>Когда создана (UTC).</summary>
+    /// <summary>When created (UTC).</summary>
     [JsonPropertyName("created_at")]
     public required string CreatedAt { get; init; }
 
-    /// <summary>Актив выплаты.</summary>
+    /// <summary>Payout asset.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Адрес, на который ушло письмо получателю.</summary>
+    /// <summary>The address the email to the recipient was sent to.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("email")]
     public string? Email { get; init; }
 
-    /// <summary>До какого момента ссылку можно получить (UTC).</summary>
+    /// <summary>Until when the link can be claimed (UTC).</summary>
     [JsonPropertyName("expires_at")]
     public required string ExpiresAt { get; init; }
 
-    /// <summary>Кто платит сетевую комиссию.</summary>
+    /// <summary>Who pays the network fee.</summary>
     [JsonPropertyName("fee_bearer")]
     public required PayoutLinkFeeBearer FeeBearer { get; init; }
 
-    /// <summary>exact — комиссия зафиксирована; estimated — оценка по текущей сети.</summary>
+    /// <summary>exact — the fee is fixed; estimated — an estimate based on the current network.</summary>
     [JsonPropertyName("fee_type")]
     public required FeeType FeeType { get; init; }
 
-    /// <summary>Идентификатор ссылки.</summary>
+    /// <summary>Link id.</summary>
     [JsonPropertyName("link_id")]
     public required string LinkId { get; init; }
 
-    /// <summary>Сеть выплаты.</summary>
+    /// <summary>Payout network.</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>Сообщение получателю.</summary>
+    /// <summary>Message to the recipient.</summary>
     [JsonPropertyName("note")]
     public required string Note { get; init; }
 
-    /// <summary>Сгенерированный код получения (passcode=auto); выдаётся один раз.</summary>
+    /// <summary>The generated claim passcode (passcode=auto); issued once.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("passcode")]
     public string? Passcode { get; init; }
 
-    /// <summary>Получение требует кода.</summary>
+    /// <summary>Claiming requires a passcode.</summary>
     [JsonPropertyName("passcode_protected")]
     public required bool PasscodeProtected { get; init; }
 
-    /// <summary>Сколько дойдёт получателю; null — сказать нельзя (комиссия не оценена или съела сумму).</summary>
+    /// <summary>How much will reach the recipient; null — cannot be said (the fee was not estimated or ate the amount).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("payer_amount")]
     public decimal? PayerAmount { get; init; }
 
-    /// <summary>Выплата, порождённая получением; есть у полученной ссылки.</summary>
+    /// <summary>The payout created by the claim; present on a claimed link.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("payout_id")]
     public string? PayoutId { get; init; }
 
-    /// <summary>Ваш ключ дедупликации.</summary>
+    /// <summary>Your deduplication key.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("reference")]
     public string? Reference { get; init; }
 
-    /// <summary>Состояние ссылки.</summary>
+    /// <summary>Link state.</summary>
     [JsonPropertyName("status")]
     public required PayoutLinkStatus Status { get; init; }
 
-    /// <summary>Заголовок, видный получателю.</summary>
+    /// <summary>Title visible to the recipient.</summary>
     [JsonPropertyName("title")]
     public required string Title { get; init; }
 }
@@ -3389,7 +3492,7 @@ public sealed partial record PayoutLinkCreated : Model
 /// <summary><c>PayoutLinkIDRequest</c> model.</summary>
 public sealed partial record PayoutLinkIDRequest : Model
 {
-    /// <summary>Идентификатор выплатной ссылки (link_id из ответа создания).</summary>
+    /// <summary>The payout link id (link_id from the creation response).</summary>
     [JsonPropertyName("link_id")]
     public required string LinkId { get; init; }
 }
@@ -3397,50 +3500,50 @@ public sealed partial record PayoutLinkIDRequest : Model
 /// <summary><c>PayoutLinkItem</c> model.</summary>
 public sealed partial record PayoutLinkItem : Model
 {
-    /// <summary>Сумма в currency, строкой; больше нуля</summary>
+    /// <summary>The amount in currency, as a string; greater than zero</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Крипто-актив выплаты (USDT, BTC, …); фиат невозможен</summary>
+    /// <summary>The payout crypto asset (USDT, BTC, …); fiat is not possible</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Если задан — получателю уходит письмо с кнопкой «Получить средства»; сбой доставки не отменяет создание ссылки</summary>
+    /// <summary>If set, the recipient gets an email with a "Claim funds" button; a delivery failure does not cancel the link creation</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("email")]
     public string? Email { get; init; }
 
-    /// <summary>Срок жизни ссылки в секундах, клампится в диапазон 3600–2592000 (час–30 суток); без поля или при 0 ссылка живёт 1 час, а не максимум — задавайте явно</summary>
+    /// <summary>The link lifetime in seconds, clamped to the range 3600–2592000 (an hour to 30 days); without the field or at 0 the link lives 1 hour, not the maximum — set it explicitly</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("expires_in_seconds")]
     public long? ExpiresInSeconds { get; init; }
 
-    /// <summary>Кто платит сетевую комиссию: "recipient" (по умолчанию — вычитается из суммы, получателю придёт меньше) или "merchant" (резервируется сумма плюс комиссия, получателю придёт ровно amount)</summary>
+    /// <summary>Who pays the network fee: "recipient" (default — deducted from the amount, the recipient gets less) or "merchant" (the amount plus the fee is reserved, the recipient gets exactly amount)</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("fee_bearer")]
     public PayoutLinkFeeBearer? FeeBearer { get; init; }
 
-    /// <summary>Сеть выплаты получателю (tron, bitcoin, …)</summary>
+    /// <summary>The network of the payout to the recipient (tron, bitcoin, …)</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>Сообщение получателю (видно на странице получения и в письме)</summary>
+    /// <summary>A message to the recipient (visible on the claim page and in the email)</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("note")]
     public string? Note { get; init; }
 
-    /// <summary>Код получения — второй фактор к ссылке: "auto" — сгенерируем и вернём ОДИН раз в ответе, либо свой (6–64 видимых символа), пусто — без кода. Код передавайте получателю ОТДЕЛЬНЫМ от ссылки каналом (в письмо он не кладётся); после 10 неверных вводов ссылка запирается.</summary>
+    /// <summary>Claim passcode — a second factor for the link: "auto" — we generate it and return it ONCE in the response, or your own (6–64 visible characters), empty — no passcode. Give the passcode to the recipient over a channel SEPARATE from the link (it is not included in the email); after 10 wrong attempts the link is locked.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("passcode")]
     public string? Passcode { get; init; }
 
-    /// <summary>Ваш ключ дедупликации ссылки, уникальный на мерчанта: повтор с тем же reference не зарезервирует деньги второй раз. В одиночном POST /v1/payout/link необязателен — без него ключом становится заголовок Idempotency-Key, а без обоих запрос отвергается (payoutlink.idempotency_required). В пачке POST /v1/payout/link/batch обязателен у каждой ссылки: Idempotency-Key пачки на элементы не переносится</summary>
+    /// <summary>Your deduplication key for the link, unique per merchant: a retry with the same reference will not reserve the money a second time. Optional in a single POST /v1/payout/link — without it the Idempotency-Key header becomes the key, and without both the request is rejected (payoutlink.idempotency_required). Required on every link in a POST /v1/payout/link/batch: the batch's Idempotency-Key is not carried over to the items</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("reference")]
     public string? Reference { get; init; }
 
-    /// <summary>Заголовок — виден получателю на странице получения</summary>
+    /// <summary>Title — visible to the recipient on the claim page</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("title")]
     public string? Title { get; init; }
@@ -3449,89 +3552,89 @@ public sealed partial record PayoutLinkItem : Model
 /// <summary><c>PayoutLinkView</c> model.</summary>
 public sealed partial record PayoutLinkView : Model
 {
-    /// <summary>Сумма ссылки — обещание получателю.</summary>
+    /// <summary>The link amount — a promise to the recipient.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Пачка, в которой создана ссылка.</summary>
+    /// <summary>The batch in which the link was created.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("batch_id")]
     public string? BatchId { get; init; }
 
-    /// <summary>Адрес, который указал получатель.</summary>
+    /// <summary>The address the recipient specified.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("claim_address")]
     public string? ClaimAddress { get; init; }
 
-    /// <summary>Сетевая комиссия; null — оценить сейчас нельзя (ноль означал бы бесплатное получение).</summary>
+    /// <summary>Network fee; null — cannot be estimated right now (zero would mean the claim is free).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("commission")]
     public decimal? Commission { get; init; }
 
-    /// <summary>Когда создана (UTC).</summary>
+    /// <summary>When created (UTC).</summary>
     [JsonPropertyName("created_at")]
     public required string CreatedAt { get; init; }
 
-    /// <summary>Актив выплаты.</summary>
+    /// <summary>Payout asset.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Адрес, на который ушло письмо получателю.</summary>
+    /// <summary>The address the email to the recipient was sent to.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("email")]
     public string? Email { get; init; }
 
-    /// <summary>До какого момента ссылку можно получить (UTC).</summary>
+    /// <summary>Until when the link can be claimed (UTC).</summary>
     [JsonPropertyName("expires_at")]
     public required string ExpiresAt { get; init; }
 
-    /// <summary>Кто платит сетевую комиссию.</summary>
+    /// <summary>Who pays the network fee.</summary>
     [JsonPropertyName("fee_bearer")]
     public required PayoutLinkFeeBearer FeeBearer { get; init; }
 
-    /// <summary>exact — комиссия зафиксирована; estimated — оценка по текущей сети.</summary>
+    /// <summary>exact — the fee is fixed; estimated — an estimate based on the current network.</summary>
     [JsonPropertyName("fee_type")]
     public required FeeType FeeType { get; init; }
 
-    /// <summary>Идентификатор ссылки.</summary>
+    /// <summary>Link id.</summary>
     [JsonPropertyName("link_id")]
     public required string LinkId { get; init; }
 
-    /// <summary>Сеть выплаты.</summary>
+    /// <summary>Payout network.</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>Сообщение получателю.</summary>
+    /// <summary>Message to the recipient.</summary>
     [JsonPropertyName("note")]
     public required string Note { get; init; }
 
-    /// <summary>Получение требует кода.</summary>
+    /// <summary>Claiming requires a passcode.</summary>
     [JsonPropertyName("passcode_protected")]
     public required bool PasscodeProtected { get; init; }
 
-    /// <summary>Сколько дойдёт получателю; null — сказать нельзя (комиссия не оценена или съела сумму).</summary>
+    /// <summary>How much will reach the recipient; null — cannot be said (the fee was not estimated or ate the amount).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("payer_amount")]
     public decimal? PayerAmount { get; init; }
 
-    /// <summary>Выплата, порождённая получением; есть у полученной ссылки.</summary>
+    /// <summary>The payout created by the claim; present on a claimed link.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("payout_id")]
     public string? PayoutId { get; init; }
 
-    /// <summary>Ваш ключ дедупликации.</summary>
+    /// <summary>Your deduplication key.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("reference")]
     public string? Reference { get; init; }
 
-    /// <summary>Состояние ссылки.</summary>
+    /// <summary>Link state.</summary>
     [JsonPropertyName("status")]
     public required PayoutLinkStatus Status { get; init; }
 
-    /// <summary>Заголовок, видный получателю.</summary>
+    /// <summary>Title visible to the recipient.</summary>
     [JsonPropertyName("title")]
     public required string Title { get; init; }
 }
@@ -3539,11 +3642,11 @@ public sealed partial record PayoutLinkView : Model
 /// <summary><c>PayoutLinkViewList</c> model.</summary>
 public sealed partial record PayoutLinkViewList : Model
 {
-    /// <summary>Записи этой страницы.</summary>
+    /// <summary>The records of this page.</summary>
     [JsonPropertyName("items")]
     public required IReadOnlyList<PayoutLinkView> Items { get; init; }
 
-    /// <summary>Блок пагинации.</summary>
+    /// <summary>Pagination block.</summary>
     [JsonPropertyName("paginate")]
     public required Pagination Paginate { get; init; }
 }
@@ -3551,49 +3654,49 @@ public sealed partial record PayoutLinkViewList : Model
 /// <summary><c>PayoutRequest</c> model.</summary>
 public sealed partial record PayoutRequest : Model
 {
-    /// <summary>Адрес получателя.</summary>
+    /// <summary>Recipient address.</summary>
     [JsonPropertyName("address")]
     public required string Address { get; init; }
 
-    /// <summary>Сумма выплаты в валюте currency.</summary>
+    /// <summary>The payout amount in currency.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Код валюты (например USDT).</summary>
+    /// <summary>Currency code (e.g. USDT).</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Профинансировать выплату конвертацией баланса. Только USDT → currency.</summary>
+    /// <summary>Fund the payout by converting balance. USDT → currency only.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("from_currency")]
     public string? FromCurrency { get; init; }
 
-    /// <summary>Кто платит сетевую комиссию: true — с баланса списывается amount+fee, получатель получает amount; false — получатель получает amount-fee; не передано — fee-config проекта.</summary>
+    /// <summary>Who pays the network fee: true — amount+fee is debited from the balance, the recipient gets amount; false — the recipient gets amount-fee; omitted — the project's fee-config.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("is_subtract")]
     public bool? IsSubtract { get; init; }
 
-    /// <summary>Тег/мемо назначения (TON Jetton). Максимум 120 символов.</summary>
+    /// <summary>Destination tag/memo (TON Jetton). At most 120 characters.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("memo")]
     public string? Memo { get; init; }
 
-    /// <summary>Сеть (tron, ethereum, …). Обязательна для монет с несколькими сетями.</summary>
+    /// <summary>Network (tron, ethereum, …). Required for coins with several networks.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("network")]
     public string? Network { get; init; }
 
-    /// <summary>Ваш номер выплаты; ключ идемпотентности.</summary>
+    /// <summary>Your payout number; the idempotency key.</summary>
     [JsonPropertyName("order_id")]
     public required string OrderId { get; init; }
 
-    /// <summary>Метка происхождения: api (по умолчанию) или manual.</summary>
+    /// <summary>The origin label: api (default) or manual.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("source")]
     public string? Source { get; init; }
 
-    /// <summary>Свой URL вебхука для этой выплаты (проходит SSRF-проверку). Требует зарегистрированного эндпоинта (POST /v1/webhooks): доставка подписывается его секретом.</summary>
+    /// <summary>Your own webhook URL for this payout (passes the SSRF check). Requires a registered endpoint (POST /v1/webhooks): the delivery is signed with its secret.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("url_callback")]
     public string? UrlCallback { get; init; }
@@ -3602,50 +3705,50 @@ public sealed partial record PayoutRequest : Model
 /// <summary><c>PayoutValidateRequest</c> model.</summary>
 public sealed partial record PayoutValidateRequest : Model
 {
-    /// <summary>Адрес получателя.</summary>
+    /// <summary>Recipient address.</summary>
     [JsonPropertyName("address")]
     public required string Address { get; init; }
 
-    /// <summary>Сумма выплаты в валюте currency.</summary>
+    /// <summary>The payout amount in currency.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Код валюты (например USDT).</summary>
+    /// <summary>Currency code (e.g. USDT).</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Профинансировать выплату конвертацией баланса. Только USDT → currency.</summary>
+    /// <summary>Fund the payout by converting balance. USDT → currency only.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("from_currency")]
     public string? FromCurrency { get; init; }
 
-    /// <summary>Кто платит сетевую комиссию: true — с баланса списывается amount+fee, получатель получает amount; false — получатель получает amount-fee; не передано — fee-config проекта.</summary>
+    /// <summary>Who pays the network fee: true — amount+fee is debited from the balance, the recipient gets amount; false — the recipient gets amount-fee; omitted — the project's fee-config.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("is_subtract")]
     public bool? IsSubtract { get; init; }
 
-    /// <summary>Тег/мемо назначения (TON Jetton). Максимум 120 символов.</summary>
+    /// <summary>Destination tag/memo (TON Jetton). At most 120 characters.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("memo")]
     public string? Memo { get; init; }
 
-    /// <summary>Сеть (tron, ethereum, …). Обязательна для монет с несколькими сетями.</summary>
+    /// <summary>Network (tron, ethereum, …). Required for coins with several networks.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("network")]
     public string? Network { get; init; }
 
-    /// <summary>Ваш номер выплаты; ключ идемпотентности.</summary>
+    /// <summary>Your payout number; the idempotency key.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
 
-    /// <summary>Метка происхождения: api (по умолчанию) или manual.</summary>
+    /// <summary>The origin label: api (default) or manual.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("source")]
     public string? Source { get; init; }
 
-    /// <summary>Свой URL вебхука для этой выплаты (проходит SSRF-проверку). Требует зарегистрированного эндпоинта (POST /v1/webhooks): доставка подписывается его секретом.</summary>
+    /// <summary>Your own webhook URL for this payout (passes the SSRF check). Requires a registered endpoint (POST /v1/webhooks): the delivery is signed with its secret.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("url_callback")]
     public string? UrlCallback { get; init; }
@@ -3654,43 +3757,43 @@ public sealed partial record PayoutValidateRequest : Model
 /// <summary><c>PayoutValidateResult</c> model.</summary>
 public sealed partial record PayoutValidateResult : Model
 {
-    /// <summary>Сколько спишется с баланса.</summary>
+    /// <summary>How much will be debited from the balance.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Сетевая комиссия.</summary>
+    /// <summary>Network fee.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("commission")]
     public required decimal Commission { get; init; }
 
-    /// <summary>Валюта выплаты.</summary>
+    /// <summary>Payout currency.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Кто платит сетевую комиссию.</summary>
+    /// <summary>Who pays the network fee.</summary>
     [JsonPropertyName("fee_bearer")]
     public required PayoutFeeBearer FeeBearer { get; init; }
 
-    /// <summary>Валюта, конвертацией которой профинансируется выплата (from_currency); есть только у такой выплаты.</summary>
+    /// <summary>The currency whose conversion funds the payout (from_currency); present only on such a payout.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("funded_by")]
     public string? FundedBy { get; init; }
 
-    /// <summary>Что именно проверено по балансу и что проверится при исполнении.</summary>
+    /// <summary>What exactly was checked against the balance and what will be checked at execution.</summary>
     [JsonPropertyName("maturity_note")]
     public required string MaturityNote { get; init; }
 
-    /// <summary>Сеть выплаты в каноническом написании.</summary>
+    /// <summary>The payout network in canonical spelling.</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>Сколько дойдёт получателю.</summary>
+    /// <summary>How much will reach the recipient.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("payer_amount")]
     public required decimal PayerAmount { get; init; }
 
-    /// <summary>Всегда true: не прошедшая проверка отвечает ошибкой с кодом причины.</summary>
+    /// <summary>Always true: a failed check responds with an error carrying the reason code.</summary>
     [JsonPropertyName("valid")]
     public required bool Valid { get; init; }
 }
@@ -3698,93 +3801,93 @@ public sealed partial record PayoutValidateResult : Model
 /// <summary><c>PayoutView</c> model.</summary>
 public sealed partial record PayoutView : Model
 {
-    /// <summary>Адрес получателя.</summary>
+    /// <summary>Recipient address.</summary>
     [JsonPropertyName("address")]
     public required string Address { get; init; }
 
-    /// <summary>Сумма выплаты в валюте currency, списанная с вашего баланса.</summary>
+    /// <summary>The payout amount in currency, debited from your balance.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>true — выплата ждёт подтверждения (внутренние сценарии; по API-ключу всегда false).</summary>
+    /// <summary>true — the payout is awaiting approval (internal scenarios; always false with an API key).</summary>
     [JsonPropertyName("approval_required")]
     public required bool ApprovalRequired { get; init; }
 
-    /// <summary>Удержанная сетевая комиссия, в валюте выплаты. 0 — комиссию поглотил шлюз.</summary>
+    /// <summary>The withheld network fee, in the payout currency. 0 — the gateway absorbed the fee.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("commission")]
     public required decimal Commission { get; init; }
 
-    /// <summary>Время создания (ISO 8601).</summary>
+    /// <summary>Creation time (ISO 8601).</summary>
     [JsonPropertyName("created_at")]
     public required string CreatedAt { get; init; }
 
-    /// <summary>Код валюты выплаты.</summary>
+    /// <summary>Payout currency code.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Подписанная ссылка на PDF-чек этой операции — открывается без API-ключа, можно вложить в письмо или отдать получателю. Пусто, если генерация документов не включена.</summary>
+    /// <summary>A signed link to the PDF receipt of this operation — opens without an API key, can be attached to an email or given to the recipient. Empty if document generation is not enabled.</summary>
     [JsonPropertyName("document_url")]
     public required string DocumentUrl { get; init; }
 
-    /// <summary>Кто заплатил сетевую комиссию: gateway — шлюз поглотил её (commission = 0); merchant — сумма списания увеличена на комиссию, получатель получает запрошенное целиком (is_subtract=true, выплатная ссылка с fee_bearer=merchant); recipient — комиссия удержана из выплаты, получателю приходит меньше запрошенного.</summary>
+    /// <summary>Who paid the network fee: gateway — the gateway absorbed it (commission = 0); merchant — the debit amount was increased by the fee, the recipient gets the full requested amount (is_subtract=true, a payout link with fee_bearer=merchant); recipient — the fee was withheld from the payout, the recipient gets less than requested.</summary>
     [JsonPropertyName("fee_bearer")]
     public required PayoutFeeBearer FeeBearer { get; init; }
 
-    /// <summary>true — статус финальный (confirmed / failed / cancelled).</summary>
+    /// <summary>true — the status is final (confirmed / failed / cancelled).</summary>
     [JsonPropertyName("is_final")]
     public required bool IsFinal { get; init; }
 
-    /// <summary>true — это возврат платежа, а не обычная выплата.</summary>
+    /// <summary>true — this is a payment refund, not a regular payout.</summary>
     [JsonPropertyName("is_refund")]
     public required bool IsRefund { get; init; }
 
-    /// <summary>Тег/мемо назначения, переданный при создании (TON Jetton, memo-биржи). Пусто — без мемо.</summary>
+    /// <summary>The destination tag/memo passed at creation (TON Jetton, exchange memos). Empty — no memo.</summary>
     [JsonPropertyName("memo")]
     public required string Memo { get; init; }
 
-    /// <summary>Сеть блокчейна.</summary>
+    /// <summary>Blockchain network.</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>Ваш номер (reference) выплаты. У возврата — null: возврат не имеет вашего идентификатора, см. payment_order_id.</summary>
+    /// <summary>Your payout number (reference). null for a refund: a refund has no identifier of yours, see payment_order_id.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
 
-    /// <summary>Сколько реально уходит получателю на адрес: amount − commission.</summary>
+    /// <summary>How much actually goes to the recipient's address: amount − commission.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("payer_amount")]
     public required decimal PayerAmount { get; init; }
 
-    /// <summary>Ваш order_id платежа, по которому сделан возврат (null у обычной выплаты). У возврата собственного order_id нет — он приходит null, а сверять возврат с заказом нужно по этому полю.</summary>
+    /// <summary>Your order_id of the payment that was refunded (null for a regular payout). A refund has no order_id of its own — it comes as null, so match a refund to an order by this field.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("payment_order_id")]
     public string? PaymentOrderId { get; init; }
 
-    /// <summary>Идентификатор возвращаемого платежа (null, если это не возврат).</summary>
+    /// <summary>The id of the payment being refunded (null if this is not a refund).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("refund_for")]
     public string? RefundFor { get; init; }
 
-    /// <summary>api (через интеграцию) | manual (из кабинета).</summary>
+    /// <summary>api (via the integration) | manual (from the dashboard).</summary>
     [JsonPropertyName("source")]
     public required PayoutSource Source { get; init; }
 
-    /// <summary>Статус выплаты: pending (создана, ждёт) | approved (одобрена) | awaiting_cosign (ждёт второй подписи) | broadcasting (отправляется) | sent (отправлена, ждёт подтверждений) | confirmed (подтверждена — готово) | failed | cancelled. Значение можно передать обратно в фильтр истории как есть.</summary>
+    /// <summary>Payout status: pending (created, waiting) | approved (approved) | awaiting_cosign (waiting for the second signature) | broadcasting (being broadcast) | sent (sent, awaiting confirmations) | confirmed (confirmed — done) | failed | cancelled. The value can be passed back to the history filter as is.</summary>
     [JsonPropertyName("status")]
     public required PayoutStatus Status { get; init; }
 
-    /// <summary>Хеш транзакции в блокчейне (появляется после отправки).</summary>
+    /// <summary>The blockchain transaction hash (appears after sending).</summary>
     [JsonPropertyName("txid")]
     public required string Txid { get; init; }
 
-    /// <summary>Время последнего изменения (ISO 8601).</summary>
+    /// <summary>Time of the last change (ISO 8601).</summary>
     [JsonPropertyName("updated_at")]
     public required string UpdatedAt { get; init; }
 
-    /// <summary>Идентификатор выплаты.</summary>
+    /// <summary>Payout id.</summary>
     [JsonPropertyName("uuid")]
     public required string Uuid { get; init; }
 }
@@ -3792,122 +3895,122 @@ public sealed partial record PayoutView : Model
 /// <summary><c>PayoutViewList</c> model.</summary>
 public sealed partial record PayoutViewList : Model
 {
-    /// <summary>Записи этой страницы.</summary>
+    /// <summary>The records of this page.</summary>
     [JsonPropertyName("items")]
     public required IReadOnlyList<PayoutView> Items { get; init; }
 
-    /// <summary>Блок пагинации.</summary>
+    /// <summary>Pagination block.</summary>
     [JsonPropertyName("paginate")]
     public required Pagination Paginate { get; init; }
 }
 
-/// <summary>Приходит на каждом переходе выплаты. Тело — тот же объект, что отвечают ручки выплат. Возврат платежа — это выплата с is_refund = true: его события тоже payout.*, сверять с платежом по refund_for и payment_order_id.</summary>
+/// <summary>Sent on every payout transition. The body is the same object the payout endpoints return. A payment refund is a payout with is_refund = true: its events are payout.* as well; match it to the payment by refund_for and payment_order_id.</summary>
 public sealed partial record PayoutWebhook : Model
 {
-    /// <summary>Адрес получателя.</summary>
+    /// <summary>Recipient address.</summary>
     [JsonPropertyName("address")]
     public required string Address { get; init; }
 
-    /// <summary>Сумма выплаты в валюте currency, списанная с вашего баланса.</summary>
+    /// <summary>The payout amount in currency, debited from your balance.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>true — выплата ждёт подтверждения (внутренние сценарии; по API-ключу всегда false).</summary>
+    /// <summary>true — the payout is awaiting approval (internal scenarios; always false with an API key).</summary>
     [JsonPropertyName("approval_required")]
     public required bool ApprovalRequired { get; init; }
 
-    /// <summary>Удержанная сетевая комиссия, в валюте выплаты. 0 — комиссию поглотил шлюз.</summary>
+    /// <summary>The withheld network fee, in the payout currency. 0 — the gateway absorbed the fee.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("commission")]
     public required decimal Commission { get; init; }
 
-    /// <summary>Время создания (ISO 8601).</summary>
+    /// <summary>Creation time (ISO 8601).</summary>
     [JsonPropertyName("created_at")]
     public required string CreatedAt { get; init; }
 
-    /// <summary>Код валюты выплаты.</summary>
+    /// <summary>Payout currency code.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Подписанная ссылка на PDF-чек этой операции — открывается без API-ключа, можно вложить в письмо или отдать получателю. Пусто, если генерация документов не включена.</summary>
+    /// <summary>A signed link to the PDF receipt of this operation — opens without an API key, can be attached to an email or given to the recipient. Empty if document generation is not enabled.</summary>
     [JsonPropertyName("document_url")]
     public required string DocumentUrl { get; init; }
 
-    /// <summary>Когда событие произошло, UTC с миллисекундами (ISO 8601).</summary>
+    /// <summary>When the event happened, UTC with milliseconds (ISO 8601).</summary>
     [JsonPropertyName("event_at")]
     public required string EventAt { get; init; }
 
-    /// <summary>Кто заплатил сетевую комиссию: gateway — шлюз поглотил её (commission = 0); merchant — сумма списания увеличена на комиссию, получатель получает запрошенное целиком (is_subtract=true, выплатная ссылка с fee_bearer=merchant); recipient — комиссия удержана из выплаты, получателю приходит меньше запрошенного.</summary>
+    /// <summary>Who paid the network fee: gateway — the gateway absorbed it (commission = 0); merchant — the debit amount was increased by the fee, the recipient gets the full requested amount (is_subtract=true, a payout link with fee_bearer=merchant); recipient — the fee was withheld from the payout, the recipient gets less than requested.</summary>
     [JsonPropertyName("fee_bearer")]
     public required PayoutFeeBearer FeeBearer { get; init; }
 
-    /// <summary>true — статус финальный (confirmed / failed / cancelled).</summary>
+    /// <summary>true — the status is final (confirmed / failed / cancelled).</summary>
     [JsonPropertyName("is_final")]
     public required bool IsFinal { get; init; }
 
-    /// <summary>true — это возврат платежа, а не обычная выплата.</summary>
+    /// <summary>true — this is a payment refund, not a regular payout.</summary>
     [JsonPropertyName("is_refund")]
     public required bool IsRefund { get; init; }
 
-    /// <summary>Тег/мемо назначения, переданный при создании (TON Jetton, memo-биржи). Пусто — без мемо.</summary>
+    /// <summary>The destination tag/memo passed at creation (TON Jetton, exchange memos). Empty — no memo.</summary>
     [JsonPropertyName("memo")]
     public required string Memo { get; init; }
 
-    /// <summary>Сеть блокчейна.</summary>
+    /// <summary>Blockchain network.</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>Ваш номер (reference) выплаты. У возврата — null: возврат не имеет вашего идентификатора, см. payment_order_id.</summary>
+    /// <summary>Your payout number (reference). null for a refund: a refund has no identifier of yours, see payment_order_id.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
 
-    /// <summary>Сколько реально уходит получателю на адрес: amount − commission.</summary>
+    /// <summary>How much actually goes to the recipient's address: amount − commission.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("payer_amount")]
     public required decimal PayerAmount { get; init; }
 
-    /// <summary>Ваш order_id платежа, по которому сделан возврат (null у обычной выплаты). У возврата собственного order_id нет — он приходит null, а сверять возврат с заказом нужно по этому полю.</summary>
+    /// <summary>Your order_id of the payment that was refunded (null for a regular payout). A refund has no order_id of its own — it comes as null, so match a refund to an order by this field.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("payment_order_id")]
     public string? PaymentOrderId { get; init; }
 
-    /// <summary>Идентификатор возвращаемого платежа (null, если это не возврат).</summary>
+    /// <summary>The id of the payment being refunded (null if this is not a refund).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("refund_for")]
     public string? RefundFor { get; init; }
 
-    /// <summary>Глобальный номер события: в пределах одного объекта больший номер новее, меньший — опоздавшая доставка, её нужно отбросить. У репетиции (test: true) всегда 0.</summary>
+    /// <summary>The global event number: within one object a higher number is newer, a lower one is a late delivery and must be discarded. Always 0 on a rehearsal (test: true).</summary>
     [JsonPropertyName("sequence")]
     public required long Sequence { get; init; }
 
-    /// <summary>api (через интеграцию) | manual (из кабинета).</summary>
+    /// <summary>api (via the integration) | manual (from the dashboard).</summary>
     [JsonPropertyName("source")]
     public required PayoutSource Source { get; init; }
 
-    /// <summary>Статус выплаты: pending (создана, ждёт) | approved (одобрена) | awaiting_cosign (ждёт второй подписи) | broadcasting (отправляется) | sent (отправлена, ждёт подтверждений) | confirmed (подтверждена — готово) | failed | cancelled. Значение можно передать обратно в фильтр истории как есть.</summary>
+    /// <summary>Payout status: pending (created, waiting) | approved (approved) | awaiting_cosign (waiting for the second signature) | broadcasting (being broadcast) | sent (sent, awaiting confirmations) | confirmed (confirmed — done) | failed | cancelled. The value can be passed back to the history filter as is.</summary>
     [JsonPropertyName("status")]
     public required PayoutStatus Status { get; init; }
 
-    /// <summary>Есть только у репетиции (/v1/test-webhook/*, /v1/payment/testing-webhook) и всегда true — внутри подписи. Боевое событие этого поля не несёт никогда: тело с test: true обработчик обязан игнорировать, даже если подпись верна.</summary>
+    /// <summary>Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always true — inside the signature. A live event never carries this field: your handler must ignore a body with test: true even if the signature is valid.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("test")]
     public bool? Test { get; init; }
 
-    /// <summary>Хеш транзакции в блокчейне (появляется после отправки).</summary>
+    /// <summary>The blockchain transaction hash (appears after sending).</summary>
     [JsonPropertyName("txid")]
     public required string Txid { get; init; }
 
-    /// <summary>Вид события: payment | payout | wallet | conversion — какое тело пришло.</summary>
+    /// <summary>Event kind: payment | payout | wallet | conversion — which body arrived.</summary>
     [JsonPropertyName("type")]
     public required string Type { get; init; }
 
-    /// <summary>Время последнего изменения (ISO 8601).</summary>
+    /// <summary>Time of the last change (ISO 8601).</summary>
     [JsonPropertyName("updated_at")]
     public required string UpdatedAt { get; init; }
 
-    /// <summary>Идентификатор выплаты.</summary>
+    /// <summary>Payout id.</summary>
     [JsonPropertyName("uuid")]
     public required string Uuid { get; init; }
 }
@@ -3915,15 +4018,15 @@ public sealed partial record PayoutWebhook : Model
 /// <summary><c>PricingCurrency</c> model.</summary>
 public sealed partial record PricingCurrency : Model
 {
-    /// <summary>Код для поля currency при создании счёта.</summary>
+    /// <summary>The code for the currency field when creating an invoice.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Знаков после запятой.</summary>
+    /// <summary>Decimal places.</summary>
     [JsonPropertyName("decimals")]
     public required long Decimals { get; init; }
 
-    /// <summary>Фиат: счёт в нём выставляется, но оплачивается монетой.</summary>
+    /// <summary>Fiat: an invoice can be priced in it, but is paid with a coin.</summary>
     [JsonPropertyName("fiat")]
     public required bool Fiat { get; init; }
 }
@@ -3931,141 +4034,141 @@ public sealed partial record PricingCurrency : Model
 /// <summary><c>PublicPayResult</c> model.</summary>
 public sealed partial record PublicPayResult : Model
 {
-    /// <summary>Способы оплаты, из которых выбирает покупатель; есть только у счёта в статусе select.</summary>
+    /// <summary>The payment methods the buyer chooses from; present only on an invoice in status select.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("accepted")]
     public IReadOnlyList<AcceptedMethod>? Accepted { get; init; }
 
-    /// <summary>Адрес, на который клиент отправляет деньги. На XRP это классический r-адрес ОБЩЕГО кошелька — платёж обязан нести destination_tag, иначе сеть его отклонит.</summary>
+    /// <summary>The address the customer sends money to. On XRP this is the classic r-address of a SHARED wallet — the payment must carry destination_tag, otherwise the network rejects it.</summary>
     [JsonPropertyName("address")]
     public required string Address { get; init; }
 
-    /// <summary>Только XLM: те же реквизиты одной строкой — muxed-адрес M… (SEP-23), адрес и memo вместе; его же кодирует QR. Пусто на остальных сетях.</summary>
+    /// <summary>XLM only: the same payment details in one string — a muxed M… address (SEP-23), address and memo together; the QR code encodes it as well. Empty on other networks.</summary>
     [JsonPropertyName("address_muxed")]
     public required string AddressMuxed { get; init; }
 
-    /// <summary>QR-код адреса как PNG data:-URI — можно сразу в &lt;img src&gt;. На XRP кодирует X-address (адрес+тег одной строкой).</summary>
+    /// <summary>The address QR code as a PNG data: URI — can go straight into &lt;img src&gt;. On XRP it encodes the X-address (address + tag in one string).</summary>
     [JsonPropertyName("address_qr_code")]
     public required string AddressQrCode { get; init; }
 
-    /// <summary>Только XRP: те же реквизиты одной строкой в формате X-address (XLS-5) — адрес и тег вместе; его же кодирует QR. Пусто на остальных сетях.</summary>
+    /// <summary>XRP only: the same payment details in one string in X-address format (XLS-5) — address and tag together; the QR code encodes it as well. Empty on other networks.</summary>
     [JsonPropertyName("address_xaddress")]
     public required string AddressXaddress { get; init; }
 
-    /// <summary>Сумма к оплате в валюте цены (например, в USD).</summary>
+    /// <summary>The amount to pay in the price currency (e.g. USD).</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Сколько уже подтверждённо оплачено, в крипте оплаты; всегда строка (0, если ничего не пришло). Пусто, пока валюта оплаты не выбрана (счёт без валюты).</summary>
+    /// <summary>How much has already been paid and confirmed, in the payment crypto; always a string (0 if nothing has arrived). Empty until the payment currency is chosen (an invoice without a currency).</summary>
     [JsonPropertyName("amount_paid")]
     public required string AmountPaid { get; init; }
 
-    /// <summary>Сколько ещё осталось доплатить (к оплате − оплачено); 0, если хватает. Пусто, пока валюта оплаты не выбрана (счёт без валюты).</summary>
+    /// <summary>How much is still left to pay (due − paid); 0 if enough has been paid. Empty until the payment currency is chosen (an invoice without a currency).</summary>
     [JsonPropertyName("amount_remaining")]
     public required string AmountRemaining { get; init; }
 
-    /// <summary>Текущее число подтверждений входящего платежа.</summary>
+    /// <summary>The current number of confirmations of the incoming payment.</summary>
     [JsonPropertyName("confirmations")]
     public required long Confirmations { get; init; }
 
-    /// <summary>Время создания (ISO 8601).</summary>
+    /// <summary>Creation time (ISO 8601).</summary>
     [JsonPropertyName("created_at")]
     public required string CreatedAt { get; init; }
 
-    /// <summary>Валюта цены: фиат (USD, EUR, RUB, JPY… — см. pricing_currencies) или монета. Говорит, сколько счёт СТОИТ, а не чем за него платят (это payer_currency).</summary>
+    /// <summary>The price currency: fiat (USD, EUR, RUB, JPY… — see pricing_currencies) or a coin. It says how much the invoice COSTS, not what it is paid with (that is payer_currency).</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Только XRP: числовой destination tag, который клиент ОБЯЗАН указать в переводе (поле «тег/memo получателя» на бирже или в кошельке). Пусто на остальных сетях.</summary>
+    /// <summary>XRP only: the numeric destination tag the customer MUST specify in the transfer (the "recipient tag/memo" field at the exchange or in the wallet). Empty on other networks.</summary>
     [JsonPropertyName("destination_tag")]
     public required string DestinationTag { get; init; }
 
-    /// <summary>Когда истекает счёт (ISO 8601, как и все временные поля).</summary>
+    /// <summary>When the invoice expires (ISO 8601, like all time fields).</summary>
     [JsonPropertyName("expired_at")]
     public required string ExpiredAt { get; init; }
 
-    /// <summary>Можно ли сейчас оплатить картой через он-рамп.</summary>
+    /// <summary>Whether paying by card via an on-ramp is possible right now.</summary>
     [JsonPropertyName("fiat_purchase_available")]
     public required bool FiatPurchaseAvailable { get; init; }
 
-    /// <summary>true — статус финальный, больше не изменится.</summary>
+    /// <summary>true — the status is final and will not change again.</summary>
     [JsonPropertyName("is_final")]
     public required bool IsFinal { get; init; }
 
-    /// <summary>true — это валюто-агностичная ссылка, клиент ещё не выбрал валюту/сеть.</summary>
+    /// <summary>true — this is a currency-agnostic link; the customer has not chosen the currency/network yet.</summary>
     [JsonPropertyName("is_multi")]
     public required bool IsMulti { get; init; }
 
-    /// <summary>Только XLM (Stellar): числовой memo (тип ID), который клиент ОБЯЗАН указать в переводе — поле «memo» на бирже или в кошельке. Пусто на остальных сетях.</summary>
+    /// <summary>XLM (Stellar) only: the numeric memo (ID type) the customer MUST specify in the transfer — the "memo" field at the exchange or in the wallet. Empty on other networks.</summary>
     [JsonPropertyName("memo")]
     public required string Memo { get; init; }
 
-    /// <summary>Ваша скидка или наценка для ВЫБРАННОГО способа оплаты, в валюте оплаты: на столько сдвинулась сумма плательщика из-за настройки по этой монете и сети. Положительное — плательщик платит МЕНЬШЕ (скидка), отрицательное — больше (наценка). Пусто, если настройки для метода нет.</summary>
+    /// <summary>Your discount or surcharge for the CHOSEN payment method, in the payment currency: how much the payer's amount shifted because of the setting for this coin and network. Positive — the payer pays LESS (discount), negative — more (surcharge). Empty if there is no setting for the method.</summary>
     [JsonPropertyName("method_adjustment")]
     public required string MethodAdjustment { get; init; }
 
-    /// <summary>Та же скидка/наценка в базисных пунктах (так она переживает переоценку курса). Знак тот же, что в настройке скидок: ПЛЮС — скидка, МИНУС — наценка.</summary>
+    /// <summary>The same discount/surcharge in basis points (this way it survives a rate re-quote). The sign is the same as in the discount setting: PLUS — a discount, MINUS — a surcharge.</summary>
     [JsonPropertyName("method_adjustment_bps")]
     public required long MethodAdjustmentBps { get; init; }
 
-    /// <summary>Сеть блокчейна (например, tron).</summary>
+    /// <summary>Blockchain network (e.g. tron).</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>Сетевая надбавка плательщика в валюте оплаты: стоимость сбора депозита в выбранной сети (активация адреса, если адрес новый, плюс энергия/газ с запасом), зафиксированная при выборе сети. Пусто до выбора сети; 0, если надбавка выключена.</summary>
+    /// <summary>The payer's network surcharge in the payment currency: the cost of sweeping the deposit on the chosen network (address activation, if the address is new, plus energy/gas with a margin), locked in when the network is chosen. Empty until the network is chosen; 0 if the surcharge is disabled.</summary>
     [JsonPropertyName("network_surcharge")]
     public required string NetworkSurcharge { get; init; }
 
-    /// <summary>Та же надбавка в базисных пунктах от суммы к оплате (так она переживает переоценку курса).</summary>
+    /// <summary>The same surcharge in basis points of the amount due (this way it survives a rate re-quote).</summary>
     [JsonPropertyName("network_surcharge_bps")]
     public required long NetworkSurchargeBps { get; init; }
 
-    /// <summary>Ваш номер заказа, который вы передали при создании.</summary>
+    /// <summary>Your order number that you passed at creation.</summary>
     [JsonPropertyName("order_id")]
     public required string OrderId { get; init; }
 
-    /// <summary>Сколько нужно отправить в крипте оплаты. Пусто, пока валюта оплаты не выбрана (счёт без валюты).</summary>
+    /// <summary>How much must be sent in the payment crypto. Empty until the payment currency is chosen (an invoice without a currency).</summary>
     [JsonPropertyName("payer_amount")]
     public required string PayerAmount { get; init; }
 
-    /// <summary>Валюта, в которой платит клиент (например, USDT). Пусто у валюто-агностичного счёта (is_multi), пока клиент не выбрал монету — валюты расчёта у него ещё нет.</summary>
+    /// <summary>The currency the customer pays in (e.g. USDT). Empty for a currency-agnostic invoice (is_multi) until the customer picks a coin — it has no settlement currency yet.</summary>
     [JsonPropertyName("payer_currency")]
     public required string PayerCurrency { get; init; }
 
-    /// <summary>До какого момента действует зафиксированный payer_amount (ISO 8601; окно ~5 мин, после него страница оплаты перекотирует счёт). Пусто, когда перекотировки уже не будет: валюта не выбрана, депозит замечен, счёт вышел из created или истёк — сумма зафиксирована навсегда.</summary>
+    /// <summary>Until when the locked payer_amount is valid (ISO 8601; a ~5 min window, after which the payment page re-quotes the invoice). Empty when there will be no more re-quotes: the currency has not been chosen, a deposit has been seen, the invoice has left created or expired — the amount is locked for good.</summary>
     [JsonPropertyName("rate_expires_at")]
     public required string RateExpiresAt { get; init; }
 
-    /// <summary>Сколько подтверждений нужно для зачисления (зависит от суммы и сети).</summary>
+    /// <summary>How many confirmations are required for crediting (depends on the amount and the network).</summary>
     [JsonPropertyName("required_confirmations")]
     public required long RequiredConfirmations { get; init; }
 
-    /// <summary>Статус: select (клиент выбирает валюту) | created (ждём оплату) | confirm_check (видим оплату, ждём подтверждений; при amount_remaining &gt; 0 — частичная, ждём остаток) | paid (оплачено) | paid_over (переплата) | wrong_amount (недоплата, срок вышел) | expired (просрочен) | cancelled (отменён) | under_review (поступление задержано на проверке, разбирает оператор).</summary>
+    /// <summary>Status: select (the customer is choosing a currency) | created (awaiting payment) | confirm_check (payment seen, awaiting confirmations; with amount_remaining &gt; 0 — partial, awaiting the remainder) | paid (paid) | paid_over (overpaid) | wrong_amount (underpaid, expired) | expired (expired) | cancelled (cancelled) | under_review (the deposit is held for review, an operator is handling it).</summary>
     [JsonPropertyName("status")]
     public required PaymentStatus Status { get; init; }
 
-    /// <summary>Хеш входящей транзакции (когда замечена).</summary>
+    /// <summary>The hash of the incoming transaction (once seen).</summary>
     [JsonPropertyName("txid")]
     public required string Txid { get; init; }
 
-    /// <summary>Время последнего изменения (ISO 8601).</summary>
+    /// <summary>Time of the last change (ISO 8601).</summary>
     [JsonPropertyName("updated_at")]
     public required string UpdatedAt { get; init; }
 
-    /// <summary>Ссылка на готовую страницу оплаты.</summary>
+    /// <summary>A link to the ready-made payment page.</summary>
     [JsonPropertyName("url")]
     public required string Url { get; init; }
 
-    /// <summary>Ссылка «вернуться в магазин» до оплаты.</summary>
+    /// <summary>The "back to store" link before payment.</summary>
     [JsonPropertyName("url_return")]
     public required string UrlReturn { get; init; }
 
-    /// <summary>Куда перенаправить после успешной оплаты.</summary>
+    /// <summary>Where to redirect after a successful payment.</summary>
     [JsonPropertyName("url_success")]
     public required string UrlSuccess { get; init; }
 
-    /// <summary>Наш идентификатор платежа (используйте его в info/refund).</summary>
+    /// <summary>Our payment identifier (use it in info/refund).</summary>
     [JsonPropertyName("uuid")]
     public required string Uuid { get; init; }
 }
@@ -4073,132 +4176,132 @@ public sealed partial record PublicPayResult : Model
 /// <summary><c>PublicPaymentView</c> model.</summary>
 public sealed partial record PublicPaymentView : Model
 {
-    /// <summary>Адрес, на который клиент отправляет деньги. На XRP это классический r-адрес ОБЩЕГО кошелька — платёж обязан нести destination_tag, иначе сеть его отклонит.</summary>
+    /// <summary>The address the customer sends money to. On XRP this is the classic r-address of a SHARED wallet — the payment must carry destination_tag, otherwise the network rejects it.</summary>
     [JsonPropertyName("address")]
     public required string Address { get; init; }
 
-    /// <summary>Только XLM: те же реквизиты одной строкой — muxed-адрес M… (SEP-23), адрес и memo вместе; его же кодирует QR. Пусто на остальных сетях.</summary>
+    /// <summary>XLM only: the same payment details in one string — a muxed M… address (SEP-23), address and memo together; the QR code encodes it as well. Empty on other networks.</summary>
     [JsonPropertyName("address_muxed")]
     public required string AddressMuxed { get; init; }
 
-    /// <summary>QR-код адреса как PNG data:-URI — можно сразу в &lt;img src&gt;. На XRP кодирует X-address (адрес+тег одной строкой).</summary>
+    /// <summary>The address QR code as a PNG data: URI — can go straight into &lt;img src&gt;. On XRP it encodes the X-address (address + tag in one string).</summary>
     [JsonPropertyName("address_qr_code")]
     public required string AddressQrCode { get; init; }
 
-    /// <summary>Только XRP: те же реквизиты одной строкой в формате X-address (XLS-5) — адрес и тег вместе; его же кодирует QR. Пусто на остальных сетях.</summary>
+    /// <summary>XRP only: the same payment details in one string in X-address format (XLS-5) — address and tag together; the QR code encodes it as well. Empty on other networks.</summary>
     [JsonPropertyName("address_xaddress")]
     public required string AddressXaddress { get; init; }
 
-    /// <summary>Сумма к оплате в валюте цены (например, в USD).</summary>
+    /// <summary>The amount to pay in the price currency (e.g. USD).</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Сколько уже подтверждённо оплачено, в крипте оплаты; всегда строка (0, если ничего не пришло). Пусто, пока валюта оплаты не выбрана (счёт без валюты).</summary>
+    /// <summary>How much has already been paid and confirmed, in the payment crypto; always a string (0 if nothing has arrived). Empty until the payment currency is chosen (an invoice without a currency).</summary>
     [JsonPropertyName("amount_paid")]
     public required string AmountPaid { get; init; }
 
-    /// <summary>Сколько ещё осталось доплатить (к оплате − оплачено); 0, если хватает. Пусто, пока валюта оплаты не выбрана (счёт без валюты).</summary>
+    /// <summary>How much is still left to pay (due − paid); 0 if enough has been paid. Empty until the payment currency is chosen (an invoice without a currency).</summary>
     [JsonPropertyName("amount_remaining")]
     public required string AmountRemaining { get; init; }
 
-    /// <summary>Текущее число подтверждений входящего платежа.</summary>
+    /// <summary>The current number of confirmations of the incoming payment.</summary>
     [JsonPropertyName("confirmations")]
     public required long Confirmations { get; init; }
 
-    /// <summary>Время создания (ISO 8601).</summary>
+    /// <summary>Creation time (ISO 8601).</summary>
     [JsonPropertyName("created_at")]
     public required string CreatedAt { get; init; }
 
-    /// <summary>Валюта цены: фиат (USD, EUR, RUB, JPY… — см. pricing_currencies) или монета. Говорит, сколько счёт СТОИТ, а не чем за него платят (это payer_currency).</summary>
+    /// <summary>The price currency: fiat (USD, EUR, RUB, JPY… — see pricing_currencies) or a coin. It says how much the invoice COSTS, not what it is paid with (that is payer_currency).</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Только XRP: числовой destination tag, который клиент ОБЯЗАН указать в переводе (поле «тег/memo получателя» на бирже или в кошельке). Пусто на остальных сетях.</summary>
+    /// <summary>XRP only: the numeric destination tag the customer MUST specify in the transfer (the "recipient tag/memo" field at the exchange or in the wallet). Empty on other networks.</summary>
     [JsonPropertyName("destination_tag")]
     public required string DestinationTag { get; init; }
 
-    /// <summary>Когда истекает счёт (ISO 8601, как и все временные поля).</summary>
+    /// <summary>When the invoice expires (ISO 8601, like all time fields).</summary>
     [JsonPropertyName("expired_at")]
     public required string ExpiredAt { get; init; }
 
-    /// <summary>true — статус финальный, больше не изменится.</summary>
+    /// <summary>true — the status is final and will not change again.</summary>
     [JsonPropertyName("is_final")]
     public required bool IsFinal { get; init; }
 
-    /// <summary>true — это валюто-агностичная ссылка, клиент ещё не выбрал валюту/сеть.</summary>
+    /// <summary>true — this is a currency-agnostic link; the customer has not chosen the currency/network yet.</summary>
     [JsonPropertyName("is_multi")]
     public required bool IsMulti { get; init; }
 
-    /// <summary>Только XLM (Stellar): числовой memo (тип ID), который клиент ОБЯЗАН указать в переводе — поле «memo» на бирже или в кошельке. Пусто на остальных сетях.</summary>
+    /// <summary>XLM (Stellar) only: the numeric memo (ID type) the customer MUST specify in the transfer — the "memo" field at the exchange or in the wallet. Empty on other networks.</summary>
     [JsonPropertyName("memo")]
     public required string Memo { get; init; }
 
-    /// <summary>Ваша скидка или наценка для ВЫБРАННОГО способа оплаты, в валюте оплаты: на столько сдвинулась сумма плательщика из-за настройки по этой монете и сети. Положительное — плательщик платит МЕНЬШЕ (скидка), отрицательное — больше (наценка). Пусто, если настройки для метода нет.</summary>
+    /// <summary>Your discount or surcharge for the CHOSEN payment method, in the payment currency: how much the payer's amount shifted because of the setting for this coin and network. Positive — the payer pays LESS (discount), negative — more (surcharge). Empty if there is no setting for the method.</summary>
     [JsonPropertyName("method_adjustment")]
     public required string MethodAdjustment { get; init; }
 
-    /// <summary>Та же скидка/наценка в базисных пунктах (так она переживает переоценку курса). Знак тот же, что в настройке скидок: ПЛЮС — скидка, МИНУС — наценка.</summary>
+    /// <summary>The same discount/surcharge in basis points (this way it survives a rate re-quote). The sign is the same as in the discount setting: PLUS — a discount, MINUS — a surcharge.</summary>
     [JsonPropertyName("method_adjustment_bps")]
     public required long MethodAdjustmentBps { get; init; }
 
-    /// <summary>Сеть блокчейна (например, tron).</summary>
+    /// <summary>Blockchain network (e.g. tron).</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>Сетевая надбавка плательщика в валюте оплаты: стоимость сбора депозита в выбранной сети (активация адреса, если адрес новый, плюс энергия/газ с запасом), зафиксированная при выборе сети. Пусто до выбора сети; 0, если надбавка выключена.</summary>
+    /// <summary>The payer's network surcharge in the payment currency: the cost of sweeping the deposit on the chosen network (address activation, if the address is new, plus energy/gas with a margin), locked in when the network is chosen. Empty until the network is chosen; 0 if the surcharge is disabled.</summary>
     [JsonPropertyName("network_surcharge")]
     public required string NetworkSurcharge { get; init; }
 
-    /// <summary>Та же надбавка в базисных пунктах от суммы к оплате (так она переживает переоценку курса).</summary>
+    /// <summary>The same surcharge in basis points of the amount due (this way it survives a rate re-quote).</summary>
     [JsonPropertyName("network_surcharge_bps")]
     public required long NetworkSurchargeBps { get; init; }
 
-    /// <summary>Ваш номер заказа, который вы передали при создании.</summary>
+    /// <summary>Your order number that you passed at creation.</summary>
     [JsonPropertyName("order_id")]
     public required string OrderId { get; init; }
 
-    /// <summary>Сколько нужно отправить в крипте оплаты. Пусто, пока валюта оплаты не выбрана (счёт без валюты).</summary>
+    /// <summary>How much must be sent in the payment crypto. Empty until the payment currency is chosen (an invoice without a currency).</summary>
     [JsonPropertyName("payer_amount")]
     public required string PayerAmount { get; init; }
 
-    /// <summary>Валюта, в которой платит клиент (например, USDT). Пусто у валюто-агностичного счёта (is_multi), пока клиент не выбрал монету — валюты расчёта у него ещё нет.</summary>
+    /// <summary>The currency the customer pays in (e.g. USDT). Empty for a currency-agnostic invoice (is_multi) until the customer picks a coin — it has no settlement currency yet.</summary>
     [JsonPropertyName("payer_currency")]
     public required string PayerCurrency { get; init; }
 
-    /// <summary>До какого момента действует зафиксированный payer_amount (ISO 8601; окно ~5 мин, после него страница оплаты перекотирует счёт). Пусто, когда перекотировки уже не будет: валюта не выбрана, депозит замечен, счёт вышел из created или истёк — сумма зафиксирована навсегда.</summary>
+    /// <summary>Until when the locked payer_amount is valid (ISO 8601; a ~5 min window, after which the payment page re-quotes the invoice). Empty when there will be no more re-quotes: the currency has not been chosen, a deposit has been seen, the invoice has left created or expired — the amount is locked for good.</summary>
     [JsonPropertyName("rate_expires_at")]
     public required string RateExpiresAt { get; init; }
 
-    /// <summary>Сколько подтверждений нужно для зачисления (зависит от суммы и сети).</summary>
+    /// <summary>How many confirmations are required for crediting (depends on the amount and the network).</summary>
     [JsonPropertyName("required_confirmations")]
     public required long RequiredConfirmations { get; init; }
 
-    /// <summary>Статус: select (клиент выбирает валюту) | created (ждём оплату) | confirm_check (видим оплату, ждём подтверждений; при amount_remaining &gt; 0 — частичная, ждём остаток) | paid (оплачено) | paid_over (переплата) | wrong_amount (недоплата, срок вышел) | expired (просрочен) | cancelled (отменён) | under_review (поступление задержано на проверке, разбирает оператор).</summary>
+    /// <summary>Status: select (the customer is choosing a currency) | created (awaiting payment) | confirm_check (payment seen, awaiting confirmations; with amount_remaining &gt; 0 — partial, awaiting the remainder) | paid (paid) | paid_over (overpaid) | wrong_amount (underpaid, expired) | expired (expired) | cancelled (cancelled) | under_review (the deposit is held for review, an operator is handling it).</summary>
     [JsonPropertyName("status")]
     public required PaymentStatus Status { get; init; }
 
-    /// <summary>Хеш входящей транзакции (когда замечена).</summary>
+    /// <summary>The hash of the incoming transaction (once seen).</summary>
     [JsonPropertyName("txid")]
     public required string Txid { get; init; }
 
-    /// <summary>Время последнего изменения (ISO 8601).</summary>
+    /// <summary>Time of the last change (ISO 8601).</summary>
     [JsonPropertyName("updated_at")]
     public required string UpdatedAt { get; init; }
 
-    /// <summary>Ссылка на готовую страницу оплаты.</summary>
+    /// <summary>A link to the ready-made payment page.</summary>
     [JsonPropertyName("url")]
     public required string Url { get; init; }
 
-    /// <summary>Ссылка «вернуться в магазин» до оплаты.</summary>
+    /// <summary>The "back to store" link before payment.</summary>
     [JsonPropertyName("url_return")]
     public required string UrlReturn { get; init; }
 
-    /// <summary>Куда перенаправить после успешной оплаты.</summary>
+    /// <summary>Where to redirect after a successful payment.</summary>
     [JsonPropertyName("url_success")]
     public required string UrlSuccess { get; init; }
 
-    /// <summary>Наш идентификатор платежа (используйте его в info/refund).</summary>
+    /// <summary>Our payment identifier (use it in info/refund).</summary>
     [JsonPropertyName("uuid")]
     public required string Uuid { get; init; }
 }
@@ -4206,7 +4309,7 @@ public sealed partial record PublicPaymentView : Model
 /// <summary><c>QrRequest</c> model.</summary>
 public sealed partial record QrRequest : Model
 {
-    /// <summary>Произвольный адрес для рендера в QR-код (PNG как data:-URI).</summary>
+    /// <summary>An arbitrary address to render into a QR code (PNG as a data: URI).</summary>
     [JsonPropertyName("address")]
     public required string Address { get; init; }
 }
@@ -4214,27 +4317,27 @@ public sealed partial record QrRequest : Model
 /// <summary><c>ReferralInfoResult</c> model.</summary>
 public sealed partial record ReferralInfoResult : Model
 {
-    /// <summary>Реферальный код мерчанта.</summary>
+    /// <summary>The merchant's referral code.</summary>
     [JsonPropertyName("code")]
     public required string Code { get; init; }
 
-    /// <summary>Заработано по активам, десятичными строками.</summary>
+    /// <summary>Earned per asset, as decimal strings.</summary>
     [JsonPropertyName("earnings_by_asset")]
     public required IReadOnlyDictionary<string, string> EarningsByAsset { get; init; }
 
-    /// <summary>Реферальная ссылка (или сам код, если публичный адрес не настроен).</summary>
+    /// <summary>The referral link (or the code itself if the public address is not configured).</summary>
     [JsonPropertyName("link")]
     public required string Link { get; init; }
 
-    /// <summary>Сколько мерчантов приглашено.</summary>
+    /// <summary>How many merchants have been invited.</summary>
     [JsonPropertyName("referred_count")]
     public required long ReferredCount { get; init; }
 
-    /// <summary>Доля нашей комиссии по месяцам, в базисных пунктах.</summary>
+    /// <summary>The share of our fee by month, in basis points.</summary>
     [JsonPropertyName("tier_bps")]
     public required IReadOnlyList<long> TierBps { get; init; }
 
-    /// <summary>То же за скользящие 7 дней.</summary>
+    /// <summary>The same over a rolling 7 days.</summary>
     [JsonPropertyName("week")]
     public required ReferralWeek Week { get; init; }
 }
@@ -4242,11 +4345,11 @@ public sealed partial record ReferralInfoResult : Model
 /// <summary><c>ReferralWeek</c> model.</summary>
 public sealed partial record ReferralWeek : Model
 {
-    /// <summary>Заработано за 7 дней по активам, десятичными строками.</summary>
+    /// <summary>Earned over 7 days per asset, as decimal strings.</summary>
     [JsonPropertyName("earnings_by_asset")]
     public required IReadOnlyDictionary<string, string> EarningsByAsset { get; init; }
 
-    /// <summary>Приглашено за 7 дней.</summary>
+    /// <summary>Invited over 7 days.</summary>
     [JsonPropertyName("referred_count")]
     public required long ReferredCount { get; init; }
 }
@@ -4254,37 +4357,37 @@ public sealed partial record ReferralWeek : Model
 /// <summary><c>RefundBatchItem</c> model.</summary>
 public sealed partial record RefundBatchItem : Model
 {
-    /// <summary>Адрес назначения возврата. По умолчанию — payer_address платежа; обязателен только для Bitcoin/UTXO.</summary>
+    /// <summary>Refund destination address. Defaults to the payment's payer_address; required only for Bitcoin/UTXO.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("address")]
     public string? Address { get; init; }
 
-    /// <summary>Частичная сумма. По умолчанию — вся полученная.</summary>
+    /// <summary>A partial amount. Defaults to the full received amount.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public decimal? Amount { get; init; }
 
-    /// <summary>Профинансировать возврат конвертацией баланса: только USDT → валюта платежа. Нужен, когда монета платежа уже сведена автообменом.</summary>
+    /// <summary>Fund the refund by converting balance: USDT → the payment currency only. Needed when the payment coin has already been converted by auto-exchange.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("from_currency")]
     public string? FromCurrency { get; init; }
 
-    /// <summary>Сеть.</summary>
+    /// <summary>Network.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("network")]
     public string? Network { get; init; }
 
-    /// <summary>Ваша ссылка на заказ платежа. Нужен uuid или order_id.</summary>
+    /// <summary>Your order reference of the payment. Either uuid or order_id is required.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
 
-    /// <summary>Необязательный ключ идемпотентности возврата: различает два разных возврата с одинаковыми (платёж, адрес, сумма); повтор с тем же значением дедуплицируется. Это не order_id.</summary>
+    /// <summary>An optional refund idempotency key: distinguishes two different refunds with the same (payment, address, amount); a retry with the same value is deduplicated. This is not order_id.</summary>
     [JsonPropertyName("reference")]
     public required string Reference { get; init; }
 
-    /// <summary>Идентификатор платежа. Нужен uuid или order_id.</summary>
+    /// <summary>Payment id. Either uuid or order_id is required.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("uuid")]
     public string? Uuid { get; init; }
@@ -4293,12 +4396,12 @@ public sealed partial record RefundBatchItem : Model
 /// <summary><c>RefundBatchRequest</c> model.</summary>
 public sealed partial record RefundBatchRequest : Model
 {
-    /// <summary>Что делать при ошибке элемента: continue (по умолчанию) — обрабатывать остальные; stop — прекратить обработку после первой ошибки.</summary>
+    /// <summary>What to do when an item fails: continue (default) — process the rest; stop — stop processing after the first error.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("on_error")]
     public BatchOnError? OnError { get; init; }
 
-    /// <summary>Массив от 1 до 5000 элементов — те же поля, что у POST /v1/payment/refund; у каждого элемента обязательны reference (ключ идемпотентности) и uuid либо order_id платежа.</summary>
+    /// <summary>An array of 1 to 5000 items — the same fields as in POST /v1/payment/refund; each item requires reference (the idempotency key) and the payment's uuid or order_id.</summary>
     [JsonPropertyName("refunds")]
     public required IReadOnlyList<RefundBatchItem> Refunds { get; init; }
 }
@@ -4306,11 +4409,11 @@ public sealed partial record RefundBatchRequest : Model
 /// <summary><c>RefundFeeResult</c> model.</summary>
 public sealed partial record RefundFeeResult : Model
 {
-    /// <summary>true — проект задал настройку сам; false — действует умолчание шлюза.</summary>
+    /// <summary>true — the project set this setting itself; false — the gateway default applies.</summary>
     [JsonPropertyName("configured")]
     public required bool Configured { get; init; }
 
-    /// <summary>Действующее значение: настройка проекта, а без неё — умолчание шлюза.</summary>
+    /// <summary>The effective value: the project setting, or the gateway default if there is none.</summary>
     [JsonPropertyName("fee_on_customer")]
     public required bool FeeOnCustomer { get; init; }
 }
@@ -4318,38 +4421,38 @@ public sealed partial record RefundFeeResult : Model
 /// <summary><c>RefundRequest</c> model.</summary>
 public sealed partial record RefundRequest : Model
 {
-    /// <summary>Адрес назначения возврата. По умолчанию — payer_address платежа; обязателен только для Bitcoin/UTXO.</summary>
+    /// <summary>Refund destination address. Defaults to the payment's payer_address; required only for Bitcoin/UTXO.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("address")]
     public string? Address { get; init; }
 
-    /// <summary>Частичная сумма. По умолчанию — вся полученная.</summary>
+    /// <summary>A partial amount. Defaults to the full received amount.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public decimal? Amount { get; init; }
 
-    /// <summary>Профинансировать возврат конвертацией баланса: только USDT → валюта платежа. Нужен, когда монета платежа уже сведена автообменом.</summary>
+    /// <summary>Fund the refund by converting balance: USDT → the payment currency only. Needed when the payment coin has already been converted by auto-exchange.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("from_currency")]
     public string? FromCurrency { get; init; }
 
-    /// <summary>Сеть.</summary>
+    /// <summary>Network.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("network")]
     public string? Network { get; init; }
 
-    /// <summary>Ваша ссылка на заказ платежа. Нужен uuid или order_id.</summary>
+    /// <summary>Your order reference of the payment. Either uuid or order_id is required.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
 
-    /// <summary>Необязательный ключ идемпотентности возврата: различает два разных возврата с одинаковыми (платёж, адрес, сумма); повтор с тем же значением дедуплицируется. Это не order_id.</summary>
+    /// <summary>An optional refund idempotency key: distinguishes two different refunds with the same (payment, address, amount); a retry with the same value is deduplicated. This is not order_id.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("reference")]
     public string? Reference { get; init; }
 
-    /// <summary>Идентификатор платежа. Нужен uuid или order_id.</summary>
+    /// <summary>Payment id. Either uuid or order_id is required.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("uuid")]
     public string? Uuid { get; init; }
@@ -4358,7 +4461,7 @@ public sealed partial record RefundRequest : Model
 /// <summary><c>RegisterWebhookRequest</c> model.</summary>
 public sealed partial record RegisterWebhookRequest : Model
 {
-    /// <summary>HTTPS-URL коллбэка. SSRF-проверка: приватные и локальные адреса запрещены.</summary>
+    /// <summary>HTTPS callback URL. SSRF check: private and local addresses are forbidden.</summary>
     [JsonPropertyName("url")]
     public required string Url { get; init; }
 }
@@ -4366,16 +4469,16 @@ public sealed partial record RegisterWebhookRequest : Model
 /// <summary><c>RegisterWebhookResult</c> model.</summary>
 public sealed partial record RegisterWebhookResult : Model
 {
-    /// <summary>Идентификатор эндпоинта.</summary>
+    /// <summary>Endpoint id.</summary>
     [JsonPropertyName("endpoint_id")]
     public required string EndpointId { get; init; }
 
-    /// <summary>Секрет подписи — только в ответе на ПЕРВУЮ регистрацию, показывается один раз; при смене URL его нет (потеряли — перевыпустите: /v1/webhooks/rotate-secret).</summary>
+    /// <summary>The signing secret — only in the response to the FIRST registration, shown once; absent when the URL changes (lost it? reissue it: /v1/webhooks/rotate-secret).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("secret")]
     public string? Secret { get; init; }
 
-    /// <summary>Зарегистрированный URL коллбэка.</summary>
+    /// <summary>The registered callback URL.</summary>
     [JsonPropertyName("url")]
     public required string Url { get; init; }
 }
@@ -4383,7 +4486,7 @@ public sealed partial record RegisterWebhookResult : Model
 /// <summary><c>ReplayRequest</c> model.</summary>
 public sealed partial record ReplayRequest : Model
 {
-    /// <summary>Идентификатор доставки из GET /v1/sandbox/webhooks.</summary>
+    /// <summary>The delivery id from GET /v1/sandbox/webhooks.</summary>
     [JsonPropertyName("delivery_id")]
     public required string DeliveryId { get; init; }
 }
@@ -4391,11 +4494,11 @@ public sealed partial record ReplayRequest : Model
 /// <summary><c>ReplayResult</c> model.</summary>
 public sealed partial record ReplayResult : Model
 {
-    /// <summary>Идентификатор доставки, как передан.</summary>
+    /// <summary>The delivery id, as passed.</summary>
     [JsonPropertyName("delivery_id")]
     public required string DeliveryId { get; init; }
 
-    /// <summary>Всегда true: доставка поставлена в очередь; иначе — ошибка.</summary>
+    /// <summary>Always true: the delivery has been queued; otherwise — an error.</summary>
     [JsonPropertyName("ok")]
     public required bool Ok { get; init; }
 }
@@ -4403,7 +4506,7 @@ public sealed partial record ReplayResult : Model
 /// <summary><c>RequeueWebhookDeliveryRequest</c> model.</summary>
 public sealed partial record RequeueWebhookDeliveryRequest : Model
 {
-    /// <summary>Идентификатор доставки из журнала (POST /v1/webhooks/deliveries).</summary>
+    /// <summary>The delivery id from the log (POST /v1/webhooks/deliveries).</summary>
     [JsonPropertyName("id")]
     public required string Id { get; init; }
 }
@@ -4411,15 +4514,15 @@ public sealed partial record RequeueWebhookDeliveryRequest : Model
 /// <summary><c>RequeueWebhookDeliveryResult</c> model.</summary>
 public sealed partial record RequeueWebhookDeliveryResult : Model
 {
-    /// <summary>Идентификатор доставки.</summary>
+    /// <summary>Delivery id.</summary>
     [JsonPropertyName("id")]
     public required string Id { get; init; }
 
-    /// <summary>true — этот вызов вернул доставку в очередь; false — она уже была в очереди или доставлена (повтор вызова ничего не меняет).</summary>
+    /// <summary>true — this call re-queued the delivery; false — it was already queued or delivered (repeating the call changes nothing).</summary>
     [JsonPropertyName("ok")]
     public required bool Ok { get; init; }
 
-    /// <summary>Статус доставки после вызова: pending — снова в очереди; delivered — уже доставлена, повторять нечего.</summary>
+    /// <summary>The delivery status after the call: pending — queued again; delivered — already delivered, nothing to repeat.</summary>
     [JsonPropertyName("status")]
     public required WebhookDeliveryStatus Status { get; init; }
 }
@@ -4427,19 +4530,19 @@ public sealed partial record RequeueWebhookDeliveryResult : Model
 /// <summary><c>ResetResult</c> model.</summary>
 public sealed partial record ResetResult : Model
 {
-    /// <summary>Сколько балансов (по активам) обнулено компенсирующей проводкой.</summary>
+    /// <summary>How many balances (per asset) were zeroed by a compensating posting.</summary>
     [JsonPropertyName("balances_zeroed")]
     public required long BalancesZeroed { get; init; }
 
-    /// <summary>Сколько открытых счетов отменено.</summary>
+    /// <summary>How many open invoices were cancelled.</summary>
     [JsonPropertyName("invoices_cancelled")]
     public required long InvoicesCancelled { get; init; }
 
-    /// <summary>Сколько профинансированных выплатных ссылок отменено (резерв вернулся до обнуления).</summary>
+    /// <summary>How many funded payout links were cancelled (the reserve was returned before zeroing).</summary>
     [JsonPropertyName("payout_links_cancelled")]
     public required long PayoutLinksCancelled { get; init; }
 
-    /// <summary>Сколько профинансированных ссылок отменить не удалось — их резерв остался.</summary>
+    /// <summary>How many funded links could not be cancelled — their reserve remains.</summary>
     [JsonPropertyName("payout_links_left")]
     public required long PayoutLinksLeft { get; init; }
 }
@@ -4447,23 +4550,23 @@ public sealed partial record ResetResult : Model
 /// <summary><c>ResolveAcceptResult</c> model.</summary>
 public sealed partial record ResolveAcceptResult : Model, IResolveResult
 {
-    /// <summary>Сколько оставлено мерчанту — всё, что пришло.</summary>
+    /// <summary>How much was left to the merchant — everything that arrived.</summary>
     [JsonPropertyName("amount_kept")]
     public required string AmountKept { get; init; }
 
-    /// <summary>Валюта оплаты.</summary>
+    /// <summary>Payment currency.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Номер заказа мерчанта.</summary>
+    /// <summary>The merchant's order number.</summary>
     [JsonPropertyName("order_id")]
     public required string OrderId { get; init; }
 
-    /// <summary>Идентификатор платежа.</summary>
+    /// <summary>Payment id.</summary>
     [JsonPropertyName("payment_uuid")]
     public required string PaymentUuid { get; init; }
 
-    /// <summary>Принятое решение: accepted.</summary>
+    /// <summary>The decision taken: accepted.</summary>
     [JsonPropertyName("resolution")]
     public required string Resolution { get; init; }
 }
@@ -4471,97 +4574,97 @@ public sealed partial record ResolveAcceptResult : Model, IResolveResult
 /// <summary><c>ResolveRefundResult</c> model.</summary>
 public sealed partial record ResolveRefundResult : Model, IResolveResult
 {
-    /// <summary>Адрес получателя.</summary>
+    /// <summary>Recipient address.</summary>
     [JsonPropertyName("address")]
     public required string Address { get; init; }
 
-    /// <summary>Сумма выплаты в валюте currency, списанная с вашего баланса.</summary>
+    /// <summary>The payout amount in currency, debited from your balance.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>true — выплата ждёт подтверждения (внутренние сценарии; по API-ключу всегда false).</summary>
+    /// <summary>true — the payout is awaiting approval (internal scenarios; always false with an API key).</summary>
     [JsonPropertyName("approval_required")]
     public required bool ApprovalRequired { get; init; }
 
-    /// <summary>Удержанная сетевая комиссия, в валюте выплаты. 0 — комиссию поглотил шлюз.</summary>
+    /// <summary>The withheld network fee, in the payout currency. 0 — the gateway absorbed the fee.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("commission")]
     public required decimal Commission { get; init; }
 
-    /// <summary>Время создания (ISO 8601).</summary>
+    /// <summary>Creation time (ISO 8601).</summary>
     [JsonPropertyName("created_at")]
     public required string CreatedAt { get; init; }
 
-    /// <summary>Код валюты выплаты.</summary>
+    /// <summary>Payout currency code.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Подписанная ссылка на PDF-чек этой операции — открывается без API-ключа, можно вложить в письмо или отдать получателю. Пусто, если генерация документов не включена.</summary>
+    /// <summary>A signed link to the PDF receipt of this operation — opens without an API key, can be attached to an email or given to the recipient. Empty if document generation is not enabled.</summary>
     [JsonPropertyName("document_url")]
     public required string DocumentUrl { get; init; }
 
-    /// <summary>Кто заплатил сетевую комиссию: gateway — шлюз поглотил её (commission = 0); merchant — сумма списания увеличена на комиссию, получатель получает запрошенное целиком (is_subtract=true, выплатная ссылка с fee_bearer=merchant); recipient — комиссия удержана из выплаты, получателю приходит меньше запрошенного.</summary>
+    /// <summary>Who paid the network fee: gateway — the gateway absorbed it (commission = 0); merchant — the debit amount was increased by the fee, the recipient gets the full requested amount (is_subtract=true, a payout link with fee_bearer=merchant); recipient — the fee was withheld from the payout, the recipient gets less than requested.</summary>
     [JsonPropertyName("fee_bearer")]
     public required PayoutFeeBearer FeeBearer { get; init; }
 
-    /// <summary>true — статус финальный (confirmed / failed / cancelled).</summary>
+    /// <summary>true — the status is final (confirmed / failed / cancelled).</summary>
     [JsonPropertyName("is_final")]
     public required bool IsFinal { get; init; }
 
-    /// <summary>true — это возврат платежа, а не обычная выплата.</summary>
+    /// <summary>true — this is a payment refund, not a regular payout.</summary>
     [JsonPropertyName("is_refund")]
     public required bool IsRefund { get; init; }
 
-    /// <summary>Тег/мемо назначения, переданный при создании (TON Jetton, memo-биржи). Пусто — без мемо.</summary>
+    /// <summary>The destination tag/memo passed at creation (TON Jetton, exchange memos). Empty — no memo.</summary>
     [JsonPropertyName("memo")]
     public required string Memo { get; init; }
 
-    /// <summary>Сеть блокчейна.</summary>
+    /// <summary>Blockchain network.</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>Ваш номер (reference) выплаты. У возврата — null: возврат не имеет вашего идентификатора, см. payment_order_id.</summary>
+    /// <summary>Your payout number (reference). null for a refund: a refund has no identifier of yours, see payment_order_id.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
 
-    /// <summary>Сколько реально уходит получателю на адрес: amount − commission.</summary>
+    /// <summary>How much actually goes to the recipient's address: amount − commission.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("payer_amount")]
     public required decimal PayerAmount { get; init; }
 
-    /// <summary>Ваш order_id платежа, по которому сделан возврат (null у обычной выплаты). У возврата собственного order_id нет — он приходит null, а сверять возврат с заказом нужно по этому полю.</summary>
+    /// <summary>Your order_id of the payment that was refunded (null for a regular payout). A refund has no order_id of its own — it comes as null, so match a refund to an order by this field.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("payment_order_id")]
     public string? PaymentOrderId { get; init; }
 
-    /// <summary>Идентификатор возвращаемого платежа (null, если это не возврат).</summary>
+    /// <summary>The id of the payment being refunded (null if this is not a refund).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("refund_for")]
     public string? RefundFor { get; init; }
 
-    /// <summary>Принятое решение: refunded.</summary>
+    /// <summary>The decision taken: refunded.</summary>
     [JsonPropertyName("resolution")]
     public required string Resolution { get; init; }
 
-    /// <summary>api (через интеграцию) | manual (из кабинета).</summary>
+    /// <summary>api (via the integration) | manual (from the dashboard).</summary>
     [JsonPropertyName("source")]
     public required PayoutSource Source { get; init; }
 
-    /// <summary>Статус выплаты: pending (создана, ждёт) | approved (одобрена) | awaiting_cosign (ждёт второй подписи) | broadcasting (отправляется) | sent (отправлена, ждёт подтверждений) | confirmed (подтверждена — готово) | failed | cancelled. Значение можно передать обратно в фильтр истории как есть.</summary>
+    /// <summary>Payout status: pending (created, waiting) | approved (approved) | awaiting_cosign (waiting for the second signature) | broadcasting (being broadcast) | sent (sent, awaiting confirmations) | confirmed (confirmed — done) | failed | cancelled. The value can be passed back to the history filter as is.</summary>
     [JsonPropertyName("status")]
     public required PayoutStatus Status { get; init; }
 
-    /// <summary>Хеш транзакции в блокчейне (появляется после отправки).</summary>
+    /// <summary>The blockchain transaction hash (appears after sending).</summary>
     [JsonPropertyName("txid")]
     public required string Txid { get; init; }
 
-    /// <summary>Время последнего изменения (ISO 8601).</summary>
+    /// <summary>Time of the last change (ISO 8601).</summary>
     [JsonPropertyName("updated_at")]
     public required string UpdatedAt { get; init; }
 
-    /// <summary>Идентификатор выплаты.</summary>
+    /// <summary>Payout id.</summary>
     [JsonPropertyName("uuid")]
     public required string Uuid { get; init; }
 }
@@ -4569,31 +4672,31 @@ public sealed partial record ResolveRefundResult : Model, IResolveResult
 /// <summary><c>ResolveRequest</c> model.</summary>
 public sealed partial record ResolveRequest : Model
 {
-    /// <summary>accept — принять частичную оплату, refund — вернуть плательщику.</summary>
+    /// <summary>accept — accept the partial payment, refund — return it to the payer.</summary>
     [JsonPropertyName("action")]
     public required string Action { get; init; }
 
-    /// <summary>Только для refund: адрес возврата. По умолчанию — записанный payer_address платежа; если он пуст (Bitcoin/UTXO), адрес обязателен, иначе refund.no_address.</summary>
+    /// <summary>Only for refund: the refund address. Defaults to the payment's recorded payer_address; if that is empty (Bitcoin/UTXO), the address is required, otherwise refund.no_address.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("address")]
     public string? Address { get; init; }
 
-    /// <summary>Только для refund: сеть возврата, по умолчанию — сеть платежа.</summary>
+    /// <summary>Only for refund: the refund network, defaults to the payment's network.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("network")]
     public string? Network { get; init; }
 
-    /// <summary>Ваш идентификатор платежа.</summary>
+    /// <summary>Your payment identifier.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
 
-    /// <summary>Только для refund: ваш ключ дедупликации возврата.</summary>
+    /// <summary>Only for refund: your refund deduplication key.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("reference")]
     public string? Reference { get; init; }
 
-    /// <summary>UUID платежа. Нужен uuid или order_id.</summary>
+    /// <summary>Payment UUID. Either uuid or order_id is required.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("uuid")]
     public string? Uuid { get; init; }
@@ -4602,19 +4705,19 @@ public sealed partial record ResolveRequest : Model
 /// <summary><c>RotateWebhookSecretResult</c> model.</summary>
 public sealed partial record RotateWebhookSecretResult : Model
 {
-    /// <summary>Идентификатор эндпоинта.</summary>
+    /// <summary>Endpoint id.</summary>
     [JsonPropertyName("endpoint_id")]
     public required string EndpointId { get; init; }
 
-    /// <summary>До этого момента доставки дополнительно подписываются старым секретом (X-Webhook-Signature-Prev), RFC 3339 UTC.</summary>
+    /// <summary>Until this moment deliveries are additionally signed with the old secret (X-Webhook-Signature-Prev), RFC 3339 UTC.</summary>
     [JsonPropertyName("previous_secret_valid_until")]
     public required string PreviousSecretValidUntil { get; init; }
 
-    /// <summary>Новый секрет подписи — показывается только здесь.</summary>
+    /// <summary>The new signing secret — shown only here.</summary>
     [JsonPropertyName("secret")]
     public required string Secret { get; init; }
 
-    /// <summary>URL коллбэка.</summary>
+    /// <summary>Callback URL.</summary>
     [JsonPropertyName("url")]
     public required string Url { get; init; }
 }
@@ -4622,39 +4725,39 @@ public sealed partial record RotateWebhookSecretResult : Model
 /// <summary><c>SandboxDelivery</c> model.</summary>
 public sealed partial record SandboxDelivery : Model
 {
-    /// <summary>Сделано попыток.</summary>
+    /// <summary>Attempts made.</summary>
     [JsonPropertyName("attempts")]
     public required long Attempts { get; init; }
 
-    /// <summary>Когда поставлена, RFC 3339 UTC.</summary>
+    /// <summary>When queued, RFC 3339 UTC.</summary>
     [JsonPropertyName("created_at")]
     public required string CreatedAt { get; init; }
 
-    /// <summary>Событие в теле.</summary>
+    /// <summary>The event in the body.</summary>
     [JsonPropertyName("event_type")]
     public required string EventType { get; init; }
 
-    /// <summary>Идентификатор доставки (для replay).</summary>
+    /// <summary>Delivery id (for replay).</summary>
     [JsonPropertyName("id")]
     public required string Id { get; init; }
 
-    /// <summary>Ошибка последней попытки; пусто, если её не было.</summary>
+    /// <summary>The error of the last attempt; empty if there was none.</summary>
     [JsonPropertyName("last_error")]
     public required string LastError { get; init; }
 
-    /// <summary>Тело вебхука ровно так, как оно подписано и отправлено.</summary>
+    /// <summary>The webhook body exactly as it was signed and sent.</summary>
     [JsonPropertyName("payload")]
     public required JsonElement Payload { get; init; }
 
-    /// <summary>Состояние доставки.</summary>
+    /// <summary>Delivery state.</summary>
     [JsonPropertyName("status")]
     public required WebhookDeliveryStatus Status { get; init; }
 
-    /// <summary>Последнее изменение, RFC 3339 UTC.</summary>
+    /// <summary>Last change, RFC 3339 UTC.</summary>
     [JsonPropertyName("updated_at")]
     public required string UpdatedAt { get; init; }
 
-    /// <summary>Куда доставляется.</summary>
+    /// <summary>Where it is delivered.</summary>
     [JsonPropertyName("url")]
     public required string Url { get; init; }
 }
@@ -4662,11 +4765,11 @@ public sealed partial record SandboxDelivery : Model
 /// <summary><c>SandboxDeliveryList</c> model.</summary>
 public sealed partial record SandboxDeliveryList : Model
 {
-    /// <summary>Записи этой страницы.</summary>
+    /// <summary>The records of this page.</summary>
     [JsonPropertyName("items")]
     public required IReadOnlyList<SandboxDelivery> Items { get; init; }
 
-    /// <summary>Блок пагинации.</summary>
+    /// <summary>Pagination block.</summary>
     [JsonPropertyName("paginate")]
     public required Pagination Paginate { get; init; }
 }
@@ -4674,19 +4777,19 @@ public sealed partial record SandboxDeliveryList : Model
 /// <summary><c>SandboxOnboardResult</c> model.</summary>
 public sealed partial record SandboxOnboardResult : Model
 {
-    /// <summary>Ключ API мерчанта.</summary>
+    /// <summary>The merchant's API key.</summary>
     [JsonPropertyName("api_key")]
     public required OnboardKey ApiKey { get; init; }
 
-    /// <summary>true — dev store создан сейчас; false — уже был, секрет ключа пуст.</summary>
+    /// <summary>true — the dev store was created just now; false — it already existed, the key secret is empty.</summary>
     [JsonPropertyName("created")]
     public required bool Created { get; init; }
 
-    /// <summary>Мерчант.</summary>
+    /// <summary>Merchant.</summary>
     [JsonPropertyName("merchant_id")]
     public required string MerchantId { get; init; }
 
-    /// <summary>Первый проект мерчанта.</summary>
+    /// <summary>The merchant's first project.</summary>
     [JsonPropertyName("project_id")]
     public required string ProjectId { get; init; }
 }
@@ -4694,17 +4797,17 @@ public sealed partial record SandboxOnboardResult : Model
 /// <summary><c>SendEmailRequest</c> model.</summary>
 public sealed partial record SendEmailRequest : Model
 {
-    /// <summary>Кому отправить. По умолчанию — payer_email, заданный у платежа.</summary>
+    /// <summary>Whom to send to. Defaults to the payer_email set on the payment.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("email")]
     public string? Email { get; init; }
 
-    /// <summary>Ваша ссылка на заказ.</summary>
+    /// <summary>Your order reference.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
 
-    /// <summary>Идентификатор платежа в Oblodai. Нужен uuid или order_id.</summary>
+    /// <summary>The payment id in Oblodai. Either uuid or order_id is required.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("uuid")]
     public string? Uuid { get; init; }
@@ -4713,15 +4816,15 @@ public sealed partial record SendEmailRequest : Model
 /// <summary><c>SendEmailResult</c> model.</summary>
 public sealed partial record SendEmailResult : Model
 {
-    /// <summary>Кому ушло письмо.</summary>
+    /// <summary>Who the email was sent to.</summary>
     [JsonPropertyName("email")]
     public required string Email { get; init; }
 
-    /// <summary>Письмо поставлено в очередь отправки; неудача отвечает ошибкой.</summary>
+    /// <summary>The email has been queued for sending; a failure responds with an error.</summary>
     [JsonPropertyName("ok")]
     public required bool Ok { get; init; }
 
-    /// <summary>Идентификатор платежа.</summary>
+    /// <summary>Payment id.</summary>
     [JsonPropertyName("uuid")]
     public required string Uuid { get; init; }
 }
@@ -4729,12 +4832,12 @@ public sealed partial record SendEmailResult : Model
 /// <summary><c>SetAccuracyRequest</c> model.</summary>
 public sealed partial record SetAccuracyRequest : Model
 {
-    /// <summary>Допуск в процентах, 1–5. Обязателен при enabled: true; при enabled: false игнорируется (сбрасывается в 0). Кэп 5 %</summary>
+    /// <summary>Tolerance in percent, 1–5. Required when enabled: true; ignored (reset to 0) when enabled: false. Capped at 5 %</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("accuracy_percent")]
     public long? AccuracyPercent { get; init; }
 
-    /// <summary>Включить/выключить допуск</summary>
+    /// <summary>Enable/disable the tolerance</summary>
     [JsonPropertyName("enabled")]
     public required bool Enabled { get; init; }
 }
@@ -4742,27 +4845,27 @@ public sealed partial record SetAccuracyRequest : Model
 /// <summary><c>SetAutoConvertRequest</c> model.</summary>
 public sealed partial record SetAutoConvertRequest : Model
 {
-    /// <summary>Выключатель приказа целиком. Не передан — считается включённым.</summary>
+    /// <summary>The master switch for the whole order. If omitted, it is considered enabled.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("enabled")]
     public bool? Enabled { get; init; }
 
-    /// <summary>Пол одной конвертации в долларах, десятичной строкой; пусто — умолчание процесса ($10). Ниже него спред съедает больше, чем сводит.</summary>
+    /// <summary>The floor for a single conversion in dollars, as a decimal string; empty — the process default ($10). Below it the spread eats more than the conversion is worth.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("min_amount")]
     public string? MinAmount { get; init; }
 
-    /// <summary>Режим зачисления: "economy" — заявка в партию казначейской ликвидации, зачисляется факт исполнения (комиссия минимальная); "instant" — мгновенно по спред-курсу. Не передан — instant: автообмен включают ради мгновенного зачисления, а ждать партию — осознанный выбор. Иное значение — 400 request.invalid_mode.</summary>
+    /// <summary>The crediting mode: "economy" — an order in a treasury liquidation batch, the actual execution is credited (minimal fee); "instant" — immediately at the spread rate. Omitted — instant: auto-exchange is enabled for instant crediting, and waiting for a batch is a deliberate choice. Any other value — 400 request.invalid_mode.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("mode")]
     public AutoConvertMode? Mode { get; init; }
 
-    /// <summary>Монеты, которые сводить. Пусто — приказ есть, но не включён ни для чего.</summary>
+    /// <summary>The coins to convert. Empty — the order exists but is not enabled for anything.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("sources")]
     public IReadOnlyList<string>? Sources { get; init; }
 
-    /// <summary>Монета, в которую сводится выручка (стейбл). Проверяется на возможность ликвидации при сохранении.</summary>
+    /// <summary>The coin revenue is converted into (a stablecoin). Checked for liquidity on save.</summary>
     [JsonPropertyName("target")]
     public required string Target { get; init; }
 }
@@ -4770,11 +4873,11 @@ public sealed partial record SetAutoConvertRequest : Model
 /// <summary><c>SetAutoRefundRequest</c> model.</summary>
 public sealed partial record SetAutoRefundRequest : Model
 {
-    /// <summary>Возвращать излишек при переплате (paid_over)</summary>
+    /// <summary>Refund the excess of an overpayment (paid_over)</summary>
     [JsonPropertyName("overpay")]
     public required bool Overpay { get; init; }
 
-    /// <summary>Возвращать средства при истёкшей недоплате (wrong_amount)</summary>
+    /// <summary>Refund the funds of an expired underpayment (wrong_amount)</summary>
     [JsonPropertyName("underpay")]
     public required bool Underpay { get; init; }
 }
@@ -4782,16 +4885,16 @@ public sealed partial record SetAutoRefundRequest : Model
 /// <summary><c>SetDiscountRequest</c> model.</summary>
 public sealed partial record SetDiscountRequest : Model
 {
-    /// <summary>Валюта. Пусто = глобальный дефолт для всех монет</summary>
+    /// <summary>Currency. Empty = the global default for all coins</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("currency")]
     public string? Currency { get; init; }
 
-    /// <summary>Процент, от -99 до 99. Плюс — скидка, минус — наценка</summary>
+    /// <summary>Percent, from -99 to 99. Plus — a discount, minus — a surcharge</summary>
     [JsonPropertyName("discount_percent")]
     public required long DiscountPercent { get; init; }
 
-    /// <summary>Сеть. Пусто = любая сеть данной валюты</summary>
+    /// <summary>Network. Empty = any network of the given currency</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("network")]
     public string? Network { get; init; }
@@ -4800,7 +4903,7 @@ public sealed partial record SetDiscountRequest : Model
 /// <summary><c>SetPaymentFeeRequest</c> model.</summary>
 public sealed partial record SetPaymentFeeRequest : Model
 {
-    /// <summary>Доля НАШЕЙ комиссии, которую платит покупатель: 0 — платит мерчант (как сейчас), 100 — платит покупатель, счёт выставляется с наценкой. Действует на счета, созданные ПОСЛЕ изменения.</summary>
+    /// <summary>The share of OUR fee paid by the buyer: 0 — the merchant pays (as now), 100 — the buyer pays, the invoice is issued with a markup. Applies to invoices created AFTER the change.</summary>
     [JsonPropertyName("payer_pays_percent")]
     public required long PayerPaysPercent { get; init; }
 }
@@ -4808,7 +4911,7 @@ public sealed partial record SetPaymentFeeRequest : Model
 /// <summary><c>SetPayoutFeeRequest</c> model.</summary>
 public sealed partial record SetPayoutFeeRequest : Model
 {
-    /// <summary>true — сетевую комиссию платит получатель (получает меньше); false — комиссию несёт мерчант</summary>
+    /// <summary>true — the network fee is paid by the recipient (who receives less); false — the merchant bears the fee</summary>
     [JsonPropertyName("fee_on_recipient")]
     public required bool FeeOnRecipient { get; init; }
 }
@@ -4816,7 +4919,7 @@ public sealed partial record SetPayoutFeeRequest : Model
 /// <summary><c>SetRefundFeeRequest</c> model.</summary>
 public sealed partial record SetRefundFeeRequest : Model
 {
-    /// <summary>true — клиент получает net (комиссию платит клиент); false — мерчант платит комиссию, клиент получает gross</summary>
+    /// <summary>true — the customer receives net (the customer pays the fee); false — the merchant pays the fee, the customer receives gross</summary>
     [JsonPropertyName("fee_on_customer")]
     public required bool FeeOnCustomer { get; init; }
 }
@@ -4824,7 +4927,7 @@ public sealed partial record SetRefundFeeRequest : Model
 /// <summary><c>SetWebhookActiveRequest</c> model.</summary>
 public sealed partial record SetWebhookActiveRequest : Model
 {
-    /// <summary>true — доставка возобновляется, false — прекращается (очередь по этому проекту больше не наполняется).</summary>
+    /// <summary>true — delivery resumes, false — it stops (the queue for this project is no longer filled).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("active")]
     public bool? Active { get; init; }
@@ -4833,7 +4936,7 @@ public sealed partial record SetWebhookActiveRequest : Model
 /// <summary><c>SetWebhookActiveResult</c> model.</summary>
 public sealed partial record SetWebhookActiveResult : Model
 {
-    /// <summary>Включена ли теперь доставка.</summary>
+    /// <summary>Whether delivery is now enabled.</summary>
     [JsonPropertyName("active")]
     public required bool Active { get; init; }
 }
@@ -4841,21 +4944,21 @@ public sealed partial record SetWebhookActiveResult : Model
 /// <summary><c>SimulateDepositRequest</c> model.</summary>
 public sealed partial record SimulateDepositRequest : Model
 {
-    /// <summary>Сумма в валюте счёта; пусто — оплатить ровно сколько нужно, иное — способ получить недо/переплату.</summary>
+    /// <summary>The amount in the invoice currency; empty — pay exactly the amount due, anything else — a way to produce an under/overpayment.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("amount")]
     public string? Amount { get; init; }
 
-    /// <summary>С каким числом подтверждений пришёл депозит; 0 — полностью подтверждён; меньше требуемого — способ проверить переход pending→confirmed (повторите тот же txid с большим числом).</summary>
+    /// <summary>The number of confirmations the deposit arrived with; 0 — fully confirmed; fewer than required — a way to test the pending→confirmed transition (repeat the same txid with a higher number).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("confirmations")]
     public long? Confirmations { get; init; }
 
-    /// <summary>UUID тестового счёта, который «оплачивается».</summary>
+    /// <summary>The UUID of the test invoice being "paid".</summary>
     [JsonPropertyName("invoice_id")]
     public required string InvoiceId { get; init; }
 
-    /// <summary>Повтор того же txid проверяет вашу идемпотентность; пусто — новый txid.</summary>
+    /// <summary>Repeating the same txid tests your idempotency; empty — a new txid.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("txid")]
     public string? Txid { get; init; }
@@ -4864,20 +4967,20 @@ public sealed partial record SimulateDepositRequest : Model
 /// <summary><c>SimulateDepositResult</c> model.</summary>
 public sealed partial record SimulateDepositResult : Model
 {
-    /// <summary>Сумма депозита в валюте счёта.</summary>
+    /// <summary>The deposit amount in the invoice currency.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>С каким числом подтверждений депозит отдан конвейеру.</summary>
+    /// <summary>The number of confirmations with which the deposit was handed to the pipeline.</summary>
     [JsonPropertyName("confirmations")]
     public required long Confirmations { get; init; }
 
-    /// <summary>Оплачиваемый тестовый счёт.</summary>
+    /// <summary>The test invoice being paid.</summary>
     [JsonPropertyName("invoice_id")]
     public required string InvoiceId { get; init; }
 
-    /// <summary>Транзакция депозита (с префиксом песочницы); повтор того же txid проверяет вашу идемпотентность.</summary>
+    /// <summary>The deposit transaction (with a sandbox prefix); repeating the same txid tests your idempotency.</summary>
     [JsonPropertyName("txid")]
     public required string Txid { get; init; }
 }
@@ -4885,17 +4988,17 @@ public sealed partial record SimulateDepositResult : Model
 /// <summary><c>SoFSubmitRequest</c> model.</summary>
 public sealed partial record SoFSubmitRequest : Model
 {
-    /// <summary>Как связаться для уточнений.</summary>
+    /// <summary>How to get in touch for clarifications.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("contact")]
     public string? Contact { get; init; }
 
-    /// <summary>Чем подтверждается: ссылки на выписки, идентификаторы транзакций.</summary>
+    /// <summary>What supports it: links to statements, transaction ids.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("evidence")]
     public string? Evidence { get; init; }
 
-    /// <summary>Откуда средства.</summary>
+    /// <summary>Where the funds come from.</summary>
     [JsonPropertyName("origin")]
     public required string Origin { get; init; }
 }
@@ -4903,11 +5006,11 @@ public sealed partial record SoFSubmitRequest : Model
 /// <summary><c>SoFSubmitted</c> model.</summary>
 public sealed partial record SoFSubmitted : Model
 {
-    /// <summary>Анкета принята к рассмотрению; это не решение о разблокировке.</summary>
+    /// <summary>The questionnaire has been accepted for review; this is not a decision to unblock.</summary>
     [JsonPropertyName("accepted")]
     public required bool Accepted { get; init; }
 
-    /// <summary>Статус анкеты после приёма — completed.</summary>
+    /// <summary>The questionnaire status after acceptance — completed.</summary>
     [JsonPropertyName("status")]
     public required SoFStatus Status { get; init; }
 }
@@ -4915,11 +5018,11 @@ public sealed partial record SoFSubmitted : Model
 /// <summary><c>SoFView</c> model.</summary>
 public sealed partial record SoFView : Model
 {
-    /// <summary>Срок ссылки вышел — анкету уже не принять.</summary>
+    /// <summary>The link has expired — the questionnaire can no longer be accepted.</summary>
     [JsonPropertyName("expired")]
     public required bool Expired { get; init; }
 
-    /// <summary>Статус анкеты.</summary>
+    /// <summary>Questionnaire status.</summary>
     [JsonPropertyName("status")]
     public required SoFStatus Status { get; init; }
 }
@@ -4927,7 +5030,7 @@ public sealed partial record SoFView : Model
 /// <summary><c>SplitConfigRequest</c> model.</summary>
 public sealed partial record SplitConfigRequest : Model
 {
-    /// <summary>На сколько секунд откладывать расчёт по сплитам; диапазон 0–7776000 (до 90 суток). 0 — отправлять доли сразу: риск невозможности возврата берёте на себя.</summary>
+    /// <summary>How many seconds to defer split settlement; range 0–7776000 (up to 90 days). 0 — send shares immediately: you bear the risk of being unable to refund.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("refund_hold_seconds")]
     public long? RefundHoldSeconds { get; init; }
@@ -4936,7 +5039,7 @@ public sealed partial record SplitConfigRequest : Model
 /// <summary><c>SplitConfigView</c> model.</summary>
 public sealed partial record SplitConfigView : Model
 {
-    /// <summary>На сколько секунд откладывается расчёт по сплитам после оплаты; 0 — доли уходят сразу.</summary>
+    /// <summary>How many seconds split settlement is deferred after payment; 0 — shares are sent immediately.</summary>
     [JsonPropertyName("refund_hold_seconds")]
     public required long RefundHoldSeconds { get; init; }
 }
@@ -4944,7 +5047,7 @@ public sealed partial record SplitConfigView : Model
 /// <summary><c>SplitRecipientOptInRequest</c> model.</summary>
 public sealed partial record SplitRecipientOptInRequest : Model
 {
-    /// <summary>Разрешить другим мерчантам направлять доли сплитов на ваш баланс. true — включить приём, false — выключить (новые правила на вас перестанут создаваться; уже созданные продолжают исполняться).</summary>
+    /// <summary>Allow other merchants to route split shares to your balance. true — enable receiving, false — disable (new rules targeting you can no longer be created; existing ones keep executing).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("enabled")]
     public bool? Enabled { get; init; }
@@ -4953,7 +5056,7 @@ public sealed partial record SplitRecipientOptInRequest : Model
 /// <summary><c>SplitRecipientOptInView</c> model.</summary>
 public sealed partial record SplitRecipientOptInView : Model
 {
-    /// <summary>true — другие мерчанты могут направлять доли на ваш баланс.</summary>
+    /// <summary>true — other merchants may route shares to your balance.</summary>
     [JsonPropertyName("enabled")]
     public required bool Enabled { get; init; }
 }
@@ -4961,12 +5064,12 @@ public sealed partial record SplitRecipientOptInView : Model
 /// <summary><c>SplitRuleCreated</c> model.</summary>
 public sealed partial record SplitRuleCreated : Model
 {
-    /// <summary>Сохранённая доля в процентах, два знака после точки.</summary>
+    /// <summary>The saved share in percent, two digits after the point.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("percent")]
     public required decimal Percent { get; init; }
 
-    /// <summary>Идентификатор правила.</summary>
+    /// <summary>Rule id.</summary>
     [JsonPropertyName("rule_id")]
     public required string RuleId { get; init; }
 }
@@ -4974,7 +5077,7 @@ public sealed partial record SplitRuleCreated : Model
 /// <summary><c>SplitRuleDeleteRequest</c> model.</summary>
 public sealed partial record SplitRuleDeleteRequest : Model
 {
-    /// <summary>Идентификатор правила из POST /v1/split/rule или списка.</summary>
+    /// <summary>The rule id from POST /v1/split/rule or the list.</summary>
     [JsonPropertyName("rule_id")]
     public required string RuleId { get; init; }
 }
@@ -4982,7 +5085,7 @@ public sealed partial record SplitRuleDeleteRequest : Model
 /// <summary><c>SplitRuleDeleted</c> model.</summary>
 public sealed partial record SplitRuleDeleted : Model
 {
-    /// <summary>Правило удалено; неудача отвечает ошибкой.</summary>
+    /// <summary>The rule has been deleted; a failure responds with an error.</summary>
     [JsonPropertyName("ok")]
     public required bool Ok { get; init; }
 }
@@ -4990,27 +5093,27 @@ public sealed partial record SplitRuleDeleted : Model
 /// <summary><c>SplitRuleRequest</c> model.</summary>
 public sealed partial record SplitRuleRequest : Model
 {
-    /// <summary>Внешний криптоадрес партнёра; доля уходит реальной транзакцией в блокчейне — необратимо. Ровно один вариант получателя: либо address+network, либо merchant_id.</summary>
+    /// <summary>The partner's external crypto address; the share is sent as a real on-chain transaction — irreversibly. Exactly one recipient option: either address+network or merchant_id.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("address")]
     public string? Address { get; init; }
 
-    /// <summary>Идентификатор мерчанта-партнёра внутри Oblodai; доля движется по внутреннему учёту и при возврате отзывается обратно.</summary>
+    /// <summary>The id of the partner merchant within Oblodai; the share moves within internal accounting and is clawed back on refund.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("merchant_id")]
     public string? MerchantId { get; init; }
 
-    /// <summary>Сеть адреса. Обязательна вместе с address.</summary>
+    /// <summary>The address network. Required together with address.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("network")]
     public string? Network { get; init; }
 
-    /// <summary>Комментарий для себя (виден в списке правил).</summary>
+    /// <summary>A note for yourself (visible in the rule list).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("note")]
     public string? Note { get; init; }
 
-    /// <summary>Доля от каждого платежа, строкой: "10" = 10 %, "2.5" = 2.5 %. Больше 0 и не больше 100, шаг 0.01 %; сумма всех правил не может превышать 100 %.</summary>
+    /// <summary>The share of each payment, as a string: "10" = 10 %, "2.5" = 2.5 %. Greater than 0 and at most 100, in steps of 0.01 %; the sum of all rules cannot exceed 100 %.</summary>
     [JsonPropertyName("percent")]
     public required string Percent { get; init; }
 }
@@ -5018,39 +5121,39 @@ public sealed partial record SplitRuleRequest : Model
 /// <summary><c>SplitRuleView</c> model.</summary>
 public sealed partial record SplitRuleView : Model
 {
-    /// <summary>Правило действует.</summary>
+    /// <summary>The rule is active.</summary>
     [JsonPropertyName("active")]
     public required bool Active { get; init; }
 
-    /// <summary>Внешний адрес партнёра; есть у внешнего получателя.</summary>
+    /// <summary>The partner's external address; present for an external recipient.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("address")]
     public string? Address { get; init; }
 
-    /// <summary>Мерчант-партнёр внутри Oblodai; есть у внутреннего получателя.</summary>
+    /// <summary>A partner merchant within Oblodai; present for an internal recipient.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("merchant_id")]
     public string? MerchantId { get; init; }
 
-    /// <summary>Сеть внешнего адреса; есть у внешнего получателя.</summary>
+    /// <summary>The external address's network; present for an external recipient.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("network")]
     public string? Network { get; init; }
 
-    /// <summary>Комментарий из создания.</summary>
+    /// <summary>The note from creation.</summary>
     [JsonPropertyName("note")]
     public required string Note { get; init; }
 
-    /// <summary>Доля от каждого платежа в процентах.</summary>
+    /// <summary>The share of each payment, in percent.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("percent")]
     public required decimal Percent { get; init; }
 
-    /// <summary>true — доля движется по внутреннему учёту и отзывается при возврате; false — уходит в блокчейн необратимо.</summary>
+    /// <summary>true — the share moves within internal accounting and is clawed back on refund; false — it goes on-chain irreversibly.</summary>
     [JsonPropertyName("reversible")]
     public required bool Reversible { get; init; }
 
-    /// <summary>Идентификатор правила.</summary>
+    /// <summary>Rule id.</summary>
     [JsonPropertyName("rule_id")]
     public required string RuleId { get; init; }
 }
@@ -5058,11 +5161,11 @@ public sealed partial record SplitRuleView : Model
 /// <summary><c>SplitRuleViewList</c> model.</summary>
 public sealed partial record SplitRuleViewList : Model
 {
-    /// <summary>Записи этой страницы.</summary>
+    /// <summary>The records of this page.</summary>
     [JsonPropertyName("items")]
     public required IReadOnlyList<SplitRuleView> Items { get; init; }
 
-    /// <summary>Блок пагинации.</summary>
+    /// <summary>Pagination block.</summary>
     [JsonPropertyName("paginate")]
     public required Pagination Paginate { get; init; }
 }
@@ -5070,55 +5173,55 @@ public sealed partial record SplitRuleViewList : Model
 /// <summary><c>StaticWalletView</c> model.</summary>
 public sealed partial record StaticWalletView : Model
 {
-    /// <summary>Постоянный адрес для пополнений. На XRP — классический r-адрес ОБЩЕГО кошелька; пополнение обязано нести destination_tag. На XLM — G-адрес; пополнение обязано нести memo.</summary>
+    /// <summary>A permanent deposit address. On XRP — the classic r-address of a SHARED wallet; a deposit must carry destination_tag. On XLM — a G-address; a deposit must carry memo.</summary>
     [JsonPropertyName("address")]
     public required string Address { get; init; }
 
-    /// <summary>Только XLM: адрес и memo одной строкой (muxed M…, SEP-23).</summary>
+    /// <summary>XLM only: address and memo in one string (muxed M…, SEP-23).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("address_muxed")]
     public string? AddressMuxed { get; init; }
 
-    /// <summary>Только XRP: адрес и тег одной строкой (X-address, XLS-5).</summary>
+    /// <summary>XRP only: address and tag in one string (X-address, XLS-5).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("address_xaddress")]
     public string? AddressXaddress { get; init; }
 
-    /// <summary>true — кошелёк заблокирован: пополнения на этот адрес НЕ зачисляются (уходят в карантин оператору, без вебхука и без автовозврата). Публиковать такой адрес нельзя.</summary>
+    /// <summary>true — the wallet is blocked: deposits to this address are NOT credited (they go to operator quarantine, with no webhook and no auto-refund). Do not publish such an address.</summary>
     [JsonPropertyName("blocked")]
     public required bool Blocked { get; init; }
 
-    /// <summary>Валюта пополнений.</summary>
+    /// <summary>Deposit currency.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Только XRP: числовой destination tag этого кошелька — клиент обязан указывать его в каждом переводе.</summary>
+    /// <summary>XRP only: this wallet's numeric destination tag — the customer must specify it in every transfer.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("destination_tag")]
     public string? DestinationTag { get; init; }
 
-    /// <summary>Подписанная ссылка на PDF-справку о реквизитах. Пусто, когда рендер документов выключен.</summary>
+    /// <summary>A signed link to the PDF payment details certificate. Empty when document rendering is disabled.</summary>
     [JsonPropertyName("document_url")]
     public required string DocumentUrl { get; init; }
 
-    /// <summary>Только XLM: числовой memo (тип ID) этого кошелька — клиент обязан указывать его в каждом переводе.</summary>
+    /// <summary>XLM only: this wallet's numeric memo (ID type) — the customer must specify it in every transfer.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("memo")]
     public string? Memo { get; init; }
 
-    /// <summary>Сеть блокчейна.</summary>
+    /// <summary>Blockchain network.</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>Ваш идентификатор клиента, за которым закреплён адрес (часть тройки идемпотентности currency+network+order_id).</summary>
+    /// <summary>Your customer identifier the address is assigned to (part of the currency+network+order_id idempotency triple).</summary>
     [JsonPropertyName("order_id")]
     public required string OrderId { get; init; }
 
-    /// <summary>Зарезервировано (обычно пусто).</summary>
+    /// <summary>Reserved (usually empty).</summary>
     [JsonPropertyName("url")]
     public required string Url { get; init; }
 
-    /// <summary>Идентификатор статического кошелька.</summary>
+    /// <summary>Static wallet id.</summary>
     [JsonPropertyName("uuid")]
     public required string Uuid { get; init; }
 }
@@ -5126,12 +5229,12 @@ public sealed partial record StaticWalletView : Model
 /// <summary><c>SummaryAmount</c> model.</summary>
 public sealed partial record SummaryAmount : Model
 {
-    /// <summary>Сумма в единицах монеты.</summary>
+    /// <summary>The amount in coin units.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Монета оплаты.</summary>
+    /// <summary>Payment coin.</summary>
     [JsonPropertyName("asset")]
     public required string Asset { get; init; }
 }
@@ -5139,11 +5242,11 @@ public sealed partial record SummaryAmount : Model
 /// <summary><c>SummaryRequest</c> model.</summary>
 public sealed partial record SummaryRequest : Model
 {
-    /// <summary>Начало окна, включительно (RFC 3339).</summary>
+    /// <summary>Start of the window, inclusive (RFC 3339).</summary>
     [JsonPropertyName("from")]
     public required string From { get; init; }
 
-    /// <summary>Конец окна, не включительно (RFC 3339).</summary>
+    /// <summary>End of the window, exclusive (RFC 3339).</summary>
     [JsonPropertyName("to")]
     public required string To { get; init; }
 }
@@ -5151,11 +5254,11 @@ public sealed partial record SummaryRequest : Model
 /// <summary><c>SummaryResult</c> model.</summary>
 public sealed partial record SummaryResult : Model
 {
-    /// <summary>Выплат в работе прямо сейчас (статус не финальный), без возвратов; от окна не зависит.</summary>
+    /// <summary>Payouts in progress right now (non-final status), excluding refunds; independent of the window.</summary>
     [JsonPropertyName("pending_payouts")]
     public required long PendingPayouts { get; init; }
 
-    /// <summary>Оборот окна: оплаченное по оплаченным счетам (paid, paid_over), созданным в окне, — по монете оплаты, по алфавиту. Пусто — оплат не было.</summary>
+    /// <summary>Turnover for the window: amounts paid on paid invoices (paid, paid_over) created within the window — per payment coin, alphabetically. Empty — there were no payments.</summary>
     [JsonPropertyName("turnover")]
     public required IReadOnlyList<SummaryAmount> Turnover { get; init; }
 }
@@ -5163,31 +5266,31 @@ public sealed partial record SummaryResult : Model
 /// <summary><c>TestWebhookKindRequest</c> model.</summary>
 public sealed partial record TestWebhookKindRequest : Model
 {
-    /// <summary>Валюта в теле</summary>
+    /// <summary>Currency in the body</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("currency")]
     public string? Currency { get; init; }
 
-    /// <summary>Сеть в теле</summary>
+    /// <summary>Network in the body</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("network")]
     public string? Network { get; init; }
 
-    /// <summary>Ваш order_id, который попадёт в пробное тело события</summary>
+    /// <summary>Your order_id placed in the sample event body</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
 
-    /// <summary>Статус в теле — только те, с которыми боевой вебхук этого вида действительно приходит (кошелёк — только paid); иначе 400 webhook.bad_status. По умолчанию paid (для выплаты — confirmed, для конвертации — completed)</summary>
+    /// <summary>The status in the body — only those with which a live webhook of this kind actually arrives (wallet — paid only); otherwise 400 webhook.bad_status. Default paid (for a payout — confirmed, for a conversion — completed)</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("status")]
     public string? Status { get; init; }
 
-    /// <summary>Куда отправить пробное тело</summary>
+    /// <summary>Where to send the sample body</summary>
     [JsonPropertyName("url_callback")]
     public required string UrlCallback { get; init; }
 
-    /// <summary>UUID объекта (платежа, кошелька или выплаты), который попадёт в пробное тело события</summary>
+    /// <summary>The UUID of the object (payment, wallet or payout) placed in the sample event body</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("uuid")]
     public string? Uuid { get; init; }
@@ -5196,15 +5299,15 @@ public sealed partial record TestWebhookKindRequest : Model
 /// <summary><c>TestWebhookKindResult</c> model.</summary>
 public sealed partial record TestWebhookKindResult : Model
 {
-    /// <summary>Всегда true: тело доставлено.</summary>
+    /// <summary>Always true: the body was delivered.</summary>
     [JsonPropertyName("ok")]
     public required bool Ok { get; init; }
 
-    /// <summary>Тело подписано секретом endpoint'а проекта.</summary>
+    /// <summary>The body is signed with the project endpoint's secret.</summary>
     [JsonPropertyName("signed")]
     public required bool Signed { get; init; }
 
-    /// <summary>HTTP-статус, которым ответил ваш endpoint.</summary>
+    /// <summary>The HTTP status your endpoint responded with.</summary>
     [JsonPropertyName("status_code")]
     public required long StatusCode { get; init; }
 }
@@ -5212,12 +5315,12 @@ public sealed partial record TestWebhookKindResult : Model
 /// <summary><c>TestWebhookRequest</c> model.</summary>
 public sealed partial record TestWebhookRequest : Model
 {
-    /// <summary>Статус в теле. По умолчанию paid</summary>
+    /// <summary>The status in the body. Default paid</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("status")]
     public string? Status { get; init; }
 
-    /// <summary>Куда отправить пробное тело. Не передан — доставка уходит на зарегистрированный endpoint проекта; без endpoint — ошибка webhook.no_endpoint. Подпись — секретом endpoint'а проекта, в том числе при явном url</summary>
+    /// <summary>Where to send the sample body. If omitted, the delivery goes to the project's registered endpoint; without an endpoint — the webhook.no_endpoint error. Signed with the project endpoint's secret, including when url is given explicitly</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("url")]
     public string? Url { get; init; }
@@ -5226,29 +5329,29 @@ public sealed partial record TestWebhookRequest : Model
 /// <summary><c>TestWebhookResult</c> model.</summary>
 public sealed partial record TestWebhookResult : Model
 {
-    /// <summary>Сколько длилась доставка, мс.</summary>
+    /// <summary>How long the delivery took, ms.</summary>
     [JsonPropertyName("duration_ms")]
     public required long DurationMs { get; init; }
 
-    /// <summary>Почему доставка не состоялась; только при ok=false.</summary>
+    /// <summary>Why the delivery did not take place; only when ok=false.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("error")]
     public string? Error { get; init; }
 
-    /// <summary>Доставка состоялась (endpoint ответил, любым статусом).</summary>
+    /// <summary>The delivery took place (the endpoint responded, with any status).</summary>
     [JsonPropertyName("ok")]
     public required bool Ok { get; init; }
 
-    /// <summary>Тело подписано секретом endpoint'а проекта.</summary>
+    /// <summary>The body is signed with the project endpoint's secret.</summary>
     [JsonPropertyName("signed")]
     public required bool Signed { get; init; }
 
-    /// <summary>HTTP-статус ответа endpoint'а; только при ok=true.</summary>
+    /// <summary>The HTTP status returned by the endpoint; only when ok=true.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("status_code")]
     public long? StatusCode { get; init; }
 
-    /// <summary>Куда ушло пробное тело.</summary>
+    /// <summary>Where the sample body was sent.</summary>
     [JsonPropertyName("url")]
     public required string Url { get; init; }
 }
@@ -5256,20 +5359,20 @@ public sealed partial record TestWebhookResult : Model
 /// <summary><c>TransferBatchItem</c> model.</summary>
 public sealed partial record TransferBatchItem : Model
 {
-    /// <summary>Сумма перевода в currency.</summary>
+    /// <summary>The transfer amount in currency.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Код валюты (криптовалюта).</summary>
+    /// <summary>Currency code (cryptocurrency).</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Ключ идемпотентности: повтор с тем же order_id — no-op; в батче переводов обязателен.</summary>
+    /// <summary>Idempotency key: a retry with the same order_id is a no-op; required in a transfer batch.</summary>
     [JsonPropertyName("order_id")]
     public required string OrderId { get; init; }
 
-    /// <summary>Платформенный user id получателя (UUID, не username); username резолвится в id через публичный профиль кабинета /public/users/{username}.</summary>
+    /// <summary>The recipient's platform user id (a UUID, not a username); a username is resolved to an id via the dashboard's public profile /public/users/{username}.</summary>
     [JsonPropertyName("to_user_id")]
     public required string ToUserId { get; init; }
 }
@@ -5277,12 +5380,12 @@ public sealed partial record TransferBatchItem : Model
 /// <summary><c>TransferBatchRequest</c> model.</summary>
 public sealed partial record TransferBatchRequest : Model
 {
-    /// <summary>Что делать при ошибке элемента: continue (по умолчанию) — обрабатывать остальные; stop — прекратить обработку после первой ошибки.</summary>
+    /// <summary>What to do when an item fails: continue (default) — process the rest; stop — stop processing after the first error.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("on_error")]
     public BatchOnError? OnError { get; init; }
 
-    /// <summary>Массив от 1 до 5000 элементов — те же поля, что у POST /v1/transfer/to-user; у каждого элемента обязательны order_id (ключ идемпотентности) и to_user_id (UUID пользователя).</summary>
+    /// <summary>An array of 1 to 5000 items — the same fields as in POST /v1/transfer/to-user; each item requires order_id (the idempotency key) and to_user_id (the user's UUID).</summary>
     [JsonPropertyName("transfers")]
     public required IReadOnlyList<TransferBatchItem> Transfers { get; init; }
 }
@@ -5290,16 +5393,16 @@ public sealed partial record TransferBatchRequest : Model
 /// <summary><c>TransferRequest</c> model.</summary>
 public sealed partial record TransferRequest : Model
 {
-    /// <summary>Сумма перевода в currency.</summary>
+    /// <summary>The transfer amount in currency.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Код валюты (криптовалюта).</summary>
+    /// <summary>Currency code (cryptocurrency).</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Ключ идемпотентности: повтор с тем же order_id — no-op. Настоятельно передавайте всегда, иначе повтор запроса при сетевом таймауте создаст второй перевод.</summary>
+    /// <summary>Idempotency key: a retry with the same order_id is a no-op. Always pass it, otherwise retrying the request after a network timeout creates a second transfer.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
@@ -5308,24 +5411,24 @@ public sealed partial record TransferRequest : Model
 /// <summary><c>TransferResult</c> model.</summary>
 public sealed partial record TransferResult : Model
 {
-    /// <summary>Сумма перевода.</summary>
+    /// <summary>Transfer amount.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Актив перевода.</summary>
+    /// <summary>Transfer asset.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Ссылка на PDF-документ перевода; пусто, если документы выключены.</summary>
+    /// <summary>A link to the transfer PDF document; empty if documents are disabled.</summary>
     [JsonPropertyName("document_url")]
     public required string DocumentUrl { get; init; }
 
-    /// <summary>Получатель — пользователь личного кошелька.</summary>
+    /// <summary>The recipient is a personal wallet user.</summary>
     [JsonPropertyName("to_user_id")]
     public required string ToUserId { get; init; }
 
-    /// <summary>Идентификатор проводки перевода.</summary>
+    /// <summary>The transfer posting id.</summary>
     [JsonPropertyName("uuid")]
     public required string Uuid { get; init; }
 }
@@ -5333,28 +5436,28 @@ public sealed partial record TransferResult : Model
 /// <summary><c>TransferToPersonalResult</c> model.</summary>
 public sealed partial record TransferToPersonalResult : Model
 {
-    /// <summary>Сумма перевода.</summary>
+    /// <summary>Transfer amount.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Актив перевода.</summary>
+    /// <summary>Transfer asset.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Направление: to_personal.</summary>
+    /// <summary>Direction: to_personal.</summary>
     [JsonPropertyName("direction")]
     public required string Direction { get; init; }
 
-    /// <summary>Ссылка на PDF-документ перевода; пусто, если документы выключены.</summary>
+    /// <summary>A link to the transfer PDF document; empty if documents are disabled.</summary>
     [JsonPropertyName("document_url")]
     public required string DocumentUrl { get; init; }
 
-    /// <summary>Баланс личного кошелька владельца после перевода.</summary>
+    /// <summary>The balance of the owner's personal wallet after the transfer.</summary>
     [JsonPropertyName("personal_balance")]
     public required string PersonalBalance { get; init; }
 
-    /// <summary>Идентификатор проводки перевода.</summary>
+    /// <summary>The transfer posting id.</summary>
     [JsonPropertyName("uuid")]
     public required string Uuid { get; init; }
 }
@@ -5362,21 +5465,21 @@ public sealed partial record TransferToPersonalResult : Model
 /// <summary><c>TransferToUserRequest</c> model.</summary>
 public sealed partial record TransferToUserRequest : Model
 {
-    /// <summary>Сумма перевода в currency.</summary>
+    /// <summary>The transfer amount in currency.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
     public required decimal Amount { get; init; }
 
-    /// <summary>Код валюты (криптовалюта).</summary>
+    /// <summary>Currency code (cryptocurrency).</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Ключ идемпотентности: повтор с тем же order_id — no-op; в батче переводов обязателен.</summary>
+    /// <summary>Idempotency key: a retry with the same order_id is a no-op; required in a transfer batch.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
 
-    /// <summary>Платформенный user id получателя (UUID, не username); username резолвится в id через публичный профиль кабинета /public/users/{username}.</summary>
+    /// <summary>The recipient's platform user id (a UUID, not a username); a username is resolved to an id via the dashboard's public profile /public/users/{username}.</summary>
     [JsonPropertyName("to_user_id")]
     public required string ToUserId { get; init; }
 }
@@ -5384,7 +5487,7 @@ public sealed partial record TransferToUserRequest : Model
 /// <summary><c>VRCSRequest</c> model.</summary>
 public sealed partial record VRCSRequest : Model
 {
-    /// <summary>true — включить автоконвертацию волатильных поступлений в USDT, false — выключить; без поля — только прочитать текущее состояние.</summary>
+    /// <summary>true — enable auto-conversion of volatile incoming funds to USDT, false — disable it; without the field — only read the current state.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("enabled")]
     public bool? Enabled { get; init; }
@@ -5393,7 +5496,7 @@ public sealed partial record VRCSRequest : Model
 /// <summary><c>VRCSResult</c> model.</summary>
 public sealed partial record VRCSResult : Model
 {
-    /// <summary>Включена ли автоконвертация волатильных поступлений в USDT.</summary>
+    /// <summary>Whether auto-conversion of volatile incoming funds to USDT is enabled.</summary>
     [JsonPropertyName("enabled")]
     public required bool Enabled { get; init; }
 }
@@ -5401,68 +5504,68 @@ public sealed partial record VRCSResult : Model
 /// <summary><c>WalletQRResult</c> model.</summary>
 public sealed partial record WalletQRResult : Model
 {
-    /// <summary>PNG QR-кода как data:-URI; "" — не удалось отрисовать.</summary>
+    /// <summary>The QR code PNG as a data: URI; "" — rendering failed.</summary>
     [JsonPropertyName("image")]
     public required string Image { get; init; }
 }
 
-/// <summary>Приходит, когда депозит на статический кошелёк зачислен.</summary>
+/// <summary>Sent when a deposit to a static wallet is credited.</summary>
 public sealed partial record WalletWebhook : Model
 {
-    /// <summary>Адрес кошелька, на который пришёл платёж.</summary>
+    /// <summary>The wallet address the payment arrived at.</summary>
     [JsonPropertyName("address")]
     public required string Address { get; init; }
 
-    /// <summary>Код валюты зачисления.</summary>
+    /// <summary>Credit currency code.</summary>
     [JsonPropertyName("currency")]
     public required string Currency { get; init; }
 
-    /// <summary>Когда событие произошло, UTC с миллисекундами (ISO 8601).</summary>
+    /// <summary>When the event happened, UTC with milliseconds (ISO 8601).</summary>
     [JsonPropertyName("event_at")]
     public required string EventAt { get; init; }
 
-    /// <summary>true — статус финальный.</summary>
+    /// <summary>true — the status is final.</summary>
     [JsonPropertyName("is_final")]
     public required bool IsFinal { get; init; }
 
-    /// <summary>Сеть блокчейна.</summary>
+    /// <summary>Blockchain network.</summary>
     [JsonPropertyName("network")]
     public required string Network { get; init; }
 
-    /// <summary>Ваш order_id кошелька.</summary>
+    /// <summary>Your order_id for the wallet.</summary>
     [JsonPropertyName("order_id")]
     public required string OrderId { get; init; }
 
-    /// <summary>Валюта, в которой заплатил плательщик (совпадает с currency).</summary>
+    /// <summary>The currency the payer paid in (matches currency).</summary>
     [JsonPropertyName("payer_currency")]
     public required string PayerCurrency { get; init; }
 
-    /// <summary>Зачисленная сумма депозита (десятичное число строкой).</summary>
+    /// <summary>The credited deposit amount (a decimal number as a string).</summary>
     [JsonPropertyName("payment_amount")]
     public required string PaymentAmount { get; init; }
 
-    /// <summary>Глобальный номер события: в пределах одного объекта больший номер новее, меньший — опоздавшая доставка, её нужно отбросить. У репетиции (test: true) всегда 0.</summary>
+    /// <summary>The global event number: within one object a higher number is newer, a lower one is a late delivery and must be discarded. Always 0 on a rehearsal (test: true).</summary>
     [JsonPropertyName("sequence")]
     public required long Sequence { get; init; }
 
-    /// <summary>Статус в словаре платежа; живой поток шлёт только paid.</summary>
+    /// <summary>A status from the payment vocabulary; the live flow sends only paid.</summary>
     [JsonPropertyName("status")]
     public required string Status { get; init; }
 
-    /// <summary>Есть только у репетиции (/v1/test-webhook/*, /v1/payment/testing-webhook) и всегда true — внутри подписи. Боевое событие этого поля не несёт никогда: тело с test: true обработчик обязан игнорировать, даже если подпись верна.</summary>
+    /// <summary>Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always true — inside the signature. A live event never carries this field: your handler must ignore a body with test: true even if the signature is valid.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("test")]
     public bool? Test { get; init; }
 
-    /// <summary>Хеш транзакции депозита.</summary>
+    /// <summary>The deposit transaction hash.</summary>
     [JsonPropertyName("txid")]
     public required string Txid { get; init; }
 
-    /// <summary>Вид события: payment | payout | wallet | conversion — какое тело пришло.</summary>
+    /// <summary>Event kind: payment | payout | wallet | conversion — which body arrived.</summary>
     [JsonPropertyName("type")]
     public required string Type { get; init; }
 
-    /// <summary>Идентификатор статического кошелька.</summary>
+    /// <summary>Static wallet id.</summary>
     [JsonPropertyName("uuid")]
     public required string Uuid { get; init; }
 }
@@ -5470,43 +5573,43 @@ public sealed partial record WalletWebhook : Model
 /// <summary><c>WebhookDeliveryLogItem</c> model.</summary>
 public sealed partial record WebhookDeliveryLogItem : Model
 {
-    /// <summary>Сделано попыток.</summary>
+    /// <summary>Attempts made.</summary>
     [JsonPropertyName("attempts")]
     public required long Attempts { get; init; }
 
-    /// <summary>Почему доставка cancelled не будет отправлена; пусто у остальных статусов.</summary>
+    /// <summary>Why a cancelled delivery will not be sent; empty for other statuses.</summary>
     [JsonPropertyName("cancel_reason")]
     public required string CancelReason { get; init; }
 
-    /// <summary>Когда поставлена, RFC 3339 UTC.</summary>
+    /// <summary>When queued, RFC 3339 UTC.</summary>
     [JsonPropertyName("created_at")]
     public required string CreatedAt { get; init; }
 
-    /// <summary>Событие в теле.</summary>
+    /// <summary>The event in the body.</summary>
     [JsonPropertyName("event_type")]
     public required string EventType { get; init; }
 
-    /// <summary>Идентификатор доставки.</summary>
+    /// <summary>Delivery id.</summary>
     [JsonPropertyName("id")]
     public required string Id { get; init; }
 
-    /// <summary>Ошибка последней попытки; пусто, если её не было.</summary>
+    /// <summary>The error of the last attempt; empty if there was none.</summary>
     [JsonPropertyName("last_error")]
     public required string LastError { get; init; }
 
-    /// <summary>Глобальный номер события (тот же, что в теле).</summary>
+    /// <summary>The global event number (the same as in the body).</summary>
     [JsonPropertyName("sequence")]
     public required long Sequence { get; init; }
 
-    /// <summary>Состояние доставки.</summary>
+    /// <summary>Delivery state.</summary>
     [JsonPropertyName("status")]
     public required WebhookDeliveryStatus Status { get; init; }
 
-    /// <summary>Последнее изменение, RFC 3339 UTC.</summary>
+    /// <summary>Last change, RFC 3339 UTC.</summary>
     [JsonPropertyName("updated_at")]
     public required string UpdatedAt { get; init; }
 
-    /// <summary>Куда доставляется.</summary>
+    /// <summary>Where it is delivered.</summary>
     [JsonPropertyName("url")]
     public required string Url { get; init; }
 }
@@ -5514,11 +5617,11 @@ public sealed partial record WebhookDeliveryLogItem : Model
 /// <summary><c>WebhookDeliveryLogItemList</c> model.</summary>
 public sealed partial record WebhookDeliveryLogItemList : Model
 {
-    /// <summary>Записи этой страницы.</summary>
+    /// <summary>The records of this page.</summary>
     [JsonPropertyName("items")]
     public required IReadOnlyList<WebhookDeliveryLogItem> Items { get; init; }
 
-    /// <summary>Блок пагинации.</summary>
+    /// <summary>Pagination block.</summary>
     [JsonPropertyName("paginate")]
     public required Pagination Paginate { get; init; }
 }
@@ -5526,7 +5629,7 @@ public sealed partial record WebhookDeliveryLogItemList : Model
 /// <summary><c>WebhookResendResult</c> model.</summary>
 public sealed partial record WebhookResendResult : Model
 {
-    /// <summary>Всегда true: вебхук поставлен в очередь; неудача отвечает ошибкой.</summary>
+    /// <summary>Always true: the webhook has been queued; a failure responds with an error.</summary>
     [JsonPropertyName("ok")]
     public required bool Ok { get; init; }
 }
