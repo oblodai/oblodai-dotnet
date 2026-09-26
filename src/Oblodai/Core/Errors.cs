@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 namespace Oblodai;
 
 /// <summary>
-/// The gateway's error envelope: <c>{ "error": { code, message, field?, retryable, retry_after?, request_id? } }</c>.
+/// The gateway's error envelope: <c>{ "error": { code, message, field?, details?, retryable, retry_after?, request_id? } }</c>.
 /// <para>
 /// Never deserialized as a unit: <see cref="EnvelopeDecoder"/> reads it field by field, because a body
 /// whose <c>retryable</c> is a string or whose <c>retry_after</c> overflows must still classify as the
@@ -24,6 +24,10 @@ public sealed record ErrorDetail
     /// <summary>The request field the error refers to, for validation failures.</summary>
     [JsonPropertyName("field")]
     public string? Field { get; init; }
+
+    /// <summary>Machine-readable facts about the refusal, keys documented by its code; null when absent.</summary>
+    [JsonPropertyName("details")]
+    public IReadOnlyDictionary<string, string>? Details { get; init; }
 
     /// <summary>The gateway's own verdict on whether repeating the identical request can succeed.</summary>
     [JsonPropertyName("retryable")]
@@ -175,6 +179,12 @@ public class OblodaiException : Exception
     /// <summary>The request field the error refers to, for validation failures.</summary>
     public string? Field { get; }
 
+    /// <summary>
+    /// Machine-readable facts about the refusal, keys documented by its code (e.g.
+    /// <c>cli.permission_denied</c> carries <c>required_role</c> and <c>role</c>); null when absent.
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? Details { get; protected init; }
+
     /// <summary>No gateway envelope: the answer came from something in front of the gateway.</summary>
     public bool Synthetic { get; }
 
@@ -203,6 +213,7 @@ public class OblodaiException : Exception
         ["retryAfter"] = RetryAfter,
         ["requestId"] = RequestId,
         ["field"] = Field,
+        ["details"] = Details,
     };
 
     /// <summary>JSON view of <see cref="ToLogRecord"/>.</summary>
@@ -235,4 +246,8 @@ public sealed record ApiErrorInit(
     string? RequestId = null,
     string? Field = null,
     bool Synthetic = false,
-    object? Raw = null);
+    object? Raw = null)
+{
+    /// <summary>Machine-readable facts about the refusal, keys documented by its code; null when absent.</summary>
+    public IReadOnlyDictionary<string, string>? Details { get; init; }
+}

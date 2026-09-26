@@ -3,6 +3,17 @@
 All notable changes to the Oblodai .NET SDK. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versions follow [SemVer](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- `client.CliLogin` — `StartAsync`, `PollAsync`, `LogoutCliAsync`: the browser login of the
+  `oblodai` CLI (OAuth 2.0 device authorization) and logout of its key.
+- `OblodaiException.Details`: the machine-readable facts of an error envelope's new `details` object
+  (for example `cli.permission_denied` carries `required_role` and `role`); only string values are
+  kept.
+- Every method's documentation names the minimum team role a CLI key needs to call it.
+
 ## [2.0.0] — 2026-09-25
 
 Generated from the gateway's OpenAPI contract by the backend's `tools/sdkgen`. Breaking: see
