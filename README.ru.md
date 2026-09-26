@@ -146,13 +146,13 @@ Console.WriteLine($"{deposit.Txid} {deposit.Confirmations}");
 `DownloadAsync`, если у задачи есть файл) — см. ниже.
 
 <!-- sdkgen:methods -->
-17 ресурсов, 123 метода.
+17 ресурсов, 124 метода.
 
 | Ресурс | Методы |
 | --- | --- |
 | `Payments` | `CreateAsync` · `GetInfoAsync` · `GetQrAsync` · `ListHistoryAsync` · `ListServicesAsync` · `CancelAsync` · `SendEmailAsync` · `SetCheckoutConfigAsync` · `GetCheckoutConfigAsync` · `GetAmlLinksAsync` · `ResolveAsync` |
 | `PaymentLinks` | `CreateAsync` · `ListAsync` · `GetAsync` · `ToggleAsync` |
-| `Refunds` | `PaymentAsync` · `BlockedWalletAsync` |
+| `Refunds` | `PaymentAsync` · `CalculateAsync` · `BlockedWalletAsync` |
 | `Payouts` | `CreateAsync` · `CreateMassAsync` · `GetInfoAsync` · `ListHistoryAsync` · `CalculateAsync` · `ValidateAsync` · `CancelAsync` · `ApproveAsync` · `ListServicesAsync` · `TransferToPersonalAsync` · `TransferToUserAsync` · `CreateTransferBatchAsync` |
 | `PayoutLinks` | `CreateAsync` · `CreateBatchAsync` · `ListAsync` · `GetAsync` · `CancelAsync` · `GetPayoutClaimAsync` · `ClaimPayoutAsync` |
 | `Batches` | `CreatePaymentAsync` · `CreateRefundAsync` · `CreatePayoutAsync` · `GetInfoAsync` |

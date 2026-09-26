@@ -15,9 +15,19 @@ versions follow [SemVer](https://semver.org/).
 - Every method's documentation names the minimum team role a CLI key needs to call it;
   money-out operations (payouts, refunds, transfers, auto-withdrawal, split rules) take only the
   store owner's own CLI key.
+- `client.Refunds.CalculateAsync` (POST /v1/payment/refund/calculate): dry-run a refund and get
+  back a `RefundCalculation` — `Amount`, `Currency`, `Network`, `Address`, `AmountPaid`,
+  `Surcharge`, `Commission`/`CommissionBearer`, `Credited`, `Refundable`, `Refunded`, `Remaining`,
+  and, with `FromCurrency` set, the estimated `FromAmount`. Runs the same checks as
+  `Refunds.PaymentAsync` and reserves/sends nothing.
 
 ### Changed
 
+- `PayoutValidateResult` (`Payouts.ValidateAsync`) gains `Address` (the destination), and, for a
+  `FromCurrency` payout, `FromAmount` and `Rate` alongside the existing `FundedBy`.
+- `PayoutRequest.Memo` / `PayoutValidateRequest.Memo` docs are now network-specific: the XRP
+  destination tag, the Stellar memo id, a TON comment (at most 64 bytes), and at most 120 bytes on
+  every other network.
 - **Breaking:** `Payments.ListHistoryAsync` takes its own request model `PaymentHistoryRequest`
   (`limit`, `offset`, `status`) instead of the shared `HistoryRequest`; `HistoryRequest` now serves
   `Payouts.ListHistoryAsync` only. The payment feed never honoured `kind`/`includeRefunds`, so the
