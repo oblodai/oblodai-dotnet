@@ -1353,12 +1353,12 @@ public sealed partial record FaucetResult : Model
 /// <summary><c>HistoryRequest</c> model.</summary>
 public sealed partial record HistoryRequest : Model
 {
-    /// <summary>Only for /v1/payout/history: true — return refunds together with payouts (the former behavior of the feed without kind). Default false: refunds are separate, kind=refund.</summary>
+    /// <summary>true — return refunds together with payouts (the former behavior of the feed without kind). Default false: refunds are separate, kind=refund.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("include_refunds")]
     public bool? IncludeRefunds { get; init; }
 
-    /// <summary>Only for /v1/payout/history: payout — regular payouts, refund — refunds; empty — regular payouts (with include_refunds=true — everything together).</summary>
+    /// <summary>payout — regular payouts, refund — refunds; empty — regular payouts (with include_refunds=true — everything together).</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("kind")]
     public PayoutKind? Kind { get; init; }
@@ -1373,7 +1373,7 @@ public sealed partial record HistoryRequest : Model
     [JsonPropertyName("offset")]
     public long? Offset { get; init; }
 
-    /// <summary>Filter by status (an exact value from the status vocabulary); empty — all.</summary>
+    /// <summary>Filter by payout status (an exact value from the payout status vocabulary: pending, approved, awaiting_cosign, broadcasting, sent, confirmed, failed, cancelled); empty — all.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("status")]
     public string? Status { get; init; }
@@ -1412,12 +1412,12 @@ public sealed partial record LinkCheckoutRequest : Model
 /// <summary><c>LookupRequest</c> model.</summary>
 public sealed partial record LookupRequest : Model
 {
-    /// <summary>Your order reference.</summary>
+    /// <summary>Your order_id of the object: the payment's for /v1/payment/info, the payout's for /v1/payout/info.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
 
-    /// <summary>The invoice id in Oblodai. Either uuid or order_id is required; uuid takes precedence.</summary>
+    /// <summary>The Oblodai id of the object being looked up: the invoice (payment) for /v1/payment/info, the payout or refund for /v1/payout/info. Either uuid or order_id is required; uuid takes precedence.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("uuid")]
     public string? Uuid { get; init; }
@@ -1864,6 +1864,25 @@ public sealed partial record PaymentFeeResult : Model
     /// <summary>The share the next invoice will apply; 0 if the operator has disabled fee pass-through.</summary>
     [JsonPropertyName("payer_pays_percent")]
     public required long PayerPaysPercent { get; init; }
+}
+
+/// <summary><c>PaymentHistoryRequest</c> model.</summary>
+public sealed partial record PaymentHistoryRequest : Model
+{
+    /// <summary>Page size, 1–100; out of range — 25.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyName("limit")]
+    public long? Limit { get; init; }
+
+    /// <summary>Offset from the start of the list (newest first).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyName("offset")]
+    public long? Offset { get; init; }
+
+    /// <summary>Filter by payment status (an exact value from the payment status vocabulary: select, created, confirm_check, paid, paid_over, wrong_amount, expired, cancelled); empty — all.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyName("status")]
+    public string? Status { get; init; }
 }
 
 /// <summary><c>PaymentInfoResult</c> model.</summary>
@@ -4362,7 +4381,7 @@ public sealed partial record RefundBatchItem : Model
     [JsonPropertyName("address")]
     public string? Address { get; init; }
 
-    /// <summary>A partial amount. Defaults to the full received amount.</summary>
+    /// <summary>The amount to refund, in the payment coin; overrides the default. Without it the refund is the amount paid minus the payer's network surcharge and — when the store's refund fee setting (getRefundFeeConfig) puts the commission on the customer — minus the Oblodai commission too, never more than was credited to your balance for this payment.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
@@ -4426,7 +4445,7 @@ public sealed partial record RefundRequest : Model
     [JsonPropertyName("address")]
     public string? Address { get; init; }
 
-    /// <summary>A partial amount. Defaults to the full received amount.</summary>
+    /// <summary>The amount to refund, in the payment coin; overrides the default. Without it the refund is the amount paid minus the payer's network surcharge and — when the store's refund fee setting (getRefundFeeConfig) puts the commission on the customer — minus the Oblodai commission too, never more than was credited to your balance for this payment.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("amount")]
@@ -5299,7 +5318,7 @@ public sealed partial record TestWebhookKindRequest : Model
 /// <summary><c>TestWebhookKindResult</c> model.</summary>
 public sealed partial record TestWebhookKindResult : Model
 {
-    /// <summary>Always true: the body was delivered.</summary>
+    /// <summary>Always true: your endpoint received the body and answered, with any HTTP status — ok does not mean it was accepted; check status_code. If the endpoint cannot be reached, the call fails with webhook.test_failed.</summary>
     [JsonPropertyName("ok")]
     public required bool Ok { get; init; }
 
@@ -5307,7 +5326,7 @@ public sealed partial record TestWebhookKindResult : Model
     [JsonPropertyName("signed")]
     public required bool Signed { get; init; }
 
-    /// <summary>The HTTP status your endpoint responded with.</summary>
+    /// <summary>The HTTP status your endpoint responded with. Only 2xx counts as accepted: a live delivery answered with anything else is retried and eventually marked dead.</summary>
     [JsonPropertyName("status_code")]
     public required long StatusCode { get; init; }
 }
@@ -5338,7 +5357,7 @@ public sealed partial record TestWebhookResult : Model
     [JsonPropertyName("error")]
     public string? Error { get; init; }
 
-    /// <summary>The delivery took place (the endpoint responded, with any status).</summary>
+    /// <summary>The delivery took place: the endpoint answered, with any HTTP status — ok does not mean it was accepted; check status_code.</summary>
     [JsonPropertyName("ok")]
     public required bool Ok { get; init; }
 
@@ -5346,7 +5365,7 @@ public sealed partial record TestWebhookResult : Model
     [JsonPropertyName("signed")]
     public required bool Signed { get; init; }
 
-    /// <summary>The HTTP status returned by the endpoint; only when ok=true.</summary>
+    /// <summary>The HTTP status returned by the endpoint; only when ok=true. Only 2xx counts as accepted: a live delivery answered with anything else is retried.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("status_code")]
     public long? StatusCode { get; init; }

@@ -16,6 +16,19 @@ versions follow [SemVer](https://semver.org/).
   money-out operations (payouts, refunds, transfers, auto-withdrawal, split rules) take only the
   store owner's own CLI key.
 
+### Changed
+
+- **Breaking:** `Payments.ListHistoryAsync` takes its own request model `PaymentHistoryRequest`
+  (`limit`, `offset`, `status`) instead of the shared `HistoryRequest`; `HistoryRequest` now serves
+  `Payouts.ListHistoryAsync` only. The payment feed never honoured `kind`/`includeRefunds`, so the
+  new model drops them, and `status` filters by the payment status vocabulary. Migration: pass
+  `PaymentHistoryRequest` (or the named `limit`, `offset`, `status` arguments) to payment history
+  calls.
+- Method docs: the payout calculation lists `payout.unsupported_network` for an unknown network;
+  lookup, test-webhook (`ok` / `status_code`) and refund amount fields are described more precisely.
+  The webhook signing constants already carry the event-id and delivery-id header names that the
+  contract now names as `event_id_header` / `delivery_id_header`.
+
 ## [2.0.0] — 2026-09-25
 
 Generated from the gateway's OpenAPI contract by the backend's `tools/sdkgen`. Breaking: see
