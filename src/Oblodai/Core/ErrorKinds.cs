@@ -9,6 +9,7 @@ public class ApiException : OblodaiException
         : base(init.Code, init.Message, init.HttpStatus, init.Retryable, init.RetryAfter, init.RequestId, init.Field,
             init.Synthetic, init.Raw)
     {
+        Details = init.Details;
     }
 }
 
@@ -225,7 +226,10 @@ public static class ApiExceptionFactory
         var retryAfter = Clamp(detail.RetryAfter ?? retryAfterHeader);
 
         var init = new ApiErrorInit(code, message, httpStatus, retryable, retryAfter, detail.RequestId, detail.Field,
-            synthetic, raw);
+            synthetic, raw)
+        {
+            Details = synthetic || detail.Details is null || detail.Details.Count == 0 ? null : detail.Details,
+        };
 
         if (code == ErrorCode.IdempotencyKeyReused.Value)
         {

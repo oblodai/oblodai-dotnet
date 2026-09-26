@@ -70,7 +70,7 @@ public readonly struct DecodedEnvelope
 /// <code>
 /// success : { "state": 0, "result": &lt;payload&gt; }
 /// list    : result = { "items": [...], "paginate": { total, per_page, offset, has_pages } }
-/// error   : { "error": { code, message, field?, retryable, retry_after?, request_id? } }
+/// error   : { "error": { code, message, field?, details?, retryable, retry_after?, request_id? } }
 /// </code>
 /// Every non-bare route uses these; bare routes (PDF/CSV documents) bypass this decoder.
 /// </summary>
@@ -187,6 +187,7 @@ public static class EnvelopeDecoder
             Code = code!,
             Message = String(error, "message"),
             Field = String(error, "field"),
+            Details = ReadDetails(error),
             RequestId = String(error, "request_id"),
             Retryable = error.TryGetProperty("retryable", out var retryable)
                 ? retryable.ValueKind switch
@@ -198,6 +199,28 @@ public static class EnvelopeDecoder
                 : null,
             RetryAfter = ReadRetryAfter(error),
         };
+    }
+
+    /// <summary>The string values of <c>details</c>; null when it is absent, not an object or has none.</summary>
+    /// <param name="error">The <c>error</c> object.</param>
+    public static IReadOnlyDictionary<string, string>? ReadDetails(JsonElement error)
+    {
+        if (!error.TryGetProperty("details", out var details) || details.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        Dictionary<string, string>? values = null;
+        foreach (var property in details.EnumerateObject())
+        {
+            if (property.Value.ValueKind == JsonValueKind.String)
+            {
+                values ??= new Dictionary<string, string>();
+                values[property.Name] = property.Value.GetString()!;
+            }
+        }
+
+        return values;
     }
 
     /// <summary>

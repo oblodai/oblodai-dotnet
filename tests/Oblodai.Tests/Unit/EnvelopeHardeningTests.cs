@@ -55,6 +55,23 @@ public class EnvelopeHardeningTests
     }
 
     [Fact]
+    public void DetailsKeepOnlyStringValues()
+    {
+        var denied = EnvelopeDecoder.Decode(
+            403,
+            """{"error":{"code":"cli.permission_denied","retryable":false,"details":{"required_role":"finance","role":"viewer","n":3,"x":null}}}""").Error!;
+        Assert.Equal(
+            new Dictionary<string, string> { ["required_role"] = "finance", ["role"] = "viewer" },
+            denied.Details);
+        Assert.Same(denied.Details, denied.ToLogRecord()["details"]);
+
+        var list = EnvelopeDecoder.Decode(
+            403, """{"error":{"code":"cli.permission_denied","details":["finance"]}}""").Error!;
+        Assert.Null(list.Details);
+        Assert.Null(EnvelopeDecoder.Decode(403, """{"error":{"code":"cli.permission_denied"}}""").Error!.Details);
+    }
+
+    [Fact]
     public void AnErrorObjectWithoutAUsableCodeKeepsTheRequestIdItDidCarry()
     {
         var decoded = EnvelopeDecoder.Decode(500, """{"error":{"code":"","request_id":"req-9"}}""");
