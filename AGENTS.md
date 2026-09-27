@@ -70,8 +70,8 @@ switch (info.Event) { case PaymentWebhook p: …; case PayoutWebhook p: …; cas
 ```
 
 Verify over the **raw** bytes. `info.IsTest` (from the signed body) is true for rehearsal deliveries —
-always ignore them, never treat them as money. Deduplicate on `info.EventKey` (the signed body's
-`event_id`); the id/event/test headers are not signed and appear only as `info.Unverified*`. Drop out-of-order events with
+always ignore them, never treat them as money. Deduplicate on `info.EventKey` — dedupe on
+`event_id` (fallback `type:id:sequence`), from the signed body; the id/event/test headers are not signed and appear only as `info.Unverified*`. Drop out-of-order events with
 `WebhookVerifier.IsStale(info.Event, lastSequence)`. During a rotation pass `PreviousSecret` for ≥26 h.
 
 ## Machine-readable surface

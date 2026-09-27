@@ -5,8 +5,8 @@ namespace Oblodai.Examples;
 
 /// <summary>
 /// The rules of a webhook receiver: verify over the RAW body, always ignore a rehearsal (<see cref="WebhookDeliveryInfo.IsTest"/>,
-/// from the signed body), deduplicate by the signed key (<see cref="WebhookDeliveryInfo.EventKey"/> — the body's
-/// <c>event_id</c>; the id headers are not signed), ignore stale sequences. The HTTP server around it is yours (see Program.cs
+/// from the signed body), deduplicate by the signed key (<see cref="WebhookDeliveryInfo.EventKey"/> —
+/// <c>event_id</c>, fallback <c>type:id:sequence</c>, from the signed body; the id headers are not signed), ignore stale sequences. The HTTP server around it is yours (see Program.cs
 /// for HttpListener; in ASP.NET Core read the body with <c>Request.EnableBuffering()</c> and pass
 /// <c>name =&gt; Request.Headers[name]</c>).
 /// </summary>

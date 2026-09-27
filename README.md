@@ -266,8 +266,9 @@ probed by an unauthenticated sender. The event is the generated model of its fam
 for a family added later (`WebhookVerifier.IsKnownEvent`). Answer 4xx **only** to a
 `SignatureException`; a delivery that verified but cannot be read is `WebhookPayloadException`
 (`webhook.bad_payload`) — answer 5xx, the gateway will retry it. Always ignore
-`delivery.IsTest` deliveries (from the signed body). Deduplicate on `delivery.EventKey` (the signed
-body's `event_id`, stable per state; `type:id:sequence` from an older core) — the `X-Webhook-Id`,
+`delivery.IsTest` deliveries (from the signed body). Deduplicate on `delivery.EventKey` — dedupe on
+`event_id` (fallback `type:id:sequence`), both from the signed body (the field is named by
+`SigningProtocol.WebhookEventIdField`; an older core sends no `event_id`) — the `X-Webhook-Id`,
 `X-Webhook-Event-Id`, `X-Webhook-Event` and `X-Webhook-Test` headers are not signed and are only
 exposed as `Unverified*`. Drop out-of-order deliveries with
 `WebhookVerifier.IsStale(delivery.Event, lastSequence)`, and after `Webhooks.RotateSecretAsync`

@@ -90,6 +90,13 @@ public static class SigningProtocol
     /// <summary>What joins the parts of the webhook canonical string.</summary>
     public const string WebhookCanonicalSeparator = ".";
 
+    /// <summary>
+    /// The signed body field carrying the id of the object state (x-oblodai-signing.webhook.event_id_field):
+    /// deduplicate on it. Headers are not signed. A delivery from an older core may lack the field; then
+    /// deduplicate on type:id:sequence from the body.
+    /// </summary>
+    public const string WebhookEventIdField = "event_id";
+
     // --- limits ---
 
     /// <summary>

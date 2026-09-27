@@ -26,8 +26,9 @@ public static class Repo
     public static bool BackendRequired => Environment.GetEnvironmentVariable("OBLODAI_BACKEND") is { Length: > 0 };
 
     /// <summary>
-    /// Real deliveries the gateway's dispatcher signed and recorded, with the endpoint secret
-    /// <see cref="WebhookSamplesSecret"/>: <c>[{ headers, body }]</c>.
+    /// Real deliveries the gateway's dispatcher sent and a recorder captured, re-signed with the fake
+    /// endpoint secret <see cref="WebhookSamplesSecret"/> (and the Prev header with a fake previous
+    /// secret, 64 "1"s) so that no captured secret is published: <c>[{ headers, body }]</c>.
     /// </summary>
     public static JsonElement WebhookSamples => WebhookSamplesLazy.Value.RootElement;
 
@@ -60,7 +61,7 @@ public static class Repo
         return headers;
     }
 
-    /// <summary>The endpoint secret in force when <see cref="WebhookSamples"/> were delivered.</summary>
+    /// <summary>The fake endpoint secret <see cref="WebhookSamples"/> are signed with.</summary>
     public const string WebhookSamplesSecret = "0000000000000000000000000000000000000000000000000000000000000000";
 
     private static string FindRoot()

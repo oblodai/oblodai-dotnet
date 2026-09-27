@@ -97,7 +97,8 @@ public sealed record WebhookDeliveryInfo(
 /// </list>
 /// The signature covers only the timestamp and the body: the event, id, event-id, event-time and test headers
 /// are NOT signed and are exposed only as the <c>Unverified*</c> members of <see cref="WebhookDeliveryInfo"/>.
-/// Deduplicate on <see cref="WebhookDeliveryInfo.EventKey"/> (the signed body's <c>event_id</c>) and always
+/// Deduplicate on <see cref="WebhookDeliveryInfo.EventKey"/> (<c>event_id</c>, fallback <c>type:id:sequence</c>,
+/// from the signed body) and always
 /// ignore a delivery whose signed body says <c>test: true</c> (<see cref="WebhookDeliveryInfo.IsTest"/>).
 /// Always verify over the raw request bytes; a re-serialized parse will not match.
 /// </summary>
@@ -249,11 +250,9 @@ public static class WebhookVerifier
             IsTestEvent(parsed));
     }
 
-    /// <summary>The signed body field with the id of the object state (<c>x-oblodai-signing.webhook.event_id_field</c>).</summary>
-    private const string EventIdField = "event_id";
-
     /// <summary>
-    /// The dedupe key of a (verified) delivery body, from the body only: its <c>event_id</c> (the id of the
+    /// The dedupe key of a (verified) delivery body, from the body only: the field named by
+    /// <see cref="SigningProtocol.WebhookEventIdField"/> (<c>event_id</c>, the id of the
     /// object state, the same for every retry and resend of it), else — from a core that does not sign one
     /// yet — <c>type + ":" + id + ":" + sequence</c> (the id is the kind's declared id field, else the body's
     /// <c>id</c> or <c>uuid</c>). The same concept as <c>event_key</c> in every Oblodai SDK.
@@ -267,7 +266,7 @@ public static class WebhookVerifier
         string? Text(string name)
             => root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
 
-        if (Text(EventIdField) is { Length: > 0 } stateId)
+        if (Text(SigningProtocol.WebhookEventIdField) is { Length: > 0 } stateId)
         {
             return stateId;
         }
@@ -363,6 +362,14 @@ public static class WebhookVerifier
             || !body.TryGetProperty("type", out var type) || type.ValueKind != JsonValueKind.String)
         {
             throw new WebhookPayloadException("delivery body lacks the string type field every event carries");
+        }
+
+        // The dedupe key must be usable when present: an older core omits event_id (then the key falls back
+        // to type:id:sequence), but a present empty or non-string one is a malformed body.
+        if (body.TryGetProperty(SigningProtocol.WebhookEventIdField, out var eventId)
+            && (eventId.ValueKind != JsonValueKind.String || string.IsNullOrEmpty(eventId.GetString())))
+        {
+            throw new WebhookPayloadException($"the body's {SigningProtocol.WebhookEventIdField} is not a non-empty string");
         }
 
         try

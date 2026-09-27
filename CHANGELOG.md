@@ -14,11 +14,17 @@ versions follow [SemVer](https://semver.org/).
   is obsolete and ignored, `OBLODAI_ADMIN_TOKEN` is ignored; setting either logs a one-time warning to a
   configured logger. `BuildInput.AdminToken` is removed.
 - **Webhooks: dedupe and rehearsal come from the signed body only.** `WebhookDeliveryInfo` gains `EventKey`
-  (the signed body's `event_id`, else `type:id:sequence` from an older core; also
+  — dedupe on `event_id` (fallback `type:id:sequence`): the signed body field named by the generated
+  `SigningProtocol.WebhookEventIdField`, else `type:id:sequence` from the body of an older core (also
   `WebhookVerifier.EventKeyOf(body)`), and `IsTest` reads only the body's `test` flag. The unsigned
   `X-Webhook-*` headers moved to `UnverifiedDeliveryId`, `UnverifiedEventId`, `UnverifiedEventType`,
   `UnverifiedEventTime` and `UnverifiedTestHeader` (breaking: `Id`, `EventId`, `EventType` and `EventTime`
   are gone). Docs and the receiver example ignore test deliveries and dedupe on `EventKey`.
+- **Webhooks from an older core still read.** `EventId` is optional (`string?`) in the webhook models,
+  regenerated from the contract, so a delivery body without it is read; `EventKey` then falls back to
+  `type:id:sequence`. A present but empty or non-string `event_id` is `webhook.bad_payload` (any kind).
+- **Recorded webhook fixtures carry no captured secret.** The samples are re-signed with a fake all-zero
+  endpoint secret (and the Prev header with a fake previous secret).
 - **Clock correction is bounded and confirmed.** A signature-failure `Date` more than ±900 s away is ignored,
   and a measured offset becomes the shared one only after the re-signed attempt succeeds (2xx); otherwise it
   is discarded. `SkewCorrectingClock.MaxPlausibleOffsetSeconds` (24 h) is obsolete in favour of

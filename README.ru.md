@@ -262,8 +262,9 @@ switch (delivery.Event)
 (`WebhookVerifier.IsKnownEvent`). Отвечайте 4xx **только** на `SignatureException`; доставка,
 прошедшая проверку, но нечитаемая, — `WebhookPayloadException` (`webhook.bad_payload`): отвечайте
 5xx, шлюз повторит. Всегда пропускайте доставки с `delivery.IsTest` (из подписанного
-тела). Дедуплицируйте по `delivery.EventKey` (`event_id` подписанного тела, постоянен для состояния;
-от старого ядра — `type:id:sequence`) — заголовки `X-Webhook-Id`, `X-Webhook-Event-Id`,
+тела). Дедуплицируйте по `delivery.EventKey` — по `event_id` (запасной ключ —
+`type:id:sequence`), оба из подписанного тела (имя поля — `SigningProtocol.WebhookEventIdField`; старое
+ядро `event_id` не шлёт) — заголовки `X-Webhook-Id`, `X-Webhook-Event-Id`,
 `X-Webhook-Event` и `X-Webhook-Test` не подписаны и доступны только как `Unverified*`. Отбрасывайте доставки не по порядку через `WebhookVerifier.IsStale(delivery.Event,
 lastSequence)`, а после `Webhooks.RotateSecretAsync` держите старый секрет в `PreviousSecret` не
 меньше 26 часов.

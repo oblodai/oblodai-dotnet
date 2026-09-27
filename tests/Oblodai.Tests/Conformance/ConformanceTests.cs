@@ -358,6 +358,24 @@ public class ConformanceTests
             rehearsal == delivery.UnverifiedTestHeader,
             $"UnverifiedTestHeader = {delivery.UnverifiedTestHeader}, rehearsal = {rehearsal}");
         Assert.Equal(delivery.Event.Test == true, delivery.IsTest);
+        Assert.False(delivery.IsTest, "a live body is never a rehearsal");
+
+        // The dedupe key: the signed body field the spec names at dedupe_key.field_pointer, else the suite's
+        // fallback from the body. Every fields value comes from unsigned headers.
+        var suite = Suite("webhook_delivery");
+        var dedupe = suite.GetProperty("dedupe_key");
+        var dedupeField = Pointer(Spec(suite), dedupe.GetProperty("field_pointer").GetString()!).GetString();
+        Assert.Equal(SigningProtocol.WebhookEventIdField, dedupeField);
+        Assert.Equal("type:id:sequence", dedupe.GetProperty("fallback").GetString());
+        Assert.True(suite.GetProperty("fields_unverified").GetBoolean(), "fields_unverified");
+        using (var bodyDocument = JsonDocument.Parse(d.GetProperty("payload").GetString()!))
+        {
+            var body = bodyDocument.RootElement;
+            var wantKey = body.TryGetProperty(dedupeField!, out var stateId) && stateId.GetString() is { Length: > 0 } id
+                ? id
+                : $"{body.GetProperty("type").GetString()}:{body.GetProperty("id").GetString()}:{body.GetProperty("sequence").GetRawText()}";
+            Assert.Equal(wantKey, delivery.EventKey);
+        }
 
         var kind = d.GetProperty("kind").GetString()!;
         Assert.True(WebhookVerifier.IsKnownEvent(delivery.Event), kind);

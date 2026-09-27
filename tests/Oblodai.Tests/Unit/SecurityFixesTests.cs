@@ -112,6 +112,62 @@ public class SecurityFixesTests
         Assert.Equal("st-42", WebhookVerifier.VerifyDelivery(signedState, Headers(signedState, "e-forged"), options).EventKey);
     }
 
+    private const long DedupeTs = 1_755_600_000;
+
+    private static WebhookDeliveryInfo Deliver(string body)
+    {
+        var raw = Encoding.UTF8.GetBytes(body);
+        var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            [WebhookVerifier.HeaderTimestamp] = DedupeTs.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            [WebhookVerifier.HeaderSignature] = RequestSigner.SignWebhook("whsec", DedupeTs, raw),
+        };
+        return WebhookVerifier.VerifyDelivery(raw, headers, new WebhookVerifyOptions { Secret = "whsec", Now = () => DedupeTs });
+    }
+
+    private static string Payment(string kind, int sequence, string? eventIdJson)
+        => "{\"type\":\"" + kind + "\",\"uuid\":\"u1\",\"status\":\"paid\",\"sequence\":" + sequence
+            + ",\"event_at\":\"2026-01-01T00:00:00Z\""
+            + (eventIdJson is null ? string.Empty : ",\"" + SigningProtocol.WebhookEventIdField + "\":" + eventIdJson)
+            + "}";
+
+    /// <summary>A resend of one state carries the same event_id and a higher sequence: one dedupe key.</summary>
+    [Fact]
+    public void AResendOfOneStateDedupesOnEventIdThoughItsSequenceGrows()
+    {
+        var first = Deliver(Payment("payment", 7, "\"st-42\""));
+        var resend = Deliver(Payment("payment", 9, "\"st-42\""));
+        Assert.Equal(7L, first.Event.EventSequence);
+        Assert.Equal(9L, resend.Event.EventSequence);
+        Assert.Equal("st-42", first.EventKey);
+        Assert.Equal(first.EventKey, resend.EventKey);
+        Assert.Equal("st-42", Assert.IsType<PaymentWebhook>(first.Event).EventId);
+    }
+
+    /// <summary>A delivery from an older core has no event_id: the key falls back to type:id:sequence.</summary>
+    [Fact]
+    public void ADeliveryFromAnOlderCoreWithoutEventIdFallsBackToTypeIdSequence()
+    {
+        var delivery = Deliver(Payment("payment", 7, null));
+        Assert.Equal("payment:u1:7", delivery.EventKey);
+        Assert.Null(Assert.IsType<PaymentWebhook>(delivery.Event).EventId);
+    }
+
+    /// <summary>A present event_id must be a non-empty string, for any kind.</summary>
+    [Theory]
+    [InlineData("payment", "\"\"")]
+    [InlineData("payment", "null")]
+    [InlineData("payment", "42")]
+    [InlineData("payment", "{}")]
+    [InlineData("brand_new_kind", "\"\"")]
+    [InlineData("brand_new_kind", "null")]
+    [InlineData("brand_new_kind", "42")]
+    public void APresentButEmptyOrNonStringEventIdIsABadPayload(string kind, string eventIdJson)
+    {
+        var error = Assert.Throws<WebhookPayloadException>(() => Deliver(Payment(kind, 7, eventIdJson)));
+        Assert.Equal("webhook.bad_payload", error.Code);
+    }
+
     /// <summary>R6: a hostile Content-Disposition yields a bare, safe name.</summary>
     [Theory]
     [InlineData("attachment; filename=\"../../etc/passwd\"", "passwd")]

@@ -12,7 +12,7 @@ namespace Oblodai.Tests.Unit;
 /// </summary>
 public class WebhookTests
 {
-    /// <summary>The endpoint secret in force when the samples were delivered.</summary>
+    /// <summary>The fake endpoint secret the recorded samples are re-signed with.</summary>
     private const string Secret = Repo.WebhookSamplesSecret;
 
     private static readonly JsonElement[] Samples = Repo.WebhookSamples.EnumerateArray().ToArray();

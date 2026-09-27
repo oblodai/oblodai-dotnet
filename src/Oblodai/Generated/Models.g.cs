@@ -879,9 +879,10 @@ public sealed partial record ConversionWebhook : Model
     [JsonPropertyName("event_at")]
     public required string EventAt { get; init; }
 
-    /// <summary>The id of the object state this body carries — signed, and the key to deduplicate on: the same for every retry and every resend (/v1/payment/resend) of the same state, different as soon as the state changes (sequence, by contrast, grows on a resend). Always equal to the X-Webhook-Event-Id header, which is not signed — prefer this field.</summary>
+    /// <summary>The id of the object state this body carries — signed, and the key to deduplicate on: the same for every retry and every resend (/v1/payment/resend) of the same state, different as soon as the state changes (sequence, by contrast, grows on a resend). Always equal to the X-Webhook-Event-Id header, which is not signed — prefer this field. Always sent by current cores; a delivery from an older core may lack it — then deduplicate on type:id:sequence from the body.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("event_id")]
-    public required string EventId { get; init; }
+    public string? EventId { get; init; }
 
     /// <summary>Conversion fee, in percent.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
@@ -2813,9 +2814,10 @@ public sealed partial record PaymentWebhook : Model
     [JsonPropertyName("event_at")]
     public required string EventAt { get; init; }
 
-    /// <summary>The id of the object state this body carries — signed, and the key to deduplicate on: the same for every retry and every resend (/v1/payment/resend) of the same state, different as soon as the state changes (sequence, by contrast, grows on a resend). Always equal to the X-Webhook-Event-Id header, which is not signed — prefer this field.</summary>
+    /// <summary>The id of the object state this body carries — signed, and the key to deduplicate on: the same for every retry and every resend (/v1/payment/resend) of the same state, different as soon as the state changes (sequence, by contrast, grows on a resend). Always equal to the X-Webhook-Event-Id header, which is not signed — prefer this field. Always sent by current cores; a delivery from an older core may lack it — then deduplicate on type:id:sequence from the body.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("event_id")]
-    public required string EventId { get; init; }
+    public string? EventId { get; init; }
 
     /// <summary>true — the status is final, the payment will not change any further.</summary>
     [JsonPropertyName("is_final")]
@@ -3984,9 +3986,10 @@ public sealed partial record PayoutWebhook : Model
     [JsonPropertyName("event_at")]
     public required string EventAt { get; init; }
 
-    /// <summary>The id of the object state this body carries — signed, and the key to deduplicate on: the same for every retry and every resend (/v1/payment/resend) of the same state, different as soon as the state changes (sequence, by contrast, grows on a resend). Always equal to the X-Webhook-Event-Id header, which is not signed — prefer this field.</summary>
+    /// <summary>The id of the object state this body carries — signed, and the key to deduplicate on: the same for every retry and every resend (/v1/payment/resend) of the same state, different as soon as the state changes (sequence, by contrast, grows on a resend). Always equal to the X-Webhook-Event-Id header, which is not signed — prefer this field. Always sent by current cores; a delivery from an older core may lack it — then deduplicate on type:id:sequence from the body.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("event_id")]
-    public required string EventId { get; init; }
+    public string? EventId { get; init; }
 
     /// <summary>Who paid the network fee: gateway — the gateway absorbed it (commission = 0); merchant — the debit amount was increased by the fee, the recipient gets the full requested amount (is_subtract=true, a payout link with fee_bearer=merchant); recipient — the fee was withheld from the payout, the recipient gets less than requested.</summary>
     [JsonPropertyName("fee_bearer")]
@@ -5662,9 +5665,10 @@ public sealed partial record WalletWebhook : Model
     [JsonPropertyName("event_at")]
     public required string EventAt { get; init; }
 
-    /// <summary>The id of the object state this body carries — signed, and the key to deduplicate on: the same for every retry and every resend (/v1/payment/resend) of the same state, different as soon as the state changes (sequence, by contrast, grows on a resend). Always equal to the X-Webhook-Event-Id header, which is not signed — prefer this field.</summary>
+    /// <summary>The id of the object state this body carries — signed, and the key to deduplicate on: the same for every retry and every resend (/v1/payment/resend) of the same state, different as soon as the state changes (sequence, by contrast, grows on a resend). Always equal to the X-Webhook-Event-Id header, which is not signed — prefer this field. Always sent by current cores; a delivery from an older core may lack it — then deduplicate on type:id:sequence from the body.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("event_id")]
-    public required string EventId { get; init; }
+    public string? EventId { get; init; }
 
     /// <summary>true — the status is final.</summary>
     [JsonPropertyName("is_final")]
