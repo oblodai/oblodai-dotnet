@@ -3025,7 +3025,7 @@ public sealed partial class Webhooks : Resource
 
     /// <summary>Test webhook to a URL (legacy)</summary>
     /// <remarks>
-    /// <para>Sends a sample body to the given `url` — to check that your handler works. The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid.</para>
+    /// <para>Sends a sample body to the given `url` — to check that your handler works. The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid. Only the body's `test` counts: the header is not signed.</para>
     /// <para>Requires role: Finance when called with a CLI key.</para>
     /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_endpoint</c>.</para>
     /// </remarks>
@@ -3048,7 +3048,7 @@ public sealed partial class Webhooks : Resource
 
     /// <summary>Test webhook to a URL (legacy)</summary>
     /// <remarks>
-    /// <para>Sends a sample body to the given `url` — to check that your handler works. The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid.</para>
+    /// <para>Sends a sample body to the given `url` — to check that your handler works. The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid. Only the body's `test` counts: the header is not signed.</para>
     /// <para>Requires role: Finance when called with a CLI key.</para>
     /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_endpoint</c>.</para>
     /// </remarks>
@@ -3072,7 +3072,7 @@ public sealed partial class Webhooks : Resource
 
     /// <summary>Test PAYMENT webhook</summary>
     /// <remarks>
-    /// <para>Delivers a sample webhook of type payment to `url_callback`. The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid.</para>
+    /// <para>Delivers a sample webhook of type payment to `url_callback`. The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid. Only the body's `test` counts: the header is not signed.</para>
     /// <para>Requires role: Finance when called with a CLI key.</para>
     /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_url</c>, <c>webhook.test_failed</c>.</para>
     /// </remarks>
@@ -3095,7 +3095,7 @@ public sealed partial class Webhooks : Resource
 
     /// <summary>Test PAYMENT webhook</summary>
     /// <remarks>
-    /// <para>Delivers a sample webhook of type payment to `url_callback`. The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid.</para>
+    /// <para>Delivers a sample webhook of type payment to `url_callback`. The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid. Only the body's `test` counts: the header is not signed.</para>
     /// <para>Requires role: Finance when called with a CLI key.</para>
     /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_url</c>, <c>webhook.test_failed</c>.</para>
     /// </remarks>
@@ -3131,7 +3131,7 @@ public sealed partial class Webhooks : Resource
 
     /// <summary>Test WALLET webhook</summary>
     /// <remarks>
-    /// <para>Delivers a sample webhook of type wallet (a static wallet deposit). The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid.</para>
+    /// <para>Delivers a sample webhook of type wallet (a static wallet deposit). The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid. Only the body's `test` counts: the header is not signed.</para>
     /// <para>Requires role: Finance when called with a CLI key.</para>
     /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_url</c>, <c>webhook.test_failed</c>.</para>
     /// </remarks>
@@ -3154,7 +3154,7 @@ public sealed partial class Webhooks : Resource
 
     /// <summary>Test WALLET webhook</summary>
     /// <remarks>
-    /// <para>Delivers a sample webhook of type wallet (a static wallet deposit). The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid.</para>
+    /// <para>Delivers a sample webhook of type wallet (a static wallet deposit). The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid. Only the body's `test` counts: the header is not signed.</para>
     /// <para>Requires role: Finance when called with a CLI key.</para>
     /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_url</c>, <c>webhook.test_failed</c>.</para>
     /// </remarks>
@@ -3190,7 +3190,7 @@ public sealed partial class Webhooks : Resource
 
     /// <summary>Test PAYOUT webhook</summary>
     /// <remarks>
-    /// <para>Delivers a sample webhook of type payout. The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid.</para>
+    /// <para>Delivers a sample webhook of type payout. The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid. Only the body's `test` counts: the header is not signed.</para>
     /// <para>Requires role: Finance when called with a CLI key.</para>
     /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_url</c>, <c>webhook.test_failed</c>.</para>
     /// </remarks>
@@ -3213,7 +3213,7 @@ public sealed partial class Webhooks : Resource
 
     /// <summary>Test PAYOUT webhook</summary>
     /// <remarks>
-    /// <para>Delivers a sample webhook of type payout. The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid.</para>
+    /// <para>Delivers a sample webhook of type payout. The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid. Only the body's `test` counts: the header is not signed.</para>
     /// <para>Requires role: Finance when called with a CLI key.</para>
     /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_url</c>, <c>webhook.test_failed</c>.</para>
     /// </remarks>
@@ -3249,7 +3249,7 @@ public sealed partial class Webhooks : Resource
 
     /// <summary>Test CONVERSION webhook</summary>
     /// <remarks>
-    /// <para>Delivers a sample webhook of type conversion (the `conversion.completed` / `conversion.refunded` events for economy-mode orders; `status` — completed or refunded, default completed). The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid.</para>
+    /// <para>Delivers a sample webhook of type conversion (the `conversion.completed` / `conversion.refunded` events for economy-mode orders; `status` — completed or refunded, default completed). The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid. Only the body's `test` counts: the header is not signed.</para>
     /// <para>Requires role: Finance when called with a CLI key.</para>
     /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_url</c>, <c>webhook.test_failed</c>.</para>
     /// </remarks>
@@ -3272,7 +3272,7 @@ public sealed partial class Webhooks : Resource
 
     /// <summary>Test CONVERSION webhook</summary>
     /// <remarks>
-    /// <para>Delivers a sample webhook of type conversion (the `conversion.completed` / `conversion.refunded` events for economy-mode orders; `status` — completed or refunded, default completed). The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid.</para>
+    /// <para>Delivers a sample webhook of type conversion (the `conversion.completed` / `conversion.refunded` events for economy-mode orders; `status` — completed or refunded, default completed). The rehearsal body carries `"test": true` (inside the signature) and the `X-Webhook-Test: true` header, and its `sequence` is always 0. A live event NEVER carries these markers: your handler must ignore a body with `test: true` even if the signature is valid. Only the body's `test` counts: the header is not signed.</para>
     /// <para>Requires role: Finance when called with a CLI key.</para>
     /// <para>Errors: <c>auth.bad_timestamp</c>, <c>auth.body_too_large</c>, <c>auth.ip_not_allowed</c>, <c>cli.permission_denied</c>, <c>internal</c>, <c>merchant.bad_signature</c>, <c>merchant.key_expired</c>, <c>merchant.key_mode_mismatch</c>, <c>merchant.rate_limited</c>, <c>merchant.secret_decrypt</c>, <c>merchant.suspended</c>, <c>merchant.unknown_key</c>, <c>request.bad_json</c>, <c>request.body_read</c>, <c>request.control_char</c>, <c>request.duplicate_field</c>, <c>request.nul_byte</c>, <c>request.overloaded</c>, <c>request.rate_limited</c>, <c>request.too_deep</c>, <c>webhook.bad_currency</c>, <c>webhook.bad_status</c>, <c>webhook.bad_url</c>, <c>webhook.bad_uuid</c>, <c>webhook.no_url</c>, <c>webhook.test_failed</c>.</para>
     /// </remarks>

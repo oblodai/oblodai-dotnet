@@ -879,6 +879,10 @@ public sealed partial record ConversionWebhook : Model
     [JsonPropertyName("event_at")]
     public required string EventAt { get; init; }
 
+    /// <summary>The id of the object state this body carries — signed, and the key to deduplicate on: the same for every retry and every resend (/v1/payment/resend) of the same state, different as soon as the state changes (sequence, by contrast, grows on a resend). Always equal to the X-Webhook-Event-Id header, which is not signed — prefer this field.</summary>
+    [JsonPropertyName("event_id")]
+    public required string EventId { get; init; }
+
     /// <summary>Conversion fee, in percent.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("fee_percent")]
@@ -923,7 +927,7 @@ public sealed partial record ConversionWebhook : Model
     [JsonPropertyName("status")]
     public required ConversionWebhookStatus Status { get; init; }
 
-    /// <summary>Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always true — inside the signature. A live event never carries this field: your handler must ignore a body with test: true even if the signature is valid.</summary>
+    /// <summary>Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always true — inside the signature. A live event never carries this field: your handler must ignore a body with test: true even if the signature is valid. This field, not the unsigned X-Webhook-Test header, is what marks a rehearsal.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("test")]
     public bool? Test { get; init; }
@@ -2809,6 +2813,10 @@ public sealed partial record PaymentWebhook : Model
     [JsonPropertyName("event_at")]
     public required string EventAt { get; init; }
 
+    /// <summary>The id of the object state this body carries — signed, and the key to deduplicate on: the same for every retry and every resend (/v1/payment/resend) of the same state, different as soon as the state changes (sequence, by contrast, grows on a resend). Always equal to the X-Webhook-Event-Id header, which is not signed — prefer this field.</summary>
+    [JsonPropertyName("event_id")]
+    public required string EventId { get; init; }
+
     /// <summary>true — the status is final, the payment will not change any further.</summary>
     [JsonPropertyName("is_final")]
     public required bool IsFinal { get; init; }
@@ -2851,7 +2859,7 @@ public sealed partial record PaymentWebhook : Model
     [JsonPropertyName("status")]
     public required PaymentStatus Status { get; init; }
 
-    /// <summary>Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always true — inside the signature. A live event never carries this field: your handler must ignore a body with test: true even if the signature is valid.</summary>
+    /// <summary>Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always true — inside the signature. A live event never carries this field: your handler must ignore a body with test: true even if the signature is valid. This field, not the unsigned X-Webhook-Test header, is what marks a rehearsal.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("test")]
     public bool? Test { get; init; }
@@ -3976,6 +3984,10 @@ public sealed partial record PayoutWebhook : Model
     [JsonPropertyName("event_at")]
     public required string EventAt { get; init; }
 
+    /// <summary>The id of the object state this body carries — signed, and the key to deduplicate on: the same for every retry and every resend (/v1/payment/resend) of the same state, different as soon as the state changes (sequence, by contrast, grows on a resend). Always equal to the X-Webhook-Event-Id header, which is not signed — prefer this field.</summary>
+    [JsonPropertyName("event_id")]
+    public required string EventId { get; init; }
+
     /// <summary>Who paid the network fee: gateway — the gateway absorbed it (commission = 0); merchant — the debit amount was increased by the fee, the recipient gets the full requested amount (is_subtract=true, a payout link with fee_bearer=merchant); recipient — the fee was withheld from the payout, the recipient gets less than requested.</summary>
     [JsonPropertyName("fee_bearer")]
     public required PayoutFeeBearer FeeBearer { get; init; }
@@ -4028,7 +4040,7 @@ public sealed partial record PayoutWebhook : Model
     [JsonPropertyName("status")]
     public required PayoutStatus Status { get; init; }
 
-    /// <summary>Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always true — inside the signature. A live event never carries this field: your handler must ignore a body with test: true even if the signature is valid.</summary>
+    /// <summary>Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always true — inside the signature. A live event never carries this field: your handler must ignore a body with test: true even if the signature is valid. This field, not the unsigned X-Webhook-Test header, is what marks a rehearsal.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("test")]
     public bool? Test { get; init; }
@@ -5650,6 +5662,10 @@ public sealed partial record WalletWebhook : Model
     [JsonPropertyName("event_at")]
     public required string EventAt { get; init; }
 
+    /// <summary>The id of the object state this body carries — signed, and the key to deduplicate on: the same for every retry and every resend (/v1/payment/resend) of the same state, different as soon as the state changes (sequence, by contrast, grows on a resend). Always equal to the X-Webhook-Event-Id header, which is not signed — prefer this field.</summary>
+    [JsonPropertyName("event_id")]
+    public required string EventId { get; init; }
+
     /// <summary>true — the status is final.</summary>
     [JsonPropertyName("is_final")]
     public required bool IsFinal { get; init; }
@@ -5678,7 +5694,7 @@ public sealed partial record WalletWebhook : Model
     [JsonPropertyName("status")]
     public required string Status { get; init; }
 
-    /// <summary>Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always true — inside the signature. A live event never carries this field: your handler must ignore a body with test: true even if the signature is valid.</summary>
+    /// <summary>Present only on a rehearsal (/v1/test-webhook/*, /v1/payment/testing-webhook) and always true — inside the signature. A live event never carries this field: your handler must ignore a body with test: true even if the signature is valid. This field, not the unsigned X-Webhook-Test header, is what marks a rehearsal.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("test")]
     public bool? Test { get; init; }
