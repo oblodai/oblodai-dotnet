@@ -2794,7 +2794,7 @@ public sealed partial record PaymentViewList : Model
     public required Pagination Paginate { get; init; }
 }
 
-/// <summary>Sent when a payment moves to paid, paid_over, wrong_amount, expired or under_review, and when it rolls back from them (a chain reorganization). The current status — any value from the vocabulary — can be requested again: POST /v1/payment/resend. Match it to the order by order_id/uuid and to the blockchain by txid and network.</summary>
+/// <summary>Sent when a payment moves to paid, paid_over, wrong_amount, expired, cancelled or under_review. A chain reorganization that removes a counted deposit is sent as invoice.reversed (reversal = true, txid empty) with the status after it. The current status — any value from the vocabulary — can be requested again: POST /v1/payment/resend. Match it to the order by order_id/uuid and to the blockchain by txid and network.</summary>
 public sealed partial record PaymentWebhook : Model
 {
     /// <summary>Your data passed when creating the payment, as is.</summary>
@@ -2852,6 +2852,11 @@ public sealed partial record PaymentWebhook : Model
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("payment_amount")]
     public required decimal PaymentAmount { get; init; }
+
+    /// <summary>true — a chain reorganization removed a previously counted deposit (event invoice.reversed); status and payment_amount are the state after it, txid is empty. Absent = false: cores before this version do not send the field; newer cores always send it.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonPropertyName("reversal")]
+    public bool? Reversal { get; init; }
 
     /// <summary>The global event number: within one object a higher number is newer, a lower one is a late delivery and must be discarded. Always 0 on a rehearsal (test: true).</summary>
     [JsonPropertyName("sequence")]
@@ -4433,7 +4438,7 @@ public sealed partial record RefundBatchItem : Model
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
 
-    /// <summary>An optional refund idempotency key: distinguishes two different refunds with the same (payment, address, amount); a retry with the same value is deduplicated. This is not order_id.</summary>
+    /// <summary>An optional refund idempotency key: distinguishes two different refunds with the same (payment, address, amount); a retry with the same value returns the refund already made, also when amount is omitted. This is not order_id.</summary>
     [JsonPropertyName("reference")]
     public required string Reference { get; init; }
 
@@ -4477,7 +4482,7 @@ public sealed partial record RefundCalculation : Model
     [JsonPropertyName("amount_paid")]
     public required decimal AmountPaid { get; init; }
 
-    /// <summary>The Oblodai commission withheld from the refund: the payment's commission when commission_bearer is customer, 0 when it is merchant (you then pay it from your balance).</summary>
+    /// <summary>What is withheld from the refund besides the surcharge: with commission_bearer customer, the Oblodai commission as it was taken from each deposit (rounded up on each), plus the cost of collecting a swept deposit when there was one — together, what the payment did not credit you; 0 with merchant (you then pay the commission from your balance). amount_paid − surcharge − commission = refundable.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("commission")]
     public required decimal Commission { get; init; }
@@ -4537,7 +4542,7 @@ public sealed partial record RefundCalculation : Model
     [JsonPropertyName("remaining")]
     public required decimal Remaining { get; init; }
 
-    /// <summary>The payer's network surcharge inside amount_paid: the cost of accepting the deposit, never refunded from your balance.</summary>
+    /// <summary>The payer's network surcharge inside amount_paid: the cost of accepting the deposit, never refunded from your balance. Counted per deposit, as the deposits were credited (rounded up on each), so amount_paid − surcharge − commission = refundable.</summary>
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString)]
     [JsonPropertyName("surcharge")]
     public required decimal Surcharge { get; init; }
@@ -4588,7 +4593,7 @@ public sealed partial record RefundRequest : Model
     [JsonPropertyName("order_id")]
     public string? OrderId { get; init; }
 
-    /// <summary>An optional refund idempotency key: distinguishes two different refunds with the same (payment, address, amount); a retry with the same value is deduplicated. This is not order_id.</summary>
+    /// <summary>An optional refund idempotency key: distinguishes two different refunds with the same (payment, address, amount); a retry with the same value returns the refund already made, also when amount is omitted. This is not order_id.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonPropertyName("reference")]
     public string? Reference { get; init; }

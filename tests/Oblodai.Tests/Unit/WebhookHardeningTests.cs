@@ -138,6 +138,28 @@ public class WebhookHardeningTests
     }
 
     [Fact]
+    public void InvoiceReversedIsAPaymentEventAndReversalIsOptional()
+    {
+        Assert.True(WebhookEventName.FromValue("invoice.reversed").IsKnown);
+        Assert.Equal(WebhookEventName.InvoiceReversed, WebhookEventName.FromValue("invoice.reversed"));
+        Assert.Equal("payment", Oblodai.Contract.ApiFacts.WebhookEvents["invoice.reversed"]);
+
+        // A core before invoice.reversed does not send `reversal`: absent reads as null (false).
+        var older = Assert.IsType<PaymentWebhook>(WebhookVerifier.Verify(Body, Headers(), Options()));
+        Assert.Null(older.Reversal);
+
+        var body = Encoding.UTF8.GetBytes(
+            """{"type":"payment","uuid":"u1","status":"expired","reversal":true,"txid":"","sequence":8}""");
+        var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            [WebhookVerifier.HeaderTimestamp] = Ts.ToString(),
+            [WebhookVerifier.HeaderSignature] = RequestSigner.SignWebhook(Secret, Ts, body),
+        };
+        var reversed = Assert.IsType<PaymentWebhook>(WebhookVerifier.Verify(body, headers, Options()));
+        Assert.True(reversed.Reversal);
+    }
+
+    [Fact]
     public void AnEventFamilyThisSnapshotDoesNotKnowIsDeliveredNotThrownOn()
     {
         var body = Encoding.UTF8.GetBytes("""{"type":"treasury","uuid":"t1","sequence":9,"test":true}""");

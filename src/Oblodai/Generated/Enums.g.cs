@@ -2554,6 +2554,9 @@ public readonly record struct WebhookEventName(string Value) : IStringValue<Webh
     /// <summary><c>invoice.under_review</c></summary>
     public static readonly WebhookEventName InvoiceUnderReview = new("invoice.under_review");
 
+    /// <summary><c>invoice.reversed</c></summary>
+    public static readonly WebhookEventName InvoiceReversed = new("invoice.reversed");
+
     /// <summary><c>payout.approved</c></summary>
     public static readonly WebhookEventName PayoutApproved = new("payout.approved");
 
@@ -2588,12 +2591,12 @@ public readonly record struct WebhookEventName(string Value) : IStringValue<Webh
     public static readonly WebhookEventName ConversionRefunded = new("conversion.refunded");
 
     /// <summary>Every value this SDK version knows.</summary>
-    public static IReadOnlyList<WebhookEventName> Known { get; } = [InvoiceSelect, InvoiceCreated, InvoiceConfirmCheck, InvoicePaid, InvoicePaidOver, InvoiceWrongAmount, InvoiceExpired, InvoiceCancelled, InvoiceUnderReview, PayoutApproved, PayoutAwaitingCosign, PayoutBroadcasting, PayoutCancelled, PayoutConfirmed, PayoutFailed, PayoutPending, PayoutSent, WalletPaid, ConversionCompleted, ConversionRefunded];
+    public static IReadOnlyList<WebhookEventName> Known { get; } = [InvoiceSelect, InvoiceCreated, InvoiceConfirmCheck, InvoicePaid, InvoicePaidOver, InvoiceWrongAmount, InvoiceExpired, InvoiceCancelled, InvoiceUnderReview, InvoiceReversed, PayoutApproved, PayoutAwaitingCosign, PayoutBroadcasting, PayoutCancelled, PayoutConfirmed, PayoutFailed, PayoutPending, PayoutSent, WalletPaid, ConversionCompleted, ConversionRefunded];
 
     /// <summary>Whether this SDK version knows the value.</summary>
     public bool IsKnown => Value switch
     {
-        "invoice.select" or "invoice.created" or "invoice.confirm_check" or "invoice.paid" or "invoice.paid_over" or "invoice.wrong_amount" or "invoice.expired" or "invoice.cancelled" or "invoice.under_review" or "payout.approved" or "payout.awaiting_cosign" or "payout.broadcasting" or "payout.cancelled" or "payout.confirmed" or "payout.failed" or "payout.pending" or "payout.sent" or "wallet.paid" or "conversion.completed" or "conversion.refunded" => true,
+        "invoice.select" or "invoice.created" or "invoice.confirm_check" or "invoice.paid" or "invoice.paid_over" or "invoice.wrong_amount" or "invoice.expired" or "invoice.cancelled" or "invoice.under_review" or "invoice.reversed" or "payout.approved" or "payout.awaiting_cosign" or "payout.broadcasting" or "payout.cancelled" or "payout.confirmed" or "payout.failed" or "payout.pending" or "payout.sent" or "wallet.paid" or "conversion.completed" or "conversion.refunded" => true,
         _ => false,
     };
 
