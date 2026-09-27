@@ -5,6 +5,43 @@ versions follow [SemVer](https://semver.org/).
 
 ## Unreleased
 
+### Security
+
+- **The raw admin token is never sent.** `Sandbox.OnboardStoreAsync` (any `Onboard` route) now fails with
+  `ConfigException` `sdk.operator_channel_unsupported` ("operator channel is not supported by the SDK; use
+  the dashboard") before any network call: the gateway accepts it only over the operator signing channel,
+  which the SDK does not implement. `OblodaiOptions.AdminToken` (and `ResolvedOptions`/`TransportOptions.AdminToken`)
+  is obsolete and ignored, `OBLODAI_ADMIN_TOKEN` is ignored; setting either logs a one-time warning to a
+  configured logger. `BuildInput.AdminToken` is removed.
+- **Webhooks: dedupe and rehearsal come from the signed body only.** `WebhookDeliveryInfo` gains `EventKey`
+  (the signed body's `event_id`, else `type:id:sequence` from an older core; also
+  `WebhookVerifier.EventKeyOf(body)`), and `IsTest` reads only the body's `test` flag. The unsigned
+  `X-Webhook-*` headers moved to `UnverifiedDeliveryId`, `UnverifiedEventId`, `UnverifiedEventType`,
+  `UnverifiedEventTime` and `UnverifiedTestHeader` (breaking: `Id`, `EventId`, `EventType` and `EventTime`
+  are gone). Docs and the receiver example ignore test deliveries and dedupe on `EventKey`.
+- **Clock correction is bounded and confirmed.** A signature-failure `Date` more than ±900 s away is ignored,
+  and a measured offset becomes the shared one only after the re-signed attempt succeeds (2xx); otherwise it
+  is discarded. `SkewCorrectingClock.MaxPlausibleOffsetSeconds` (24 h) is obsolete in favour of
+  `MaxCorrectionSeconds` (900).
+- **Redaction.** Model `ToString()` hides `device_code`, `document_url` (a signed link) and API keys besides
+  the existing secrets. Hook `RequestInfo.Url` and redirect errors hide `/v1/claim/{token}`,
+  `/v1/aml/{token}`, signed-link query parameters (`sig`, `exp`, `token`) and userinfo
+  (`Redaction.RedactUrl`); hook request and response headers hide every secret-bearing header
+  (`Authorization`, `X-Api-Key`, `X-Claim-Passcode`, cookies, …); the logger uses the same list.
+- **Base URL.** Credentials in the base URL (`user:pass@`) are refused and never echoed, and plain `http`
+  now needs `AllowInsecureBaseUrl` / `OBLODAI_ALLOW_INSECURE=1` for loopback too.
+- **Request size.** A body over the contract's `MaxBody` is refused with `sdk.body_too_large` before it is
+  sent.
+- **Files.** `FileResult.Filename` is a bare base name (`FileResult.SafeFilename`: no directories or control
+  characters, never `.`/`..`). `FileResult.WriteToAsync(path)` no longer overwrites an existing file and
+  creates it 0600 on Unix; `WriteToAsync(path, overwrite: true)` replaces explicitly.
+- **Pagination** stops only on an empty page or once the offset reaches `Total`.
+- **Money precision.** A money value with more precision than a .NET `decimal` holds (28 digits) is refused
+  with a `ContractException` instead of being rounded silently (`StrictDecimalJsonConverter`).
+- **CI/release**: the conformance suite runs against a vendored snapshot in `contract/`
+  (`scripts/vendor_contract.sh`, checked by `make ci`); third-party actions are pinned to commit SHAs.
+  `.env*` is git-ignored.
+
 ### Added
 
 - `client.CliLogin` — `StartAsync`, `PollAsync`, `LogoutAsync`: the browser login of the

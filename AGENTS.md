@@ -18,7 +18,8 @@ edit them; the runtime around them is hand-written and keeps no copy of those fa
   contract keeps as text are `string`. `Money.Of/Parse/Format` convert.
 - **One API key.** `PublicId` + `Secret` (or `OBLODAI_PUBLIC_ID` / `OBLODAI_SECRET`) sign every signed
   route. Route auth is `Public` (unsigned, `client.Checkout`), `Key` (signed) or `Onboard`
-  (`AdminToken` → `X-Admin-Token`, `Sandbox.OnboardStoreAsync` only).
+  (operator-only: `Sandbox.OnboardStoreAsync` fails with `sdk.operator_channel_unsupported` before the
+  network; the SDK never sends a raw admin token, `AdminToken` is deprecated and ignored).
 - List methods return `PagePromise<T>`: `await` = one page (`Page<T>` with `Items` and `Paginate`),
   `await foreach` = every item, `ByPageAsync()` = page by page, `AllAsync(max)` = a list. Nothing is
   requested until it is consumed.
@@ -68,8 +69,9 @@ var info = WebhookVerifier.VerifyDelivery(rawBody, headers, new WebhookVerifyOpt
 switch (info.Event) { case PaymentWebhook p: …; case PayoutWebhook p: …; case WalletWebhook w: …; }
 ```
 
-Verify over the **raw** bytes. `info.IsTest` is true for rehearsal deliveries — never treat them as
-money. Deduplicate on `info.EventId` (`X-Webhook-Event-Id`); drop out-of-order events with
+Verify over the **raw** bytes. `info.IsTest` (from the signed body) is true for rehearsal deliveries —
+always ignore them, never treat them as money. Deduplicate on `info.EventKey` (the signed body's
+`event_id`); the id/event/test headers are not signed and appear only as `info.Unverified*`. Drop out-of-order events with
 `WebhookVerifier.IsStale(info.Event, lastSequence)`. During a rotation pass `PreviousSecret` for ≥26 h.
 
 ## Machine-readable surface

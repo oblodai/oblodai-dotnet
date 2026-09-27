@@ -106,6 +106,15 @@ public static class SdkErrorCodes
 
     /// <summary>The response body exceeded the size the SDK is willing to buffer.</summary>
     public const string ResponseTooLarge = "sdk.response_too_large";
+
+    /// <summary>
+    /// An operator-only operation (store onboarding): the gateway accepts it only over the operator signing
+    /// channel, which the SDK does not implement. Use the dashboard.
+    /// </summary>
+    public const string OperatorChannelUnsupported = "sdk.operator_channel_unsupported";
+
+    /// <summary>The request body is larger than the gateway accepts (the contract's max body).</summary>
+    public const string BodyTooLarge = "sdk.body_too_large";
 }
 
 /// <summary>

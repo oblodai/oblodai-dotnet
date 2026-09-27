@@ -40,11 +40,11 @@ public class WebhookTests
     }
 
     /// <summary>
-    /// The header alone marks a rehearsal too: a receiver behind a proxy that strips the body flag still
-    /// sees <c>IsTest</c>, and a live delivery is never mistaken for one.
+    /// Ruling R1: only the signed body marks a rehearsal. A replayer adding the unsigned test header to a
+    /// live delivery must not turn it into an ignored rehearsal.
     /// </summary>
     [Fact]
-    public void MarksARehearsalFromTheHeaderAsWellAsTheBody()
+    public void MarksARehearsalFromTheSignedBodyOnly()
     {
         const long ts = 1_755_600_000;
         var body = Body();
@@ -55,7 +55,9 @@ public class WebhookTests
         Assert.False(WebhookVerifier.IsTestEvent(WebhookVerifier.Parse(body)));
 
         headers[WebhookVerifier.HeaderTest] = "true";
-        Assert.True(WebhookVerifier.VerifyDelivery(body, headers, options).IsTest);
+        var withHeader = WebhookVerifier.VerifyDelivery(body, headers, options);
+        Assert.False(withHeader.IsTest);
+        Assert.True(withHeader.UnverifiedTestHeader);
 
         // And from the signed body, with no header at all.
         var testBody = Encoding.UTF8.GetBytes(
@@ -84,10 +86,14 @@ public class WebhookTests
         var body = sample.GetProperty("body");
         Assert.Equal(body.GetProperty("uuid").GetString(), delivery.Event.ObjectId);
         Assert.Equal(body.GetProperty("type").GetString(), delivery.Event.Type);
-        Assert.Equal(headers[WebhookVerifier.HeaderId], delivery.Id);
-        Assert.Equal(headers[WebhookVerifier.HeaderEvent], delivery.EventType);
+        Assert.Equal(headers[WebhookVerifier.HeaderId], delivery.UnverifiedDeliveryId);
+        Assert.Equal(headers[WebhookVerifier.HeaderEvent], delivery.UnverifiedEventType);
         Assert.Equal(ts, delivery.SentAt);
-        Assert.Matches("^(invoice|payout|wallet)\\.", delivery.EventType!);
+        Assert.Matches("^(invoice|payout|wallet)\\.", delivery.UnverifiedEventType!);
+        var wantKey = body.TryGetProperty("event_id", out var stateId)
+            ? stateId.GetString()
+            : $"{body.GetProperty("type").GetString()}:{body.GetProperty("uuid").GetString()}:{delivery.Event.EventSequence}";
+        Assert.Equal(wantKey, delivery.EventKey);
 
         // A rehearsal delivery is signed like a live one; only the flag tells them apart. It also sits
         // outside the event stream, so it carries sequence 0 where a live delivery carries a real one.

@@ -5,4 +5,7 @@ obj/
 .idea/
 *.nupkg
 TestResults/
+.env
+.env.*
+!.env.example
 .cache/

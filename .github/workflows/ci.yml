@@ -1,7 +1,8 @@
 # The gates `make ci` runs locally that need no backend checkout: the code builds with warnings as
 # errors, it is formatted, the suite passes, and the package that would be published builds. The
-# generated-code drift check and the shared conformance suite need the backend's tools/sdkgen and run
-# locally (`make ci` with OBLODAI_BACKEND); live tests need a running gateway.
+# generated-code drift check needs the backend's tools/sdkgen (a private repository) and runs locally
+# (`make ci` with OBLODAI_BACKEND); the shared conformance suite runs here against the vendored snapshot in
+# contract/ (refreshed and checked by ./scripts/vendor_contract.sh); live tests need a running gateway.
 name: CI
 on:
   push:
@@ -22,9 +23,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
           dotnet-version: |
             8.0.x
@@ -42,11 +43,13 @@ jobs:
       # The live tier skips itself without OBLODAI_LIVE_URL, conformance without the backend checkout.
       - name: Test
         run: dotnet test tests/Oblodai.Tests --no-build -c Release --logger "console;verbosity=normal"
+        env:
+          SDKGEN_CONFORMANCE: ${{ github.workspace }}/contract/tools/sdkgen/conformance
 
       - name: Pack
         run: dotnet pack src/Oblodai/Oblodai.csproj --no-build -c Release -o artifacts
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: nupkg
           path: artifacts/*.*nupkg

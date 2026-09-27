@@ -352,7 +352,12 @@ public class ConformanceTests
             Encoding.UTF8.GetBytes(d.GetProperty("payload").GetString()!),
             sent,
             new WebhookVerifyOptions { Secret = secret, Now = () => ts });
-        Assert.True(rehearsal == delivery.IsTest, $"IsTest = {delivery.IsTest}, rehearsal = {rehearsal}");
+        // Ruling R1: the rehearsal header is not signed, so it is reported only as UnverifiedTestHeader;
+        // IsTest follows the signed body (which the suite's bodies never flag).
+        Assert.True(
+            rehearsal == delivery.UnverifiedTestHeader,
+            $"UnverifiedTestHeader = {delivery.UnverifiedTestHeader}, rehearsal = {rehearsal}");
+        Assert.Equal(delivery.Event.Test == true, delivery.IsTest);
 
         var kind = d.GetProperty("kind").GetString()!;
         Assert.True(WebhookVerifier.IsKnownEvent(delivery.Event), kind);
@@ -366,10 +371,10 @@ public class ConformanceTests
             string? got = field.Value.GetString() switch
             {
                 "" => want,
-                "id" => delivery.Id,
-                "event_id" => delivery.EventId,
-                "event_type" => delivery.EventType,
-                "event_time" => delivery.EventTime?.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                "id" => delivery.UnverifiedDeliveryId,
+                "event_id" => delivery.UnverifiedEventId,
+                "event_type" => delivery.UnverifiedEventType,
+                "event_time" => delivery.UnverifiedEventTime?.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 "sent_at" => delivery.SentAt.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 var other => throw new InvalidOperationException($"the delivery info has no field {other} for {header}"),
             };

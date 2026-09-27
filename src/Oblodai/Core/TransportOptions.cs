@@ -107,11 +107,12 @@ public sealed record TransportOptions
     /// <summary>Extra headers on every request. Never signed material.</summary>
     public IReadOnlyDictionary<string, string>? Headers { get; init; }
 
-    /// <summary>Sent as <c>X-Admin-Token</c> on merchant-provisioning routes only. Redacted and never serialized.</summary>
+    /// <summary>Ignored: the SDK never sends a raw admin token.</summary>
     [JsonIgnore]
+    [Obsolete("Ignored: the SDK never sends a raw admin token.")]
     public string? AdminToken { get; init; }
 
-    /// <summary>Prints the wiring with the admin token replaced by a placeholder.</summary>
+    /// <summary>Prints the wiring.</summary>
     /// <param name="builder">Buffer the record's <c>ToString()</c> writes into.</param>
     private bool PrintMembers(StringBuilder builder)
     {
@@ -124,8 +125,7 @@ public sealed record TransportOptions
             .Append(", Clock = ").Append(Clock)
             .Append(", Logger = ").Append(Logger)
             .Append(", UserAgent = ").Append(UserAgent)
-            .Append(", Headers = ").Append(Headers)
-            .Append(", ").AppendRedacted(nameof(AdminToken), AdminToken is not null);
+            .Append(", Headers = ").Append(Headers);
         return true;
     }
 }

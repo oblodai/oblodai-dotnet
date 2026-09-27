@@ -3,7 +3,6 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Text.RegularExpressions;
 using Oblodai.Contract;
 
 namespace Oblodai;
@@ -100,7 +99,7 @@ public abstract partial record Model
 
     /// <summary>True for a wire name that looks like it carries a secret.</summary>
     /// <param name="wireName">Field name as on the wire.</param>
-    internal static bool IsSensitive(string wireName) => SensitiveName().IsMatch(wireName);
+    internal static bool IsSensitive(string wireName) => Redaction.IsSensitiveName(wireName);
 
     private static string Show(object value) => value switch
     {
@@ -208,7 +207,4 @@ public abstract partial record Model
 
     private static Type? MapValueType(Type type)
         => type.IsGenericType && type.GetGenericArguments() is [var key, var value] && key == typeof(string) ? value : null;
-
-    [GeneratedRegex("secret|token|passcode|signature|password|claim_url|authorization", RegexOptions.IgnoreCase)]
-    private static partial Regex SensitiveName();
 }

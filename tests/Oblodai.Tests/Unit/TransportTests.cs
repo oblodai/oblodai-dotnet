@@ -224,7 +224,7 @@ public class TransportTests
     [Fact]
     public async Task ReSignsOnceWithTheServerClockWhenA401RevealsSkew()
     {
-        var serverNow = DateTimeOffset.UtcNow.AddHours(1);
+        var serverNow = DateTimeOffset.UtcNow.AddMinutes(10);
         var handler = new FakeHttpHandler(
             ScriptedResponse.Error(
                 401,
@@ -256,9 +256,9 @@ public class TransportTests
     }
 
     [Fact]
-    public async Task RevertsTheSkewCorrectionWhenTheReSignedAttemptIsStillRejected()
+    public async Task DiscardsTheSkewCorrectionWhenTheReSignedAttemptIsStillRejected()
     {
-        var far = new Dictionary<string, string> { ["Date"] = DateTimeOffset.UtcNow.AddHours(1).ToString("r") };
+        var far = new Dictionary<string, string> { ["Date"] = DateTimeOffset.UtcNow.AddMinutes(10).ToString("r") };
         var handler = new FakeHttpHandler(
             ScriptedResponse.Error(401, """{"code":"merchant.bad_signature","retryable":false}""", far),
             ScriptedResponse.Error(401, """{"code":"merchant.bad_signature","retryable":false}""", far),
@@ -271,6 +271,69 @@ public class TransportTests
         // One bad Date cannot wedge the client: the third attempt is stamped with local time again.
         var stamped = long.Parse(handler.Calls[2].Header(RequestSigner.HeaderTimestamp));
         Assert.True(Math.Abs(stamped - DateTimeOffset.UtcNow.ToUnixTimeSeconds()) < 5);
+    }
+
+    /// <summary>Ruling R2: a 401 with a Date 23 h away never moves the signing clock, not even for a re-sign.</summary>
+    [Fact]
+    public async Task AFarDateOnASignatureFailureNeverMovesTheClock()
+    {
+        var far = new Dictionary<string, string> { ["Date"] = DateTimeOffset.UtcNow.AddHours(23).ToString("r") };
+        var handler = new FakeHttpHandler(
+            ScriptedResponse.Error(401, """{"code":"merchant.bad_signature","retryable":false}""", far),
+            ScriptedResponse.Ok("""{"balance":{"merchant":[]}}"""));
+        using var client = Client(handler, new OblodaiOptions { Retry = new RetryOptions { MaxRetries = 0 } });
+
+        await Assert.ThrowsAsync<AuthenticationException>(() => client.Account.GetBalanceAsync());
+        Assert.Single(handler.Calls);
+        Assert.Equal(0, client.Transport.Clock.Offset);
+        await client.Account.GetBalanceAsync();
+        var stamped = long.Parse(handler.Calls[1].Header(RequestSigner.HeaderTimestamp));
+        Assert.True(Math.Abs(stamped - DateTimeOffset.UtcNow.ToUnixTimeSeconds()) < 5);
+    }
+
+    /// <summary>Ruling R2: 401 bad_signature + Date, then a 404 on the re-signed attempt: the offset is discarded.</summary>
+    [Fact]
+    public async Task AMeasuredOffsetIsDiscardedUnlessTheReSignedAttemptSucceeds()
+    {
+        var serverNow = DateTimeOffset.UtcNow.AddMinutes(10);
+        var handler = new FakeHttpHandler(
+            ScriptedResponse.Error(
+                401,
+                """{"code":"merchant.bad_signature","retryable":false}""",
+                new Dictionary<string, string> { ["Date"] = serverNow.ToString("r") }),
+            ScriptedResponse.Error(404, """{"code":"payment.not_found","retryable":false}"""),
+            ScriptedResponse.Ok("""{"balance":{"merchant":[]}}"""));
+        using var client = Client(handler, new OblodaiOptions { Retry = new RetryOptions { MaxRetries = 0 } });
+
+        var error = await Assert.ThrowsAnyAsync<OblodaiException>(() => client.Account.GetBalanceAsync());
+        Assert.Equal("payment.not_found", error.Code);
+        var resigned = long.Parse(handler.Calls[1].Header(RequestSigner.HeaderTimestamp));
+        Assert.True(Math.Abs(resigned - serverNow.ToUnixTimeSeconds()) < 5);
+        Assert.Equal(0, client.Transport.Clock.Offset);
+
+        await client.Account.GetBalanceAsync();
+        var later = long.Parse(handler.Calls[2].Header(RequestSigner.HeaderTimestamp));
+        Assert.True(Math.Abs(later - DateTimeOffset.UtcNow.ToUnixTimeSeconds()) < 5);
+    }
+
+    /// <summary>Ruling R2: a successful re-signed attempt makes the offset stick.</summary>
+    [Fact]
+    public async Task AMeasuredOffsetIsAdoptedAfterTheReSignedAttemptSucceeds()
+    {
+        var serverNow = DateTimeOffset.UtcNow.AddMinutes(10);
+        var handler = new FakeHttpHandler(
+            ScriptedResponse.Error(
+                401,
+                """{"code":"merchant.bad_signature","retryable":false}""",
+                new Dictionary<string, string> { ["Date"] = serverNow.ToString("r") }),
+            ScriptedResponse.Ok("""{"balance":{"merchant":[]}}"""),
+            ScriptedResponse.Ok("""{"balance":{"merchant":[]}}"""));
+        using var client = Client(handler, new OblodaiOptions { Retry = new RetryOptions { MaxRetries = 0 } });
+
+        await client.Account.GetBalanceAsync();
+        await client.Account.GetBalanceAsync();
+        var later = long.Parse(handler.Calls[2].Header(RequestSigner.HeaderTimestamp));
+        Assert.True(Math.Abs(later - serverNow.ToUnixTimeSeconds()) < 5);
     }
 
     [Fact]

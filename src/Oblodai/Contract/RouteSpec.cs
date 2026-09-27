@@ -9,7 +9,10 @@ public enum RouteAuth
     /// <summary>Signed with the merchant's API key — the one pair, on every merchant-facing route.</summary>
     Key,
 
-    /// <summary>Merchant provisioning: unsigned, gated by <c>X-Admin-Token</c> on a self-hosted gateway.</summary>
+    /// <summary>
+    /// Operator-only (merchant provisioning): the core accepts only the operator signing channel, which the
+    /// SDK does not implement; calls fail with <c>sdk.operator_channel_unsupported</c> before any network call.
+    /// </summary>
     Onboard,
 }
 

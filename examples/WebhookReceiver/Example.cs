@@ -4,8 +4,9 @@ using Oblodai;
 namespace Oblodai.Examples;
 
 /// <summary>
-/// The rules of a webhook receiver: verify over the RAW body, deduplicate by the state id (<see cref="WebhookDeliveryInfo.EventId"/>),
-/// ignore stale sequences, never act on a rehearsal. The HTTP server around it is yours (see Program.cs
+/// The rules of a webhook receiver: verify over the RAW body, always ignore a rehearsal (<see cref="WebhookDeliveryInfo.IsTest"/>,
+/// from the signed body), deduplicate by the signed key (<see cref="WebhookDeliveryInfo.EventKey"/> — the body's
+/// <c>event_id</c>; the id headers are not signed), ignore stale sequences. The HTTP server around it is yours (see Program.cs
 /// for HttpListener; in ASP.NET Core read the body with <c>Request.EnableBuffering()</c> and pass
 /// <c>name =&gt; Request.Headers[name]</c>).
 /// </summary>
@@ -13,7 +14,7 @@ public sealed class WebhookReceiverExample
 {
     private readonly WebhookVerifyOptions _options;
     private readonly TextWriter _output;
-    private readonly HashSet<string> _seenStates = [];              // WebhookDeliveryInfo.EventId; your database in production
+    private readonly HashSet<string> _seenStates = [];              // WebhookDeliveryInfo.EventKey; your database in production
     private readonly Dictionary<string, long> _lastSequence = [];   // per object
 
     /// <summary>A receiver for one endpoint secret (plus the previous one during a rotation).</summary>
@@ -55,12 +56,12 @@ public sealed class WebhookReceiverExample
         // never let it reach the code that credits an order.
         if (delivery.IsTest)
         {
-            _output.WriteLine($"rehearsal delivery {delivery.EventType} — acknowledged, not applied");
+            _output.WriteLine($"rehearsal delivery {delivery.Event.Type} — acknowledged, not applied");
             return HttpStatusCode.OK;
         }
 
         // A resend of a state already handled: acknowledge and drop.
-        if (delivery.EventId is { } eventId && !_seenStates.Add(eventId))
+        if (!_seenStates.Add(delivery.EventKey))
         {
             return HttpStatusCode.OK;
         }

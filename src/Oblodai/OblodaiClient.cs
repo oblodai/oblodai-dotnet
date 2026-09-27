@@ -49,7 +49,6 @@ public sealed partial class OblodaiClient : IDisposable
                 Clock = clock ?? resolved.Clock,
                 Logger = resolved.Logger,
                 Headers = resolved.Headers,
-                AdminToken = resolved.AdminToken,
                 UserAgent = $"oblodai-dotnet/{SdkVersion} ({RuntimeInformation.FrameworkDescription})",
             },
             httpClient);

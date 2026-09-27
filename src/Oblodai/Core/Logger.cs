@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 
 namespace Oblodai;
 
@@ -81,12 +80,9 @@ public static partial class LogRedaction
         var output = new Dictionary<string, object?>(fields.Count);
         foreach (var (key, value) in fields)
         {
-            output[key] = SensitiveKey().IsMatch(key) ? "[redacted]" : value;
+            output[key] = Redaction.IsSensitiveName(key) ? "[redacted]" : value;
         }
 
         return output;
     }
-
-    [GeneratedRegex("secret|signature|passcode|token|authorization|password", RegexOptions.IgnoreCase)]
-    private static partial Regex SensitiveKey();
 }

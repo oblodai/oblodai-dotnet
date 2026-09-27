@@ -29,9 +29,9 @@
 из `openapi.json` генератором самого шлюза — ничего, что описывает API, не написано руками.
 
 > **Базовый URL.** По умолчанию `https://api.oblodai.com`. При необходимости задайте `BaseUrl` и свои
-> ключи при инициализации. Схема — `https://`; простой `http://` принимается только для loopback
-> (`http://127.0.0.1:8095`) или с явным разрешением (`AllowInsecureBaseUrl = true` либо
-> `OBLODAI_ALLOW_INSECURE=1`).
+> ключи при инициализации. Схема — `https://`; простой `http://` (и для loopback тоже) принимается
+> только с явным разрешением (`AllowInsecureBaseUrl = true` либо `OBLODAI_ALLOW_INSECURE=1`). URL с
+> учётными данными (`user:pass@`) отклоняется.
 
 ## Установка
 
@@ -261,8 +261,10 @@ switch (delivery.Event)
 `WalletWebhook`, `ConversionWebhook`, — или `UnknownWebhookEvent` для семейства, добавленного позже
 (`WebhookVerifier.IsKnownEvent`). Отвечайте 4xx **только** на `SignatureException`; доставка,
 прошедшая проверку, но нечитаемая, — `WebhookPayloadException` (`webhook.bad_payload`): отвечайте
-5xx, шлюз повторит. Дедуплицируйте по `delivery.EventId` (`X-Webhook-Event-Id`, постоянен для
-состояния), отбрасывайте доставки не по порядку через `WebhookVerifier.IsStale(delivery.Event,
+5xx, шлюз повторит. Всегда пропускайте доставки с `delivery.IsTest` (из подписанного
+тела). Дедуплицируйте по `delivery.EventKey` (`event_id` подписанного тела, постоянен для состояния;
+от старого ядра — `type:id:sequence`) — заголовки `X-Webhook-Id`, `X-Webhook-Event-Id`,
+`X-Webhook-Event` и `X-Webhook-Test` не подписаны и доступны только как `Unverified*`. Отбрасывайте доставки не по порядку через `WebhookVerifier.IsStale(delivery.Event,
 lastSequence)`, а после `Webhooks.RotateSecretAsync` держите старый секрет в `PreviousSecret` не
 меньше 26 часов.
 
@@ -356,8 +358,8 @@ var observed = new OblodaiClient(new OblodaiOptions
 | --- | --- |
 | `PublicId` / `Secret` | пара API-ключа мерчанта; подписывает все подписываемые маршруты |
 | `BaseUrl` | адрес API; префикс пути сохраняется |
-| `AllowInsecureBaseUrl` | разрешить простой `http://` для не-loopback хоста |
-| `AdminToken` | токен онбординга своего шлюза (только `Sandbox.OnboardStoreAsync`) |
+| `AllowInsecureBaseUrl` | разрешить простой `http://` (и для loopback тоже) |
+| `AdminToken` | устарел и игнорируется: SDK никогда не отправляет админ-токен; `Sandbox.OnboardStoreAsync` доступен только оператору и падает с `sdk.operator_channel_unsupported` — пользуйтесь кабинетом |
 | `Timeout` | таймаут попытки (по умолчанию 30 с) |
 | `Deadline` | бюджет одного вызова с повторами и паузами (по умолчанию 90 с) |
 | `Retry` | политика повторов; `new RetryOptions { MaxRetries = 0 }` их отключает |
@@ -370,7 +372,7 @@ var observed = new OblodaiClient(new OblodaiOptions
 | Переменная окружения | Значение |
 | --- | --- |
 | `OBLODAI_PUBLIC_ID` / `OBLODAI_SECRET` | API-ключ |
-| `OBLODAI_ADMIN_TOKEN` | токен онбординга своего шлюза |
+| `OBLODAI_ADMIN_TOKEN` | игнорируется (устарел; настроенный логгер получит одно предупреждение) |
 | `OBLODAI_BASE_URL` | адрес API (по умолчанию `https://api.oblodai.com`) |
 | `OBLODAI_LOG` | `debug` \| `info` \| `warn` \| `error` — включает консольный логгер |
 | `OBLODAI_ALLOW_INSECURE` | `1` разрешает простой `http://` |

@@ -70,8 +70,6 @@ public sealed record BuildInput
     /// <summary>Caller headers; those colliding with signed or reserved names are dropped.</summary>
     public IReadOnlyDictionary<string, string>? ExtraHeaders { get; init; }
 
-    /// <summary>Admin token of a self-hosted gateway; attached to onboarding routes only.</summary>
-    public string? AdminToken { get; init; }
 }
 
 /// <summary>
@@ -86,8 +84,8 @@ public static class RequestBuilder
 
     /// <summary>
     /// Headers the SDK owns; a caller-supplied header with one of these names is dropped, compared
-    /// case-insensitively. <c>X-Admin-Token</c> is here so it can only be attached by the transport,
-    /// on onboarding routes — a caller header must never smuggle it onto a signed route.
+    /// case-insensitively. <c>X-Admin-Token</c> is here because the SDK never sends a raw admin token,
+    /// not even one a caller put in its own headers.
     /// </summary>
     private static readonly HashSet<string> ReservedHeaders = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -148,9 +146,11 @@ public static class RequestBuilder
             headers[HeaderRequestId] = input.RequestId!;
         }
 
-        if (route.Auth == RouteAuth.Onboard && !string.IsNullOrEmpty(input.AdminToken))
+        if (route.Auth == RouteAuth.Onboard)
         {
-            headers[RequestSigner.HeaderAdminToken] = input.AdminToken!;
+            throw new ConfigException(
+                SdkErrorCodes.OperatorChannelUnsupported,
+                $"{route.Method} {route.Path}: operator channel is not supported by the SDK; use the dashboard");
         }
 
         var hasBody = route.Method != "GET";

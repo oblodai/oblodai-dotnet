@@ -23,12 +23,21 @@ public sealed class SystemClock : IClock
 /// Signing clock with skew correction. The gateway rejects timestamps more than
 /// <see cref="Contract.SigningProtocol.SkewSeconds"/> away from its own time; a host with a drifting clock would get <c>merchant.bad_signature</c> on every call. The
 /// transport learns the server's time from the <c>Date</c> header of a signature-failure response,
-/// re-signs once, and keeps the offset only if that re-signed attempt got past authentication.
+/// re-signs once, and adopts the offset only if that re-signed attempt succeeded (2xx). An offset beyond
+/// ±<see cref="MaxCorrectionSeconds"/> is never used: a hostile or broken responder could otherwise push
+/// every later signature hours into the future (delayed replay).
 /// </summary>
 public sealed class SkewCorrectingClock : IClock
 {
-    /// <summary>Offsets beyond this are implausible drift and are ignored (a broken proxy <c>Date</c>).</summary>
-    public const long MaxPlausibleOffsetSeconds = 24 * 3600;
+    /// <summary>
+    /// The largest correction ever applied, in seconds (15 minutes): an offset beyond it, or a move of the
+    /// offset beyond it, is ignored.
+    /// </summary>
+    public const long MaxCorrectionSeconds = 900;
+
+    /// <summary>Kept for compatibility; equal to <see cref="MaxCorrectionSeconds"/>.</summary>
+    [Obsolete("use MaxCorrectionSeconds")]
+    public const long MaxPlausibleOffsetSeconds = MaxCorrectionSeconds;
 
     private readonly IClock _base;
     private long _offsetSeconds;
@@ -69,15 +78,21 @@ public sealed class SkewCorrectingClock : IClock
         }
 
         var offset = serverTime.Value.ToUnixTimeSeconds() - _base.NowUnixSeconds();
-        return Math.Abs(offset) > MaxPlausibleOffsetSeconds ? null : offset;
+        return Math.Abs(offset) > MaxCorrectionSeconds ? null : offset;
     }
 
     /// <summary>The underlying clock, without the correction — what an attempt's timestamp is built from.</summary>
     public long BaseNowUnixSeconds() => _base.NowUnixSeconds();
 
-    /// <summary>Apply an offset (or revert to a previous one).</summary>
+    /// <summary>Apply an offset (or revert to a previous one); one beyond ±<see cref="MaxCorrectionSeconds"/> is ignored.</summary>
     /// <param name="offsetSeconds">Server-minus-local offset in seconds.</param>
-    public void Correct(long offsetSeconds) => Interlocked.Exchange(ref _offsetSeconds, offsetSeconds);
+    public void Correct(long offsetSeconds)
+    {
+        if (Math.Abs(offsetSeconds) <= MaxCorrectionSeconds)
+        {
+            Interlocked.Exchange(ref _offsetSeconds, offsetSeconds);
+        }
+    }
 
     /// <summary>
     /// Revert to <paramref name="offsetSeconds"/> only while the shared offset is still

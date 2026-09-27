@@ -30,9 +30,9 @@ here, generated from `openapi.json` by the gateway's own generator — nothing t
 is written by hand.
 
 > **Base URL.** Defaults to `https://api.oblodai.com`. Override `BaseUrl` and supply your own keys
-> at initialisation if needed. The scheme must be `https://`; plain `http://` is accepted only for
-> loopback (`http://127.0.0.1:8095`) or with the explicit allow-insecure option
-> (`AllowInsecureBaseUrl = true`, or `OBLODAI_ALLOW_INSECURE=1`).
+> at initialisation if needed. The scheme must be `https://`; plain `http://` (loopback included) is
+> accepted only with the explicit allow-insecure option (`AllowInsecureBaseUrl = true`, or
+> `OBLODAI_ALLOW_INSECURE=1`). A base URL with credentials (`user:pass@`) is refused.
 
 ## Installation
 
@@ -265,8 +265,11 @@ probed by an unauthenticated sender. The event is the generated model of its fam
 `PaymentWebhook`, `PayoutWebhook`, `WalletWebhook`, `ConversionWebhook` — or `UnknownWebhookEvent`
 for a family added later (`WebhookVerifier.IsKnownEvent`). Answer 4xx **only** to a
 `SignatureException`; a delivery that verified but cannot be read is `WebhookPayloadException`
-(`webhook.bad_payload`) — answer 5xx, the gateway will retry it. Deduplicate on
-`delivery.EventId` (`X-Webhook-Event-Id`, stable per state), drop out-of-order deliveries with
+(`webhook.bad_payload`) — answer 5xx, the gateway will retry it. Always ignore
+`delivery.IsTest` deliveries (from the signed body). Deduplicate on `delivery.EventKey` (the signed
+body's `event_id`, stable per state; `type:id:sequence` from an older core) — the `X-Webhook-Id`,
+`X-Webhook-Event-Id`, `X-Webhook-Event` and `X-Webhook-Test` headers are not signed and are only
+exposed as `Unverified*`. Drop out-of-order deliveries with
 `WebhookVerifier.IsStale(delivery.Event, lastSequence)`, and after `Webhooks.RotateSecretAsync`
 keep the old secret in `PreviousSecret` for at least 26 hours.
 
@@ -359,8 +362,8 @@ looks like one; redirects are never followed; bodies are capped (8 MiB JSON, 64 
 | --- | --- |
 | `PublicId` / `Secret` | the merchant's API key pair; it signs every signed route |
 | `BaseUrl` | the API origin; a path prefix is kept |
-| `AllowInsecureBaseUrl` | permit plain `http://` for a non-loopback host |
-| `AdminToken` | onboarding admin token of a self-hosted gateway (`Sandbox.OnboardStoreAsync` only) |
+| `AllowInsecureBaseUrl` | permit plain `http://` (loopback included) |
+| `AdminToken` | deprecated and ignored: the SDK never sends a raw admin token; `Sandbox.OnboardStoreAsync` is operator-only and fails with `sdk.operator_channel_unsupported` — use the dashboard |
 | `Timeout` | per-attempt timeout (default 30 s) |
 | `Deadline` | budget for one call including retries and pauses (default 90 s) |
 | `Retry` | retry policy; `new RetryOptions { MaxRetries = 0 }` disables retries |
@@ -373,14 +376,14 @@ looks like one; redirects are never followed; bodies are capped (8 MiB JSON, 64 
 | Environment variable | Meaning |
 | --- | --- |
 | `OBLODAI_PUBLIC_ID` / `OBLODAI_SECRET` | the API key |
-| `OBLODAI_ADMIN_TOKEN` | onboarding admin token of a self-hosted gateway |
+| `OBLODAI_ADMIN_TOKEN` | ignored (deprecated; a configured logger gets a one-time warning) |
 | `OBLODAI_BASE_URL` | API origin (default `https://api.oblodai.com`) |
 | `OBLODAI_LOG` | `debug` \| `info` \| `warn` \| `error` — enables the console logger |
 | `OBLODAI_ALLOW_INSECURE` | `1` permits a plain `http://` base URL |
 
 Explicit options win over the environment; half a key pair is refused with `sdk.bad_config`.
-Secrets never print: options redact the key secret and the admin token, and a model prints the
-fields whose names look secret (`secret`, `token`, `passcode`, `claim_url`, …) as `[redacted]` —
+Secrets never print: options redact the key secret, and a model prints the fields whose names look
+secret (`secret`, `token`, `passcode`, `claim_url`, `device_code`, `document_url`, …) as `[redacted]` —
 the property still holds the value. The client takes an externally managed `HttpClient`, so it fits
 `IHttpClientFactory`:
 

@@ -243,12 +243,12 @@ public abstract class Resource
             var piece = part.Trim();
             if (piece.StartsWith("filename*=UTF-8''", StringComparison.OrdinalIgnoreCase))
             {
-                return Uri.UnescapeDataString(piece["filename*=UTF-8''".Length..]);
+                return FileResult.SafeFilename(Uri.UnescapeDataString(piece["filename*=UTF-8''".Length..]));
             }
 
             if (piece.StartsWith("filename=", StringComparison.OrdinalIgnoreCase))
             {
-                return piece["filename=".Length..].Trim('"');
+                return FileResult.SafeFilename(piece["filename=".Length..].Trim('"'));
             }
         }
 

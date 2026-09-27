@@ -136,7 +136,7 @@ public sealed partial class OblodaiTransport
             new ErrorDetail
             {
                 Code = "internal",
-                Message = $"unexpected redirect to {landedOn.GetLeftPart(UriPartial.Path)}; the HTTP client followed it "
+                Message = $"unexpected redirect to {Redaction.RedactUrl(landedOn.GetLeftPart(UriPartial.Path), null)}; the HTTP client followed it "
                           + "and carried the signed headers to another URL — configure it with AllowAutoRedirect = false",
             },
             raw: null,

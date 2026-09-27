@@ -101,7 +101,8 @@ public sealed class PagePromise<T> : IAsyncEnumerable<T>
             yield return page;
 
             offset += page.Items.Count;
-            if (page.Items.Count == 0 || !page.Paginate.HasPages)
+            // Only an empty page or reaching `total` ends the walk (ruling R11).
+            if (page.Items.Count == 0 || offset >= page.Paginate.Total)
             {
                 yield break;
             }

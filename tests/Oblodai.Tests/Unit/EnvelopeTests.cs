@@ -248,9 +248,20 @@ public class EnvelopeTests
     }
 
     [Fact]
-    public void PublicAndOnboardRoutesAreNotSigned()
+    public void PublicRoutesAreNotSignedAndOnboardRoutesAreRefused()
     {
-        foreach (var route in new[] { Routes.ListCurrencies, Routes.OnboardSandboxStore })
+        var onboard = Assert.Throws<ConfigException>(() => RequestBuilder.Build(new BuildInput
+        {
+            BaseUrl = "https://api.test",
+            Route = Routes.OnboardSandboxStore,
+            PathParams = new Dictionary<string, string> { ["id"] = "m1" },
+            Ts = 1,
+            UserAgent = "test",
+            Body = "{}",
+        }));
+        Assert.Equal(SdkErrorCodes.OperatorChannelUnsupported, onboard.Code);
+
+        foreach (var route in new[] { Routes.ListCurrencies })
         {
             var request = RequestBuilder.Build(new BuildInput
             {
@@ -272,10 +283,15 @@ public class EnvelopeTests
         var clock = new SkewCorrectingClock(fake);
         Assert.Equal(1_000_000, clock.NowUnixSeconds());
 
-        var observed = clock.ObserveServerDate(DateTimeOffset.FromUnixTimeSeconds(1_003_600));
-        Assert.Equal(3600, observed);
+        var observed = clock.ObserveServerDate(DateTimeOffset.FromUnixTimeSeconds(1_000_600));
+        Assert.Equal(600, observed);
         clock.Correct(observed!.Value);
-        Assert.Equal(1_003_600, clock.NowUnixSeconds());
+        Assert.Equal(1_000_600, clock.NowUnixSeconds());
+
+        // Ruling R2: nothing beyond ±900 s is ever measured or applied.
+        Assert.Null(clock.ObserveServerDate(DateTimeOffset.FromUnixTimeSeconds(1_000_000 + 901)));
+        clock.Correct(3600);
+        Assert.Equal(1_000_600, clock.NowUnixSeconds());
 
         clock.Correct(0);
         Assert.Equal(1_000_000, clock.NowUnixSeconds());

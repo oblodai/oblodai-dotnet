@@ -50,13 +50,19 @@ public sealed record OblodaiOptions
     public IReadOnlyDictionary<string, string>? Headers { get; init; }
 
     /// <summary>
-    /// Admin token of a self-hosted gateway; only the merchant-provisioning routes use it. Falls back to
-    /// <c>OBLODAI_ADMIN_TOKEN</c>. Redacted and never serialized.
+    /// Ignored: the SDK never sends a raw admin token. Operator-only operations (store onboarding) need
+    /// the operator signing channel, which the SDK does not implement; they fail with
+    /// <c>sdk.operator_channel_unsupported</c> before any network call — use the dashboard. Setting it (or
+    /// <c>OBLODAI_ADMIN_TOKEN</c>) logs a one-time warning when a logger is configured. Never printed or
+    /// serialized.
     /// </summary>
     [JsonIgnore]
+    [Obsolete("Ignored: the SDK never sends a raw admin token; operator operations need the dashboard.")]
     public string? AdminToken { get; init; }
 
-    /// <summary>Permit plain <c>http://</c> base URLs outside loopback (local gateway, CI). Default false.</summary>
+    private static int _adminTokenWarned;
+
+    /// <summary>Permit plain <c>http://</c> base URLs, loopback included (local gateway, CI). Default false.</summary>
     public bool? AllowInsecureBaseUrl { get; init; }
 
     /// <summary>Signing clock; injectable for tests.</summary>
@@ -75,7 +81,6 @@ public sealed record OblodaiOptions
             .Append(", Hooks = ").Append(Hooks)
             .Append(", Logger = ").Append(Logger)
             .Append(", Headers = ").Append(Headers)
-            .Append(", ").AppendRedacted(nameof(AdminToken), AdminToken is not null)
             .Append(", AllowInsecureBaseUrl = ").Append(AllowInsecureBaseUrl)
             .Append(", Clock = ").Append(Clock);
         return true;
@@ -113,6 +118,18 @@ public sealed record OblodaiOptions
             };
         }
 
+#pragma warning disable CS0618 // the deprecated admin token is read only to warn that it is ignored
+        var adminTokenSet = Empty(AdminToken ?? env("OBLODAI_ADMIN_TOKEN")) is not null;
+#pragma warning restore CS0618
+        if (adminTokenSet && logger is not null && Interlocked.Exchange(ref _adminTokenWarned, 1) == 0)
+        {
+            logger.Log(
+                OblodaiLogLevel.Warn,
+                "AdminToken / OBLODAI_ADMIN_TOKEN is deprecated and ignored: the SDK never sends a raw admin token; "
+                + "operator operations need the dashboard",
+                new Dictionary<string, object?>());
+        }
+
         return new ResolvedOptions
         {
             BaseUrl = baseUrl,
@@ -124,7 +141,6 @@ public sealed record OblodaiOptions
             TimeProvider = TimeProvider,
             Logger = logger,
             Headers = Headers,
-            AdminToken = Empty(AdminToken ?? env("OBLODAI_ADMIN_TOKEN")),
             Clock = Clock,
         };
     }
@@ -143,9 +159,18 @@ public sealed record OblodaiOptions
 
     private static void AssertBaseUrl(string baseUrl, bool allowInsecure)
     {
+        // Never echo the URL itself: it may carry credentials.
         if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var parsed))
         {
-            throw new ConfigException(SdkErrorCodes.BadConfig, $"BaseUrl is not a valid URL: {baseUrl}", "BaseUrl");
+            throw new ConfigException(SdkErrorCodes.BadConfig, "BaseUrl is not a valid URL", "BaseUrl");
+        }
+
+        if (!string.IsNullOrEmpty(parsed.UserInfo))
+        {
+            throw new ConfigException(
+                SdkErrorCodes.BadConfig,
+                "BaseUrl must not carry credentials (user:pass@); the SDK signs requests itself",
+                "BaseUrl");
         }
 
         if (parsed.Scheme == Uri.UriSchemeHttps)
@@ -153,15 +178,14 @@ public sealed record OblodaiOptions
             return;
         }
 
-        var local = parsed.Host is "localhost" or "127.0.0.1" or "[::1]" or "::1";
-        if (parsed.Scheme == Uri.UriSchemeHttp && (allowInsecure || local))
+        if (parsed.Scheme == Uri.UriSchemeHttp && allowInsecure)
         {
             return;
         }
 
         throw new ConfigException(
             SdkErrorCodes.BadConfig,
-            $"BaseUrl must use https (got {parsed.Scheme}://{parsed.Authority}); set AllowInsecureBaseUrl for a local gateway",
+            $"BaseUrl must use https (got {parsed.Scheme}://{parsed.Host}); set AllowInsecureBaseUrl (or OBLODAI_ALLOW_INSECURE=1) for a local gateway",
             "BaseUrl");
     }
 }
@@ -196,14 +220,15 @@ public sealed record ResolvedOptions
     /// <summary>Extra headers on every request.</summary>
     public IReadOnlyDictionary<string, string>? Headers { get; init; }
 
-    /// <summary>Admin token for merchant provisioning on a self-hosted gateway. Redacted and never serialized.</summary>
+    /// <summary>Ignored and always null: the SDK never sends a raw admin token.</summary>
     [JsonIgnore]
+    [Obsolete("Ignored: the SDK never sends a raw admin token.")]
     public string? AdminToken { get; init; }
 
     /// <summary>Signing clock.</summary>
     public SkewCorrectingClock? Clock { get; init; }
 
-    /// <summary>Prints the resolved wiring with the admin token replaced by a placeholder.</summary>
+    /// <summary>Prints the resolved wiring.</summary>
     /// <param name="builder">Buffer the record's <c>ToString()</c> writes into.</param>
     private bool PrintMembers(StringBuilder builder)
     {
@@ -215,7 +240,6 @@ public sealed record ResolvedOptions
             .Append(", Hooks = ").Append(Hooks)
             .Append(", Logger = ").Append(Logger)
             .Append(", Headers = ").Append(Headers)
-            .Append(", ").AppendRedacted(nameof(AdminToken), AdminToken is not null)
             .Append(", Clock = ").Append(Clock);
         return true;
     }

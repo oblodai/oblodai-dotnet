@@ -22,6 +22,7 @@ public static class OblodaiJson
         NumberHandling = JsonNumberHandling.AllowReadingFromString,
         ReadCommentHandling = JsonCommentHandling.Skip,
         PropertyNameCaseInsensitive = false,
+        Converters = { StrictDecimalJsonConverter.Instance },
         TypeInfoResolver = new DefaultJsonTypeInfoResolver
         {
             Modifiers = { NonNullableStringsNeverDecodeToNull, MissingFieldsAreNotFatal },

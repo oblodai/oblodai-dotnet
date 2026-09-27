@@ -16,10 +16,12 @@ public class SecrecyTests
 
     public static TheoryData<object> SecretBearers() =>
     [
+#pragma warning disable CS0618 // the deprecated admin token must still never print
         new OblodaiOptions { PublicId = "pk", Secret = Secret, AdminToken = Secret },
         new OblodaiOptions { PublicId = "pk", Secret = Secret }.Resolve(_ => null),
         new Credentials("pk", Secret),
         new TransportOptions { BaseUrl = "https://api.test", UserAgent = "ua", AdminToken = Secret },
+#pragma warning restore CS0618
         new WebhookVerifyOptions { Secret = Secret, PreviousSecret = Secret },
     ];
 
@@ -65,8 +67,8 @@ public class SecrecyTests
         Assert.Contains("BaseUrl = https://api.test", text);
         Assert.Contains($"Secret = {Redaction.Placeholder}", text);
 
-        // An absent secret prints as absent, so "[redacted]" never implies a value that is not there.
-        Assert.Contains("AdminToken = null", text);
+        // The deprecated, ignored admin token is not printed at all.
+        Assert.DoesNotContain("AdminToken", text);
     }
 
     [Fact]

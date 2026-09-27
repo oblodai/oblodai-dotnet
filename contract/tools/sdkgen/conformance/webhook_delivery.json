@@ -1,0 +1,50 @@
+{
+  "description": "Боевые доставки вебхуков: по одной на каждое событие контракта, из x-oblodai-signing.webhook.deliveries спеки (тело строит тот же код ядра, что и отправитель). Доставка: тело = payload, заголовки = headers вектора, «сейчас» = ts. Проверка: SDK проверяет её секретом key (current — secret вектора, previous — previous_secret: получатель, ещё не сменивший секрет после ротации, сверяет заголовок роли signature_prev), разбирает тело в модель вида kind (известный вид, не «незнакомое событие») и отдаёт в сведениях о доставке каждое поле из fields ниже равным заголовку своей роли (имя — из спеки по header_names; числа — числом); пустое поле — заголовок потребляет проверка подписи. Заголовки не подписаны — подписано только тело: ни ключ дедупликации, ни признак репетиции SDK из заголовков не берёт, их значения отдаёт лишь как непроверенные сведения. Ключ дедупликации — подписанное поле тела event_id (имя — x-oblodai-signing.webhook.event_id_field), оно равно заголовку роли event_id. Репетицию помечает только поле тела test: true (is_test берётся из тела). Проверка с test: true: доставка вдобавок несёт заголовок репетиции — имя из спеки по header_names.test_pointer — со значением \"true\"; тело при этом боевое (test: true в нём нет), поэтому SDK обязан отдать её как БОЕВУЮ (is_test = false), а значение заголовка — только среди непроверенных сведений: неподписанный заголовок репетицию не делает.",
+  "source": {
+    "spec": "../../../services/core/api/openapi.json",
+    "pointer": "/x-oblodai-signing/webhook/deliveries"
+  },
+  "header_names": {
+    "pointer": "/x-oblodai-signing/webhook/headers",
+    "roles": [
+      "timestamp",
+      "signature",
+      "signature_prev",
+      "event",
+      "id",
+      "event_id",
+      "event_time"
+    ],
+    "test_pointer": "/x-oblodai-signing/webhook/test_header"
+  },
+  "fields": {
+    "timestamp": "sent_at",
+    "signature": "",
+    "signature_prev": "",
+    "event": "event_type",
+    "id": "id",
+    "event_id": "event_id",
+    "event_time": "event_time"
+  },
+  "checks": [
+    {
+      "name": "delivery verifies, parses to the model of its kind and exposes its headers",
+      "kind": "webhook_delivery",
+      "key": "current",
+      "expect": "ok"
+    },
+    {
+      "name": "a receiver still on the previous secret verifies the delivery",
+      "kind": "webhook_delivery",
+      "key": "previous",
+      "expect": "ok"
+    },
+    {
+      "name": "the unsigned test header set to \"true\" on a live body verifies and is NOT reported as a test (only the body's test field marks a rehearsal)",
+      "kind": "webhook_delivery",
+      "key": "current",
+      "test": true,
+      "expect": "ok"
+    }
+  ]
+}

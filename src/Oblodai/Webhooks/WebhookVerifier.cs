@@ -47,26 +47,36 @@ public sealed record WebhookVerifyOptions
     }
 }
 
-/// <summary>A verified delivery: the event plus the advisory headers worth keeping.</summary>
+/// <summary>
+/// A verified delivery: the event, its signed dedupe key and the delivery headers. Only <c>Event</c>,
+/// <c>EventKey</c>, <c>IsTest</c> and <c>SentAt</c> are covered by the signature; the <c>Unverified*</c>
+/// members are copied from headers the gateway does not sign — anyone replaying a captured delivery can
+/// change them. Use them for logging and correlation, never for deduplication or for deciding whether
+/// money moved.
+/// </summary>
 /// <param name="Event">The parsed event.</param>
-/// <param name="Id">The <see cref="WebhookVerifier.HeaderId"/> header — stable across retries of this one delivery only.</param>
-/// <param name="EventId">
-/// The <see cref="WebhookVerifier.HeaderEventId"/> header — the id of the STATE this delivery carries: the same for a resend of a
-/// state you already handled, different as soon as the state differs. Deduplicate on this one.
+/// <param name="EventKey">
+/// The dedupe key, from the signed body only (<see cref="WebhookVerifier.EventKeyOf"/>): its <c>event_id</c>,
+/// else <c>type:id:sequence</c>. Identical for every retry and resend of one state.
 /// </param>
-/// <param name="EventType">The <see cref="WebhookVerifier.HeaderEvent"/> header — <c>invoice.&lt;status&gt;</c>, <c>payout.&lt;status&gt;</c>, <c>wallet.paid</c>.</param>
-/// <param name="EventTime">The <see cref="WebhookVerifier.HeaderEventTime"/> header — unix seconds when the state change committed.</param>
-/// <param name="SentAt">The <see cref="WebhookVerifier.HeaderTimestamp"/> header — unix seconds when this attempt was sent.</param>
+/// <param name="UnverifiedDeliveryId">The <see cref="WebhookVerifier.HeaderId"/> header — NOT signed.</param>
+/// <param name="UnverifiedEventId">The <see cref="WebhookVerifier.HeaderEventId"/> header — NOT signed; dedupe on <c>EventKey</c>.</param>
+/// <param name="UnverifiedEventType">The <see cref="WebhookVerifier.HeaderEvent"/> header — NOT signed.</param>
+/// <param name="UnverifiedEventTime">The <see cref="WebhookVerifier.HeaderEventTime"/> header — NOT signed.</param>
+/// <param name="UnverifiedTestHeader">The <see cref="WebhookVerifier.HeaderTest"/> header was <c>true</c> — NOT signed; never decide on it.</param>
+/// <param name="SentAt">The <see cref="WebhookVerifier.HeaderTimestamp"/> header — unix seconds when this attempt was sent (signed).</param>
 /// <param name="IsTest">
-/// A rehearsal delivery (<see cref="WebhookVerifier.HeaderTest"/> <c>true</c> / body <c>test: true</c>): signed like a live one,
-/// but no money moved — never act on it as if it did.
+/// A rehearsal delivery (<c>test: true</c> in the signed body): signed like a live one, but no money moved —
+/// acknowledge it and do nothing.
 /// </param>
 public sealed record WebhookDeliveryInfo(
     IWebhookEvent Event,
-    string? Id,
-    string? EventId,
-    string? EventType,
-    long? EventTime,
+    string EventKey,
+    string? UnverifiedDeliveryId,
+    string? UnverifiedEventId,
+    string? UnverifiedEventType,
+    long? UnverifiedEventTime,
+    bool UnverifiedTestHeader,
     long SentAt,
     bool IsTest);
 
@@ -81,10 +91,14 @@ public sealed record WebhookDeliveryInfo(
 /// <item><description><see cref="HeaderSignaturePrev"/>: the same with the previous secret — only during a rotation overlap.</description></item>
 /// <item><description><see cref="HeaderEvent"/>: <c>invoice.&lt;status&gt;</c> | <c>payout.&lt;status&gt;</c> | <c>wallet.paid</c>.</description></item>
 /// <item><description><see cref="HeaderId"/>: stable per delivery (identical across retries of THAT delivery).</description></item>
-/// <item><description><see cref="HeaderEventId"/>: stable per STATE — deduplicate on it.</description></item>
-/// <item><description><see cref="HeaderEventTime"/>: unix seconds when the state change committed (order events by it).</description></item>
-/// <item><description><see cref="HeaderTest"/>: <c>true</c> — a rehearsal delivery, mirrored by <c>"test": true</c> in the signed body.</description></item>
+/// <item><description><see cref="HeaderEventId"/>: stable per STATE.</description></item>
+/// <item><description><see cref="HeaderEventTime"/>: unix seconds when the state change committed.</description></item>
+/// <item><description><see cref="HeaderTest"/>: <c>true</c> on a rehearsal delivery.</description></item>
 /// </list>
+/// The signature covers only the timestamp and the body: the event, id, event-id, event-time and test headers
+/// are NOT signed and are exposed only as the <c>Unverified*</c> members of <see cref="WebhookDeliveryInfo"/>.
+/// Deduplicate on <see cref="WebhookDeliveryInfo.EventKey"/> (the signed body's <c>event_id</c>) and always
+/// ignore a delivery whose signed body says <c>test: true</c> (<see cref="WebhookDeliveryInfo.IsTest"/>).
 /// Always verify over the raw request bytes; a re-serialized parse will not match.
 /// </summary>
 public static class WebhookVerifier
@@ -220,11 +234,46 @@ public static class WebhookVerifier
         long? eventTime = long.TryParse(eventTimeHeader, out var parsedEventTime) ? parsedEventTime : null;
 
         var parsed = Parse(rawBody);
-        var isTest = string.Equals(header(HeaderTest)?.Trim(), "true", StringComparison.OrdinalIgnoreCase)
-                     || IsTestEvent(parsed);
 
+        // IsTest from the signed body only: the test header is not covered by the MAC, and trusting it would
+        // let a replayer turn a live payment into an ignored "rehearsal".
         return new WebhookDeliveryInfo(
-            parsed, header(HeaderId), header(HeaderEventId), header(HeaderEvent), eventTime, ts, isTest);
+            parsed,
+            EventKeyOf(rawBody),
+            header(HeaderId),
+            header(HeaderEventId),
+            header(HeaderEvent),
+            eventTime,
+            string.Equals(header(HeaderTest)?.Trim(), "true", StringComparison.OrdinalIgnoreCase),
+            ts,
+            IsTestEvent(parsed));
+    }
+
+    /// <summary>The signed body field with the id of the object state (<c>x-oblodai-signing.webhook.event_id_field</c>).</summary>
+    private const string EventIdField = "event_id";
+
+    /// <summary>
+    /// The dedupe key of a (verified) delivery body, from the body only: its <c>event_id</c> (the id of the
+    /// object state, the same for every retry and resend of it), else — from a core that does not sign one
+    /// yet — <c>type + ":" + id + ":" + sequence</c> (the id is the kind's declared id field, else the body's
+    /// <c>id</c> or <c>uuid</c>). The same concept as <c>event_key</c> in every Oblodai SDK.
+    /// </summary>
+    /// <param name="rawBody">The delivery body.</param>
+    public static string EventKeyOf(ReadOnlySpan<byte> rawBody)
+    {
+        var parsed = Parse(rawBody);
+        using var document = JsonDocument.Parse(rawBody.ToArray());
+        var root = document.RootElement;
+        string? Text(string name)
+            => root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+
+        if (Text(EventIdField) is { Length: > 0 } stateId)
+        {
+            return stateId;
+        }
+
+        var id = parsed.ObjectId ?? Text("id") ?? Text("uuid") ?? string.Empty;
+        return $"{parsed.Type}:{id}:{parsed.EventSequence?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty}";
     }
 
     /// <summary>

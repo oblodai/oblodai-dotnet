@@ -15,6 +15,9 @@ export OBLODAI_BACKEND="${OBLODAI_BACKEND:-}"
 echo "== generated code drift"
 ./scripts/check-generated.sh ${OBLODAI_BACKEND:+--require}
 
+echo "== vendored contract snapshot (contract/, what CI runs the conformance suite against)"
+./scripts/vendor_contract.sh --check
+
 FILTER="FullyQualifiedName!~Oblodai.Tests.Live"
 if [ "${1:-}" = "--live" ]; then
   : "${OBLODAI_LIVE_URL:?set OBLODAI_LIVE_URL}"

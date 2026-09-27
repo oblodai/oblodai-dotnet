@@ -53,20 +53,28 @@ public class TransportRoutingTests
         Assert.Equal(SdkErrorCodes.MissingCredentials, error.Code);
     }
 
+    /// <summary>
+    /// Ruling R4: the SDK never sends a raw admin token, and the operator-only onboarding route is refused
+    /// with a config error before any request goes out.
+    /// </summary>
     [Fact]
-    public async Task SendsTheAdminTokenOnProvisioningRoutesOnly()
+    public async Task NeverSendsTheAdminTokenAndRefusesOnboardingBeforeTheNetwork()
     {
         var handler = new FakeHttpHandler(
             ScriptedResponse.Ok("""{"merchant_id":"m1","project_id":"p1","created":true,"api_key":{"public_id":"pk","secret":"s"}}"""),
             ScriptedResponse.Ok("""{"balance":{"merchant":[]}}"""));
+#pragma warning disable CS0618
         using var client = Client(handler, new OblodaiOptions { AdminToken = "adm" });
+#pragma warning restore CS0618
 
-        await client.Sandbox.OnboardStoreAsync("m1");
+        var refused = await Assert.ThrowsAsync<ConfigException>(() => client.Sandbox.OnboardStoreAsync("m1"));
+        Assert.Equal(SdkErrorCodes.OperatorChannelUnsupported, refused.Code);
+        Assert.Contains("use the dashboard", refused.Message);
+        Assert.Empty(handler.Calls);
+
         await client.Account.GetBalanceAsync();
-
-        Assert.Equal("adm", handler.Calls[0].Header(RequestSigner.HeaderAdminToken));
-        Assert.False(handler.Calls[0].HasHeader(RequestSigner.HeaderSignature));
-        Assert.False(handler.Calls[1].HasHeader(RequestSigner.HeaderAdminToken));
+        Assert.Single(handler.Calls);
+        Assert.False(handler.Calls[0].HasHeader(RequestSigner.HeaderAdminToken));
     }
 
     [Fact]

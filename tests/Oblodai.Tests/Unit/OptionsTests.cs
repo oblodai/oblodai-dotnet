@@ -33,17 +33,21 @@ public class OptionsTests
         Assert.Equal("code", resolved.Credentials!.PublicId);
     }
 
+    /// <summary>Ruling R8: plain http is refused everywhere, loopback included, unless allow-insecure is set.</summary>
     [Fact]
-    public void RefusesPlainHttpExceptForLoopbackOrWhenAllowed()
+    public void RefusesPlainHttpUnlessExplicitlyAllowed()
     {
         var refused = Assert.Throws<ConfigException>(() =>
             new OblodaiOptions { BaseUrl = "http://api.oblodai.com" }.Resolve(Env()));
         Assert.Contains("https", refused.Message);
         Assert.Equal(SdkErrorCodes.BadConfig, refused.Code);
 
-        Assert.Equal("http://localhost:8093", new OblodaiOptions { BaseUrl = "http://localhost:8093" }.Resolve(Env()).BaseUrl);
-        Assert.Equal("http://127.0.0.1:8095", new OblodaiOptions { BaseUrl = "http://127.0.0.1:8095" }.Resolve(Env()).BaseUrl);
-        Assert.Equal("http://[::1]:8093", new OblodaiOptions { BaseUrl = "http://[::1]:8093" }.Resolve(Env()).BaseUrl);
+        foreach (var local in new[] { "http://localhost:8093", "http://127.0.0.1:8095", "http://[::1]:8093" })
+        {
+            Assert.Throws<ConfigException>(() => new OblodaiOptions { BaseUrl = local }.Resolve(Env()));
+            Assert.Equal(local, new OblodaiOptions { BaseUrl = local, AllowInsecureBaseUrl = true }.Resolve(Env()).BaseUrl);
+        }
+
         Assert.Equal(
             "http://10.0.0.1",
             new OblodaiOptions { BaseUrl = "http://10.0.0.1", AllowInsecureBaseUrl = true }.Resolve(Env()).BaseUrl);
@@ -60,8 +64,21 @@ public class OptionsTests
         Assert.Throws<ConfigException>(() => new OblodaiOptions().Resolve(Env(("OBLODAI_SECRET", "s"))));
     }
 
+    /// <summary>Ruling R8: credentials in the base URL are refused, and the error never echoes them.</summary>
     [Fact]
-    public void PicksUpTheAdminToken()
+    public void RefusesUserinfoInTheBaseUrl()
+    {
+        foreach (var url in new[] { "https://user:hunter2@api.oblodai.com", "https://user@api.oblodai.com" })
+        {
+            var error = Assert.Throws<ConfigException>(() => new OblodaiOptions { BaseUrl = url }.Resolve(Env()));
+            Assert.Equal(SdkErrorCodes.BadConfig, error.Code);
+            Assert.DoesNotContain("hunter2", error.ToString());
+        }
+    }
+
+    /// <summary>Ruling R4: the admin token is read only to warn once that it is ignored; it is never kept.</summary>
+    [Fact]
+    public void TheAdminTokenIsIgnored()
     {
         var resolved = new OblodaiOptions().Resolve(Env(
             ("OBLODAI_PUBLIC_ID", "pk"),
@@ -69,7 +86,9 @@ public class OptionsTests
             ("OBLODAI_ADMIN_TOKEN", "adm")));
 
         Assert.Equal(new Credentials("pk", "s"), resolved.Credentials);
-        Assert.Equal("adm", resolved.AdminToken);
+#pragma warning disable CS0618
+        Assert.Null(resolved.AdminToken);
+#pragma warning restore CS0618
     }
 
     /// <summary>

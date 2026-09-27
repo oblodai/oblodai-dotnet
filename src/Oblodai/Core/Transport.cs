@@ -180,7 +180,25 @@ public sealed partial class OblodaiTransport : IDisposable
 
     private async Task<RawResponse> ExecuteAsync(RouteSpec route, CallOptions options, CancellationToken cancellationToken)
     {
+        if (route.Auth == RouteAuth.Onboard)
+        {
+            // The core accepts only the operator HMAC channel here; a raw admin token is never sent.
+            throw new ConfigException(
+                SdkErrorCodes.OperatorChannelUnsupported,
+                $"{route.Method} {route.Path}: operator channel is not supported by the SDK; use the dashboard");
+        }
+
         var body = OblodaiJson.SerializeBody(options.Body, route.Method);
+        var bodyBytes = Encoding.UTF8.GetByteCount(body);
+        if (bodyBytes > SigningProtocol.MaxBody)
+        {
+            // The gateway refuses it anyway (413); refusing here keeps a huge body off the wire.
+            throw new ConfigException(
+                SdkErrorCodes.BodyTooLarge,
+                $"the request body is {bodyBytes} bytes; the gateway accepts at most {SigningProtocol.MaxBody}",
+                "Body");
+        }
+
         var idempotencyKey = options.IdempotencyKey;
         if (idempotencyKey is not null)
         {
@@ -210,15 +228,17 @@ public sealed partial class OblodaiTransport : IDisposable
 
         var attempt = 0;
         var skewTried = false;
-        long offsetBeforeCorrection = 0;
-        long offsetThisCallInstalled = 0;
+
+        // An offset measured from a signature-failure Date, used for this call's re-signed attempt only:
+        // it becomes the shared offset once that attempt succeeds (2xx) and is discarded otherwise.
+        long? pendingOffset = null;
 
         while (true)
         {
             // The offset this attempt is signed with, remembered per call. Comparing the server's time
             // against the SHARED offset instead would misread a correction another thread just installed
             // as this call's own, and re-sign against a clock nobody measured for this request.
-            var signedWithOffset = _clock.Offset;
+            var signedWithOffset = pendingOffset ?? _clock.Offset;
             var request = RequestBuilder.Build(new BuildInput
             {
                 BaseUrl = _options.BaseUrl,
@@ -232,7 +252,6 @@ public sealed partial class OblodaiTransport : IDisposable
                 Ts = _clock.BaseNowUnixSeconds() + signedWithOffset,
                 UserAgent = _options.UserAgent,
                 ExtraHeaders = MergeHeaders(_options.Headers, options.ExtraHeaders),
-                AdminToken = _options.AdminToken,
             });
 
             _logger.Log(OblodaiLogLevel.Debug, "request", new Dictionary<string, object?>
@@ -244,7 +263,12 @@ public sealed partial class OblodaiTransport : IDisposable
             });
 
             var info = new RequestInfo(
-                request.Method, request.Url, RedactHeaders(request.Headers), attempt + 1, requestId, route.OperationId);
+                request.Method,
+                Redaction.RedactUrl(request.Url, route.Path),
+                RedactHeaders(request.Headers),
+                attempt + 1,
+                requestId,
+                route.OperationId);
             _options.Hooks?.OnRequest?.Invoke(info);
             var started = time.GetTimestamp();
 
@@ -257,6 +281,7 @@ public sealed partial class OblodaiTransport : IDisposable
             }
             catch (OblodaiException err)
             {
+                pendingOffset = null;
                 _options.Hooks?.OnResponse?.Invoke(new ResponseInfo(
                     info, 0, EmptyHeaders, time.GetElapsedTime(started), err));
                 if (RetryPolicy.ShouldRetry(err, attempt, safeToRepeat, retry))
@@ -275,17 +300,25 @@ public sealed partial class OblodaiTransport : IDisposable
                             && !string.IsNullOrEmpty(echoed) ? echoed : requestId,
             };
 
+            // A measured offset is adopted only when the attempt signed with it went through.
+            var measured = pendingOffset;
+            pendingOffset = null;
             if (raw.Status is >= 200 and < 300)
             {
+                if (measured is { } adopted)
+                {
+                    _clock.Correct(adopted);
+                }
+
                 _options.Hooks?.OnResponse?.Invoke(new ResponseInfo(
-                    info, raw.Status, raw.Headers, time.GetElapsedTime(started), null));
+                    info, raw.Status, RedactHeaders(raw.Headers), time.GetElapsedTime(started), null));
                 RawCapture.Record(raw);
                 return raw;
             }
 
             var failure = Classify(route, raw, responseHeaders);
             _options.Hooks?.OnResponse?.Invoke(new ResponseInfo(
-                info, raw.Status, raw.Headers, time.GetElapsedTime(started), failure));
+                info, raw.Status, RedactHeaders(raw.Headers), time.GetElapsedTime(started), failure));
             _logger.Log(OblodaiLogLevel.Debug, "response", LogRedaction.Redact(new Dictionary<string, object?>
             {
                 ["route"] = label,
@@ -294,31 +327,21 @@ public sealed partial class OblodaiTransport : IDisposable
                 ["requestId"] = failure.RequestId ?? raw.RequestId,
             }));
 
-            // Clock skew: the gateway rejected the timestamp/MAC. Learn its time from the `Date` header,
-            // re-sign once, and keep the offset only if that attempt got past authentication.
-            if (raw.Status == 401 && SignatureFailureCodes.Contains(failure.Code))
+            // Clock skew: the gateway rejected the timestamp/MAC. Learn its time from the `Date` header (at
+            // most MaxCorrectionSeconds away) and re-sign once with it; the offset is adopted for every
+            // call only if that attempt succeeds.
+            if (raw.Status == 401 && !skewTried && SignatureFailureCodes.Contains(failure.Code))
             {
-                if (!skewTried)
+                var observed = _clock.ObserveServerDate(responseHeaders?.Date);
+                if (observed is { } offset
+                    && Math.Abs(offset - signedWithOffset) > RequestSigner.SignatureSkewSeconds / 2
+                    && Math.Abs(offset - signedWithOffset) <= SkewCorrectingClock.MaxCorrectionSeconds)
                 {
-                    var observed = _clock.ObserveServerDate(responseHeaders?.Date);
-                    if (observed is { } offset
-                        && Math.Abs(offset - signedWithOffset) > RequestSigner.SignatureSkewSeconds / 2)
-                    {
-                        _logger.Log(OblodaiLogLevel.Warn, "clock skew detected; re-signing with server time",
-                            new Dictionary<string, object?> { ["route"] = label, ["offsetSec"] = offset });
-                        skewTried = true;
-                        offsetBeforeCorrection = signedWithOffset;
-                        offsetThisCallInstalled = offset;
-                        _clock.Correct(offset);
-                        continue;
-                    }
-                }
-                else
-                {
-                    // It was not skew. Undo the correction only while it is still the one this call made:
-                    // between the two attempts another thread may have measured a real offset, and
-                    // reverting that would put every concurrent call back on the wrong clock.
-                    _clock.CorrectIfUnchanged(offsetThisCallInstalled, offsetBeforeCorrection);
+                    _logger.Log(OblodaiLogLevel.Warn, "clock skew detected; re-signing with server time",
+                        new Dictionary<string, object?> { ["route"] = label, ["offsetSec"] = offset });
+                    skewTried = true;
+                    pendingOffset = offset;
+                    continue;
                 }
             }
 
@@ -348,15 +371,18 @@ public sealed partial class OblodaiTransport : IDisposable
         return _options.Retry with { MaxRetries = max };
     }
 
-    /// <summary>The headers of an attempt as hooks see them: the signature and the admin token redacted.</summary>
-    /// <param name="headers">Headers as sent.</param>
+    /// <summary>
+    /// Headers as hooks see them: the signature and every secret-bearing header (<c>Authorization</c>,
+    /// <c>X-Api-Key</c>, <c>X-Admin-Token</c>, <c>X-Claim-Passcode</c>, cookies, …) redacted.
+    /// </summary>
+    /// <param name="headers">Headers as sent or received.</param>
     private static IReadOnlyDictionary<string, string> RedactHeaders(IReadOnlyDictionary<string, string> headers)
     {
         var output = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (key, value) in headers)
         {
             output[key] = key.Equals(RequestSigner.HeaderSignature, StringComparison.OrdinalIgnoreCase)
-                          || key.Equals(RequestSigner.HeaderAdminToken, StringComparison.OrdinalIgnoreCase)
+                          || Redaction.IsSensitiveName(key)
                 ? Redaction.Placeholder
                 : value;
         }

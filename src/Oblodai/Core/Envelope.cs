@@ -98,7 +98,7 @@ public static class EnvelopeDecoder
 
         if (httpStatus is >= 300 and < 400)
         {
-            var where = string.IsNullOrEmpty(locationHeader) ? string.Empty : $" to {locationHeader}";
+            var where = string.IsNullOrEmpty(locationHeader) ? string.Empty : $" to {Redaction.RedactUrl(locationHeader, null)}";
             return DecodedEnvelope.Failure(ApiExceptionFactory.Create(
                 httpStatus,
                 new ErrorDetail

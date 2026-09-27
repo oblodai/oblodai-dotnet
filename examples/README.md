@@ -16,7 +16,7 @@ export OBLODAI_BASE_URL=http://127.0.0.1:8095
 | ------------------------------------------------ | --------------------------------------------------------------------------------- |
 | `dotnet run --project examples/AcceptPayment`     | Create an invoice, show the payer the address, poll until the invoice is final     |
 | `dotnet run --project examples/Payout`            | Validate a payout, then create it with your own idempotency key; handle refusals   |
-| `dotnet run --project examples/WebhookReceiver`   | Verify over the raw bytes, deduplicate by event id, drop out-of-order events       |
+| `dotnet run --project examples/WebhookReceiver`   | Verify over the raw bytes, deduplicate by the signed key, drop out-of-order events |
 | `dotnet run --project examples/Sandbox`           | Faucet → invoice → simulated deposit → paid, and the sandbox webhook log           |
 
 All four read the one key above — a merchant has a single API key, and it signs payouts as well as
